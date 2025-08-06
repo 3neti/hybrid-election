@@ -3,9 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Actions\GenerateElectionReturn as GenerateElectionReturnAction;
-use App\Data\VoteCountData;
+use App\Data\{ElectoralInspectorData, VoteCountData};
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
+use App\Models\Precinct;
 
 class GenerateElectionReturn extends Command
 {
@@ -28,27 +29,35 @@ class GenerateElectionReturn extends Command
         $this->info('📥 Generating Election Return...');
         $this->line('');
 
-        $return = GenerateElectionReturnAction::run(
-            \App\Models\Precinct::with('ballots')->firstOrFail()
-        );
+        $precinct = Precinct::with('ballots')->firstOrFail();
+        $return = GenerateElectionReturnAction::run($precinct);
 
-        $precinct = $return->precinct;
+        $this->info("🆔 Election Return ID: {$return->id}");
+        $this->info("🔐 Return Code       : {$return->code}");
+        $this->info("📌 Precinct Code     : {$return->precinct->code}");
+        $this->info("📍 Location          : {$return->precinct->location_name}");
+        $this->info("🕒 Generated At      : {$return->created_at->toDayDateTimeString()}");
 
-        $totalBallots = \App\Models\Precinct::find($precinct->id)->ballots->count();
-        $datetime = now()->toDayDateTimeString();
-
-        // 🧾 Precinct Information Header
-        $this->info("📌 Precinct Code     : {$precinct->code}");
-        $this->info("📍 Location          : {$precinct->location_name}");
-        $this->info("🕒 Generated At      : {$datetime}");
+        $totalBallots = $precinct->ballots->count();
         $this->info("🧾 Total Ballots     : {$totalBallots}");
         $this->line('');
 
         // 👥 Electoral Board
         $this->info('👥 Electoral Board:');
-        $this->line(' - Chairman: ' . ($precinct->chairman_name ?? 'N/A'));
-        $this->line(' - Member 1: ' . ($precinct->member1_name ?? 'N/A'));
-        $this->line(' - Member 2: ' . ($precinct->member2_name ?? 'N/A'));
+        $roles = ['chairperson' => 'Chairperson', 'member' => 'Member'];
+
+        $groupedInspectors = collect($return->signatures)
+            ->map(fn($inspector) => ElectoralInspectorData::from($inspector))
+            ->groupBy(fn($inspector) => $inspector->role->value);
+
+        foreach ($roles as $role => $label) {
+            $inspectors = $groupedInspectors->get($role, collect());
+
+            foreach ($inspectors as $index => $inspector) {
+                $labelText = $role === 'member' ? "{$label} " . ($index + 1) : $label;
+                $this->line(" - {$labelText}: {$inspector->name}");
+            }
+        }
 
         $this->line(str_repeat('-', 60));
 

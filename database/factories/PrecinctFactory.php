@@ -3,6 +3,8 @@
 namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
+use App\Enums\ElectoralInspectorRole;
+use App\Data\ElectoralInspectorData;
 use Illuminate\Support\Str;
 
 /**
@@ -10,11 +12,6 @@ use Illuminate\Support\Str;
  */
 class PrecinctFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
@@ -23,9 +20,23 @@ class PrecinctFactory extends Factory
             'location_name' => 'Currimao Central School',
             'latitude' => 17.993217,
             'longitude' => 120.488902,
-            'chairman_name' => 'Juan dela Cruz',
-            'member1_name' => 'Maria Santos',
-            'member2_name' => 'Pedro Reyes',
+            'electoral_inspectors' => collect([
+                new ElectoralInspectorData(
+                    id: (string) Str::uuid(),
+                    name: 'Juan dela Cruz',
+                    role: ElectoralInspectorRole::CHAIRPERSON,
+                ),
+                new ElectoralInspectorData(
+                    id: (string) Str::uuid(),
+                    name: 'Maria Santos',
+                    role: ElectoralInspectorRole::MEMBER,
+                ),
+                new ElectoralInspectorData(
+                    id: (string) Str::uuid(),
+                    name: 'Pedro Reyes',
+                    role: ElectoralInspectorRole::MEMBER,
+                ),
+            ]),
         ];
     }
 }

@@ -11,13 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('precincts', function (Blueprint $table) {
+        Schema::create('election_returns', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->string('code')->unique(); // e.g., CURRIMAO-001
-            $table->string('location_name'); // e.g., Currimao Central School
-            $table->decimal('latitude', 10, 6)->nullable();
-            $table->decimal('longitude', 10, 6)->nullable();
-            $table->json('electoral_inspectors')->nullable();
+            $table->string('code')->unique();
+            $table->json('signatures')->nullable();
+            $table->foreignUuid('precinct_id')->constrained()->cascadeOnDelete();
             $table->timestamps();
         });
     }
@@ -27,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('precincts');
+        Schema::dropIfExists('election_returns');
     }
 };

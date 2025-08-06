@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\LaravelData\DataCollection;
+use App\Data\ElectoralInspectorData;
 use Spatie\LaravelData\WithData;
 use App\Data\PrecinctData;
 
@@ -23,10 +25,15 @@ class Precinct extends Model
         'location_name',
         'latitude',
         'longitude',
-        'chairman_name',
-        'member1_name',
-        'member2_name',
+        'electoral_inspectors',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'electoral_inspectors' => DataCollection::class . ':' . ElectoralInspectorData::class,
+        ];
+    }
 
     public function ballots(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
