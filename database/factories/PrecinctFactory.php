@@ -15,7 +15,7 @@ class PrecinctFactory extends Factory
     public function definition(): array
     {
         return [
-            'id' => Str::uuid(),
+            'id' => (string) Str::uuid(),
             'code' => 'CURRIMAO-001',
             'location_name' => 'Currimao Central School',
             'latitude' => 17.993217,

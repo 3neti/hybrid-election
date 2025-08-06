@@ -15,7 +15,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('code')->unique();
             $table->json('signatures')->nullable();
-            $table->foreignUuid('precinct_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('precinct_id')->unique()->constrained()->cascadeOnDelete();
             $table->timestamps();
         });
     }

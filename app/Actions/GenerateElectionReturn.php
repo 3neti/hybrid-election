@@ -54,15 +54,18 @@ class GenerateElectionReturn
             ->flatten(1);
 
         // 🧾 Persist the ElectionReturn model
-        $electionReturn = ElectionReturn::create([
-            'id' => Str::uuid(),
-            'code' => Str::upper(Str::random(12)),
-            'precinct_id' => $precinct->id,
-            'signatures' => new DataCollection(
-                ElectoralInspectorData::class,
-                $precinct->electoral_inspectors
-            ),
-        ]);
+        $existing = ElectionReturn::where('precinct_id', $precinct->id)->first();
+
+        $electionReturn = ElectionReturn::updateOrCreate(
+            ['precinct_id' => $precinct->id],
+            [
+                'code' => $existing?->code ?? Str::upper(Str::random(12)),
+                'signatures' => new DataCollection(
+                    ElectoralInspectorData::class,
+                    $precinct->electoral_inspectors
+                ),
+            ]
+        );
 
         // 📦 Return hydrated DTO
         return new ElectionReturnData(

@@ -1,12 +1,19 @@
 <?php
 
-use App\Data\{BallotData, CandidateData, PositionData, VoteData};
-use Spatie\LaravelData\DataCollection;
+use App\Data\{
+    BallotData,
+    CandidateData,
+    PositionData,
+    VoteData,
+    PrecinctData
+};
 use App\Enums\Level;
+use Spatie\LaravelData\DataCollection;
 
 it('creates a BallotData object from nested array', function () {
     $ballot = BallotData::from([
-        'code' => 'BALLOT-001', // ✅ required now
+        'id' => 'ballot-uuid-1234',
+        'code' => 'BALLOT-001',
         'votes' => [
             [
                 'position' => [
@@ -44,9 +51,18 @@ it('creates a BallotData object from nested array', function () {
                 ],
             ],
         ],
+        'precinct' => [
+            'id' => 'precinct-uuid-999',
+            'code' => 'CURRIMAO-001',
+            'location_name' => 'Currimao Central School',
+            'latitude' => 17.993217,
+            'longitude' => 120.488902,
+            'electoral_inspectors' => [],
+        ],
     ]);
 
     expect($ballot)->toBeInstanceOf(BallotData::class)
+        ->and($ballot->id)->toBe('ballot-uuid-1234')
         ->and($ballot->code)->toBe('BALLOT-001')
         ->and($ballot->votes)->toBeInstanceOf(DataCollection::class)
         ->and($ballot->votes)->toHaveCount(2);
@@ -60,4 +76,7 @@ it('creates a BallotData object from nested array', function () {
         ->and($firstVote->candidates)->toHaveCount(1)
         ->and($firstVote->candidates->first())->toBeInstanceOf(CandidateData::class)
         ->and($firstVote->candidates->first()->alias)->toBe('BBM');
+
+    expect($ballot->precinct)->toBeInstanceOf(PrecinctData::class)
+        ->and($ballot->precinct->code)->toBe('CURRIMAO-001');
 });

@@ -3,19 +3,38 @@
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use App\Data\PrecinctData;
 use App\Models\Precinct;
+use App\Data\ElectoralInspectorData;
+use App\Enums\ElectoralInspectorRole;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
 it('converts a Precinct model to PrecinctData and back', function () {
     // Arrange: Create a model instance
+    $inspectors = collect([
+        new ElectoralInspectorData(
+            id: (string) Str::uuid(),
+            name: 'Maria Santos',
+            role: ElectoralInspectorRole::CHAIRPERSON,
+        ),
+        new ElectoralInspectorData(
+            id: (string) Str::uuid(),
+            name: 'Jose Dela Cruz',
+            role: ElectoralInspectorRole::MEMBER,
+        ),
+        new ElectoralInspectorData(
+            id: (string) Str::uuid(),
+            name: 'Ana Reyes',
+            role: ElectoralInspectorRole::MEMBER,
+        ),
+    ]);
+
     $precinct = Precinct::create([
-        'code'           => 'PRCT-001',
-        'location_name'  => 'Barangay Hall, San Juan',
-        'latitude'       => 14.5995,
-        'longitude'      => 120.9842,
-        'chairman_name'  => 'Maria Santos',
-        'member1_name'   => 'Jose Dela Cruz',
-        'member2_name'   => 'Ana Reyes',
+        'code' => 'PRCT-001',
+        'location_name' => 'Barangay Hall, San Juan',
+        'latitude' => 14.5995,
+        'longitude' => 120.9842,
+        'electoral_inspectors' => $inspectors,
     ]);
 
     // Act: Convert to PrecinctData
@@ -28,20 +47,7 @@ it('converts a Precinct model to PrecinctData and back', function () {
         ->and($data->location_name)->toBe('Barangay Hall, San Juan')
         ->and($data->latitude)->toBe(14.5995)
         ->and($data->longitude)->toBe(120.9842)
-        ->and($data->chairman_name)->toBe('Maria Santos')
-        ->and($data->member1_name)->toBe('Jose Dela Cruz')
-        ->and($data->member2_name)->toBe('Ana Reyes');
-
-//    // Act again: Convert back to array and assert equality
-//    $array = $data->toArray();
-//    expect($array)->toMatchArray([
-//        'id'             => $precinct->id,
-//        'code'           => 'PRCT-001',
-//        'location_name'  => 'Barangay Hall, San Juan',
-//        'latitude'       => 14.5995,
-//        'longitude'      => 120.9842,
-//        'chairman_name'  => 'Maria Santos',
-//        'member1_name'   => 'Jose Dela Cruz',
-//        'member2_name'   => 'Ana Reyes',
-//    ]);
+        ->and($data->electoral_inspectors)->toHaveCount(3)
+        ->and($data->electoral_inspectors->first()->name)->toBe('Maria Santos')
+        ->and($data->electoral_inspectors->first()->role)->toBe(ElectoralInspectorRole::CHAIRPERSON);
 });
