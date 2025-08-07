@@ -6,6 +6,7 @@ use App\Data\SignPayloadData;
 use App\Actions\SignElectionReturn;
 use App\Data\ElectoralInspectorData;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\LaravelData\Optional;
 
 uses(RefreshDatabase::class);
 
@@ -30,8 +31,9 @@ it('signs an election return inspector using a QR code payload', function () {
         ->firstWhere('id', $inspectorId);
 
     expect($initial)->toBeInstanceOf(\App\Data\ElectoralInspectorData::class)
-        ->and($initial->signature)->toBeNull()
-        ->and($initial->signed_at)->toBeNull();
+        ->and($initial->signature)->toBeInstanceOf(Optional::class)
+        ->and($initial->signed_at)->toBeInstanceOf(Optional::class)
+        ;
 
     // 🧪 Step 4: Create a QR code string like: BEI:<id>:<base64>
     $fakeSignature = base64_encode('signed-by-chair');
@@ -104,6 +106,7 @@ it('allows multiple inspectors to sign the same election return independently', 
     // ✅ Inspector 3 is still unsigned
     $inspector3 = $inspectors[2];
     $unsigned = $signatures->firstWhere('id', $inspector3->id);
-    expect($unsigned->signature)->toBeNull()
-        ->and($unsigned->signed_at)->toBeNull();
+    expect($unsigned->signature)->toBeInstanceOf(Optional::class)
+        ->and($unsigned->signed_at)->toBeInstanceOf(Optional::class)
+    ;
 });

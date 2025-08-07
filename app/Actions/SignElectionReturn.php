@@ -16,7 +16,7 @@ class SignElectionReturn
     public function handle(SignPayloadData $data, string $electionReturnCode): array
     {
         $electionReturn = ElectionReturn::where('code', $electionReturnCode)->firstOrFail();
-
+//dd($electionReturn->signatures);
         $inspectors = collect($electionReturn->signatures ?? [])
             ->map(fn (array $i) => ElectoralInspectorData::from($i));
 

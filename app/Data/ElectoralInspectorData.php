@@ -4,9 +4,9 @@ namespace App\Data;
 
 use Spatie\LaravelData\Casts\DateTimeInterfaceCast;
 use Spatie\LaravelData\Attributes\WithCast;
+use Spatie\LaravelData\{Data, Optional};
 use Spatie\LaravelData\Casts\EnumCast;
 use App\Enums\ElectoralInspectorRole;
-use Spatie\LaravelData\Data;
 use Carbon\Carbon;
 
 class ElectoralInspectorData extends Data
@@ -16,8 +16,8 @@ class ElectoralInspectorData extends Data
         public string $name,                      // e.g. 'Juan Dela Cruz'
         #[WithCast(EnumCast::class, ElectoralInspectorRole::class)]
         public ElectoralInspectorRole $role,      // e.g. 'chairperson', 'member'
-        public ?string $signature = null,         // base64-encoded image or file path
+        public string|Optional $signature = new Optional(),
         #[WithCast(DateTimeInterfaceCast::class, format: 'Y-m-d\TH:i:sP')]
-        public ?Carbon $signed_at = null,         // timestamp of when the inspector signed
+        public Carbon|Optional $signed_at = new Optional()
     ) {}
 }
