@@ -9,4 +9,13 @@ Route::get('/user', function (Request $request) {
 
 use App\Actions\GenerateElectionReturn;
 
-Route::get('/election-return', GenerateElectionReturn::class);
+Route::post('/election-return', GenerateElectionReturn::class);
+Route::get('/election-return', function (Request $request) {
+    return \App\Models\ElectionReturn::first()->getData();
+});
+
+use App\Http\Controllers\ElectionReturnController;
+
+use App\Actions\SignElectionReturn;
+
+Route::post('/election-returns/{electionReturn}/sign', SignElectionReturn::class);

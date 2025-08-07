@@ -5,8 +5,8 @@ namespace App\Data;
 use Spatie\LaravelData\Casts\DateTimeInterfaceCast;
 use Spatie\LaravelData\Attributes\WithCast;
 use Spatie\LaravelData\DataCollection;
+use Illuminate\Support\Carbon;
 use Spatie\LaravelData\Data;
-use Carbon\Carbon;
 
 /**
  * ElectionReturnData represents a full, persisted election return record,

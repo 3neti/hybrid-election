@@ -6,32 +6,59 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Class Candidate.
+ * Class Candidate
  *
- * @property int                         $id
- * @property string                      $code
- * @property string                      $name
- * @property string                      $alias
- * @property string                      $position_code
- * @property-read Position               $position
+ * Represents an electoral candidate running for a specific position in the election.
+ * Each candidate is uniquely identified by a string code, and is associated with one position.
  *
- * @method int getKey()
+ * @property string                      $code           Unique code identifying the candidate (primary key).
+ * @property string                      $name           Full name of the candidate.
+ * @property string                      $alias          Nickname or ballot name of the candidate.
+ * @property string                      $position_code  Foreign key linking to the associated position's code.
+ *
+ * @property-read \App\Models\Position  $position       The position this candidate is running for.
+ *
+ * @method string getKey()                              Get the primary key value for the model.
  */
 class Candidate extends Model
 {
     /** @use HasFactory<\Database\Factories\CandidateFactory> */
     use HasFactory;
 
+    /**
+     * The primary key for the model.
+     *
+     * @var string
+     */
     protected $primaryKey = 'code';
+
+    /**
+     * Indicates if the IDs are auto-incrementing.
+     *
+     * @var bool
+     */
     public $incrementing = false;
+
+    /**
+     * The "type" of the primary key.
+     *
+     * @var string
+     */
     protected $keyType = 'string';
 
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<string>
+     */
     protected $fillable = [
         'code', 'name', 'alias', 'position_code',
     ];
 
     /**
-     * Belongs to Position using 'code' as foreign key.
+     * Get the position that the candidate is running for.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function position(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
@@ -39,7 +66,11 @@ class Candidate extends Model
     }
 
     /**
-     * Set the position using a Position model or position code string.
+     * Set the position for the candidate.
+     * Accepts either a Position model or a position code string.
+     *
+     * @param \App\Models\Position|string $position
+     * @return static
      */
     public function setPositionAttribute(Position|string $position): static
     {
