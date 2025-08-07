@@ -15,5 +15,8 @@ Route::get('dashboard', function () {
 Route::get('/election-returns', [ElectionReturnController::class, 'index']);
 Route::get('/election-returns/{id}', [ElectionReturnController::class, 'show']);
 
+use App\Http\Controllers\TallyController;
+Route::get('/tally', [TallyController::class, 'index']);
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

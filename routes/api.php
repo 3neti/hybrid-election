@@ -12,7 +12,7 @@ use App\Actions\GenerateElectionReturn;
 Route::post('/election-return', GenerateElectionReturn::class);
 Route::get('/election-return', function (Request $request) {
     return \App\Models\ElectionReturn::first()->getData();
-});
+})->name('precinct-tally');
 
 use App\Http\Controllers\ElectionReturnController;
 
