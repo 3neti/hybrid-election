@@ -19,3 +19,7 @@ use App\Http\Controllers\ElectionReturnController;
 use App\Actions\SignElectionReturn;
 
 Route::post('/election-returns/{electionReturn}/sign', SignElectionReturn::class);
+
+use App\Actions\SubmitBallot;
+
+Route::post('/ballots', SubmitBallot::class)->name('ballots.submit');
