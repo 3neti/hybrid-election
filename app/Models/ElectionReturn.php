@@ -76,7 +76,6 @@ class ElectionReturn extends Model
     {
         return [
             'signatures' => DataCollection::class . ':' . ElectoralInspectorData::class,
-            'ballots' => DataCollection::class . ':' . BallotData::class,
         ];
     }
 
@@ -88,5 +87,10 @@ class ElectionReturn extends Model
     public function getTalliesAttribute(): DataCollection
     {
         return $this->precinct->getTallies();
+    }
+
+    public function getBallotsAttribute(): DataCollection
+    {
+        return $this->precinct->getBallots();
     }
 }

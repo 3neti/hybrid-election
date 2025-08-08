@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Data\BallotData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -88,5 +89,10 @@ class Precinct extends Model
     public function getTallies(): DataCollection
     {
         return app(VoteTallyService::class)->fromPrecinct($this);
+    }
+
+    public function getBallots(): DataCollection
+    {
+        return new DataCollection(BallotData::class, $this->ballots);
     }
 }

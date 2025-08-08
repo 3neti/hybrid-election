@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import TallyMarks from '@/components/TallyMarks.vue'
 
@@ -10,16 +10,35 @@ interface TallyData {
     count: number
 }
 
+interface CandidateData { code: string; name: string; alias: string }
+interface PositionData { code: string; name: string; level: string; count: number }
+interface VoteData { position: PositionData; candidates: CandidateData[] }
+interface BallotData { id: string; code: string; votes: VoteData[] }
+
 interface ElectionReturnData {
     id: string
-    precinct: {
-        id: string
-        code: string
-    }
+    precinct: { id: string; code: string }
     tallies: TallyData[]
+    ballots?: BallotData[]
+    last_ballot?: BallotData | null
 }
 
 const data = ref<ElectionReturnData | null>(null)
+
+const highlights = computed<Set<string>>(() => {
+    const set = new Set<string>()
+    const lb = data.value?.last_ballot
+    if (!lb) return set
+
+    for (const vote of lb.votes ?? []) {
+        const posCode = vote.position?.code
+        if (!posCode) continue
+        for (const cand of vote.candidates ?? []) {
+            if (cand?.code) set.add(`${posCode}::${cand.code}`)
+        }
+    }
+    return set
+})
 
 onMounted(async () => {
     const response = await axios.get<ElectionReturnData>(route('precinct-tally'))
@@ -38,7 +57,7 @@ onMounted(async () => {
             <tr>
                 <th class="px-3 py-2">Position</th>
                 <th class="px-3 py-2">Candidate</th>
-                <th class="px-3 py-2">Votes</th> <!-- 🔹 Inserted here -->
+                <th class="px-3 py-2">Votes</th>
                 <th class="px-3 py-2">Tally</th>
             </tr>
             </thead>
@@ -47,14 +66,30 @@ onMounted(async () => {
                 v-for="(tally, index) in data?.tallies"
                 :key="index"
                 class="border-t"
+                :class="{
+      'bg-red-50':
+        highlights.has(`${tally.position_code}::${tally.candidate_code}`)
+    }"
             >
                 <td class="px-3 py-2 font-mono">{{ tally.position_code }}</td>
-                <td class="px-3 py-2">{{ tally.candidate_name }}</td>
-                <td class="px-3 py-2 text-center font-semibold">{{ tally.count }}</td> <!-- 🔹 New cell -->
+                <td
+                    class="px-3 py-2"
+                    :class="{
+        'text-red-600 font-bold':
+          highlights.has(`${tally.position_code}::${tally.candidate_code}`)
+      }"
+                >
+                    {{ tally.candidate_name }}
+                </td>
+                <td class="px-3 py-2 text-center font-semibold">{{ tally.count }}</td>
                 <td class="px-3 py-2">
                     <TallyMarks
                         :count="tally.count"
-                        :highlight-color="tally.candidate_code === 'JR_vN' ? 'red' : undefined"
+                        :highlight-color="
+          highlights.has(`${tally.position_code}::${tally.candidate_code}`)
+            ? 'red'
+            : undefined
+        "
                     />
                 </td>
             </tr>

@@ -29,10 +29,22 @@ class ElectionReturnData extends Data
         /** @var DataCollection<ElectoralInspectorData> Digital signatures from the electoral board */
         public DataCollection $signatures,
 
+        /** @var DataCollection<BallotData> The ballots casted by voters  */
+        public DataCollection $ballots,
+
         #[WithCast(DateTimeInterfaceCast::class, format: 'Y-m-d\TH:i:sP')]
         public Carbon $created_at,
 
         #[WithCast(DateTimeInterfaceCast::class, format: 'Y-m-d\TH:i:sP')]
         public Carbon $updated_at,
     ) {}
+
+    public function with(): array
+    {
+        $last = $this->ballots->toCollection()->last();
+
+        return [
+            'last_ballot' => $last ? \App\Data\BallotData::from($last) : null,
+        ];
+    }
 }
