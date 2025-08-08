@@ -38,6 +38,7 @@ onMounted(async () => {
             <tr>
                 <th class="px-3 py-2">Position</th>
                 <th class="px-3 py-2">Candidate</th>
+                <th class="px-3 py-2">Votes</th> <!-- 🔹 Inserted here -->
                 <th class="px-3 py-2">Tally</th>
             </tr>
             </thead>
@@ -49,8 +50,12 @@ onMounted(async () => {
             >
                 <td class="px-3 py-2 font-mono">{{ tally.position_code }}</td>
                 <td class="px-3 py-2">{{ tally.candidate_name }}</td>
+                <td class="px-3 py-2 text-center font-semibold">{{ tally.count }}</td> <!-- 🔹 New cell -->
                 <td class="px-3 py-2">
-                    <TallyMarks :count="tally.count" />
+                    <TallyMarks
+                        :count="tally.count"
+                        :highlight-color="tally.candidate_code === 'JR_vN' ? 'red' : undefined"
+                    />
                 </td>
             </tr>
             </tbody>

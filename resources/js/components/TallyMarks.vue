@@ -1,33 +1,51 @@
-<template>
-    <div class="tally-marks" :title="count.toString()">
-        <div v-for="group in fullGroups" :key="'group-' + group" class="tally-group">
-            <span class="mark">|</span>
-            <span class="mark">|</span>
-            <span class="mark">|</span>
-            <span class="mark">|</span>
-            <span class="diagonal" />
-        </div>
-
-        <div v-if="remainingMarks > 0" class="tally-group">
-      <span
-          v-for="mark in remainingMarks"
-          :key="'mark-' + mark"
-          class="mark"
-      >|</span>
-        </div>
-    </div>
-</template>
-
 <script setup lang="ts">
 import { computed } from 'vue'
 
 const props = defineProps<{
     count: number
+    highlightColor?: string
 }>()
 
 const fullGroups = computed(() => Math.floor(props.count / 5))
 const remainingMarks = computed(() => props.count % 5)
+const hasRemainder = computed(() => remainingMarks.value > 0)
+
+const isLastGroup = (index: number): boolean => {
+    return index === fullGroups.value - 1
+}
 </script>
+
+<template>
+    <div class="tally-marks">
+        <!-- Render full groups of 5 -->
+        <div
+            v-for="(group, index) in fullGroups"
+            :key="'group-' + index"
+            class="tally-group"
+        >
+            <span class="mark">|</span>
+            <span class="mark">|</span>
+            <span class="mark">|</span>
+            <span class="mark">|</span>
+            <span
+                class="diagonal"
+                :style="{ backgroundColor: isLastGroup(index) && !hasRemainder ? highlightColor : 'black' }"
+            />
+        </div>
+
+        <!-- Render leftover marks (less than 5) -->
+        <div v-if="remainingMarks > 0" class="tally-group">
+      <span
+          v-for="mark in remainingMarks"
+          :key="'mark-' + mark"
+          class="mark"
+          :style="{
+          color: mark === remainingMarks ? highlightColor : 'black'
+        }"
+      >|</span>
+        </div>
+    </div>
+</template>
 
 <style scoped>
 .tally-marks {
