@@ -126,3 +126,65 @@ PAYLOAD;
         'precinct_id' => $this->precinct->id,
     ]);
 });
+
+it('submits a ballot with only codes and hydrates server-side', function () {
+    // minimal payload: only codes
+    $payload = [
+        'precinct_id' => $this->precinct->id,
+        'code' => 'BAL-CODES-ONLY',
+        'votes' => [
+            [
+                'position' => ['code' => $this->position->code],
+                'candidates' => [
+                    ['code' => $this->candidates[0]->code],
+                    ['code' => $this->candidates[1]->code],
+                ],
+            ],
+        ],
+    ];
+
+    $response = postJson(route('ballots.submit'), $payload);
+
+    $response->assertCreated();
+
+    // ✅ Response should be fully hydrated using DB values
+    $response->assertJsonPath('code', 'BAL-CODES-ONLY')
+        ->assertJsonPath('precinct.id', $this->precinct->id)
+        ->assertJsonPath('votes.0.position.code', $this->position->code)
+        ->assertJsonPath('votes.0.position.name', $this->position->name) // hydrated
+        ->assertJsonPath('votes.0.position.level', $this->position->level->value) // hydrated
+        ->assertJsonPath('votes.0.position.count', $this->position->count) // hydrated
+        ->assertJsonPath('votes.0.candidates.0.code', $this->candidates[0]->code)
+        ->assertJsonPath('votes.0.candidates.0.name', $this->candidates[0]->name) // hydrated
+        ->assertJsonPath('votes.0.candidates.0.alias', $this->candidates[0]->alias) // hydrated
+        ->assertJsonPath('votes.0.candidates.1.code', $this->candidates[1]->code);
+
+    // ✅ Persisted
+    $this->assertDatabaseHas('ballots', [
+        'code' => 'BAL-CODES-ONLY',
+        'precinct_id' => $this->precinct->id,
+    ]);
+});
+
+it('fails with 422 when using unknown position/candidate codes', function () {
+    $bad = [
+        'precinct_id' => $this->precinct->id,
+        'code' => 'BAL-BAD-CODES',
+        'votes' => [
+            [
+                'position' => ['code' => 'NOT_A_REAL_POSITION'],
+                'candidates' => [
+                    ['code' => 'NOT_A_REAL_CANDIDATE'],
+                ],
+            ],
+        ],
+    ];
+
+    $response = postJson(route('ballots.submit'), $bad);
+
+    $response->assertStatus(422);
+    $response->assertJsonValidationErrors([
+        'votes.0.position.code',
+        'votes.0.candidates.0.code',
+    ]);
+});

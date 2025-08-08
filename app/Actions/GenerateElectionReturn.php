@@ -2,12 +2,7 @@
 
 namespace App\Actions;
 
-use App\Data\{
-    ElectionReturnData,
-    PrecinctData,
-    VoteCountData,
-    ElectoralInspectorData
-};
+use App\Data\{BallotData, ElectionReturnData, PrecinctData, VoteCountData, ElectoralInspectorData};
 use App\Models\{ElectionReturn, Precinct};
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
@@ -49,6 +44,10 @@ class GenerateElectionReturn
             signatures: new DataCollection(
                 ElectoralInspectorData::class,
                 $electionReturn->signatures
+            ),
+            ballots: new DataCollection(
+                BallotData::class,
+                $electionReturn->ballots
             ),
             created_at: $electionReturn->created_at,
             updated_at: $electionReturn->updated_at,
