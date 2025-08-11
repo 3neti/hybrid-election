@@ -137,6 +137,7 @@ it('hydrates ElectionReturnData from JSON and exports to array', function () {
         'precinct',
         'tallies',
         'signatures',
+        'ballots',
         'created_at',
         'updated_at',
     ]);

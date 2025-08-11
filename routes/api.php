@@ -23,3 +23,8 @@ Route::post('/election-returns/{electionReturn}/sign', SignElectionReturn::class
 use App\Actions\SubmitBallot;
 
 Route::post('/ballots', SubmitBallot::class)->name('ballots.submit');
+
+use App\Actions\GenerateQrForJson;
+
+Route::get('/qr/election-return/{code}', GenerateQrForJson::class)
+    ->name('qr.er');
