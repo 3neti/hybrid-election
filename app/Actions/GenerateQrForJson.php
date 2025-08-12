@@ -25,16 +25,26 @@ use Endroid\QrCode\RoundBlockSizeMode;
  *   GET /api/qr/election-return/{code}
  *
  * ### Query Parameters
+ * - payload (string, default: "full")
+ *     Which JSON shape to encode:
+ *       • "full"    → the entire DTO JSON (dto->toJson()) including last_ballot, signatures, etc.
+ *       • "minimal" → compact JSON: { id, code, precinct:{id,code}, tallies:[...] }
+ *     Use "minimal" to reduce the number of QR chunks.
+ *
  * - make_images (bool, default: true)
  *     Include PNG data URIs in the response for each chunk.
+ *
  * - max_chars_per_qr (int, default: 1200)
  *     Max characters per chunk **after** deflate+base64url.
+ *
  * - single (bool, default: false)
  *     Force a single QR (no chunking). ⚠ The payload may be too large for a single QR.
+ *
  * - persist (bool, default: false)
  *     When true, persist **chunk text**, **PNG files**, a **manifest.json**, the original
- *     uncompressed **raw.json**, and a human‑readable **README.txt** under:
+ *     uncompressed **raw.json**, and a human‑readable **README.md** under:
  *       storage/app/qr_exports/{CODE}/{timestamp or persist_dir}/
+ *
  * - persist_dir (string, optional)
  *     Optional subfolder name (e.g., "single_http", "multi_http"). If omitted, uses Ymd_His.
  *
@@ -107,8 +117,8 @@ class GenerateQrForJson
      * Controller: produce QR chunks for an Election Return by its {code}.
      *
      * Examples:
-     *   GET /api/qr/election-return/ERTEST001?make_images=1&max_chars_per_qr=800
-     *   GET /api/qr/election-return/ERTEST001?single=1&persist=1&persist_dir=single_http
+     *   GET /api/qr/election-return/ERTEST001?payload=minimal&make_images=1&max_chars_per_qr=1200
+     *   GET /api/qr/election-return/ERTEST001?payload=full&single=1&persist=1&persist_dir=single_http
      */
     public function asController(ActionRequest $request, string $code)
     {
@@ -117,10 +127,18 @@ class GenerateQrForJson
             abort(404, 'Election return not found.');
         }
 
-        // Use the DTO so `with()` (e.g., last_ballot) applies consistently.
+        // Build the DTO so `with()` (e.g., last_ballot) is consistently applied.
         /** @var \App\Data\ElectionReturnData $dto */
-        $dto  = app(\App\Actions\GenerateElectionReturn::class)->run($er->precinct);
-        $json = json_decode($dto->toJson(), true);
+        $dto = app(\App\Actions\GenerateElectionReturn::class)->run($er->precinct);
+
+        // Payload mode: full (default) or minimal
+        $payloadMode = strtolower((string) $request->input('payload', 'full'));
+        if ($payloadMode === 'minimal') {
+            $json = $this->buildMinimalPayload($dto);
+        } else {
+            // full DTO JSON
+            $json = json_decode($dto->toJson(), true);
+        }
 
         $makeImages  = $request->boolean('make_images', true);
         $maxCharsPer = (int) $request->input('max_chars_per_qr', 1200);
@@ -148,6 +166,34 @@ class GenerateQrForJson
     }
 
     // ------------------- Helpers -------------------
+
+    /**
+     * Minimal payload: keep only essentials to shrink QR count.
+     */
+    private function buildMinimalPayload(\App\Data\ElectionReturnData $dto): array
+    {
+        // Tallies are already simple (position_code, candidate_code, candidate_name, count)
+        $tallies = array_map(
+            fn ($t) => [
+                'position_code'  => $t['position_code'] ?? $t->position_code,
+                'candidate_code' => $t['candidate_code'] ?? $t->candidate_code,
+                'candidate_name' => $t['candidate_name'] ?? $t->candidate_name,
+                'count'          => $t['count'] ?? $t->count,
+            ],
+            // support both array-y and DTO collection cases
+            is_array($dto->tallies) ? $dto->tallies : $dto->tallies->toArray()
+        );
+
+        return [
+            'id'       => $dto->id,
+            'code'     => $dto->code,
+            'precinct' => [
+                'id'   => $dto->precinct->id,
+                'code' => $dto->precinct->code,
+            ],
+            'tallies'  => $tallies,
+        ];
+    }
 
     private function wrapChunk(string $payload, int $index, int $total, string $code): string
     {
@@ -185,7 +231,7 @@ class GenerateQrForJson
      * Persist:
      *  - manifest.json (the API/handle() result)
      *  - raw.json      (the original, uncompressed JSON payload)
-     *  - README.txt    (how to reassemble/verify)
+     *  - README.md     (how to reassemble/verify)
      *  - chunk_<i>of<N>.txt
      *  - chunk_<i>of<N>.png (if present)
      */
@@ -206,7 +252,7 @@ class GenerateQrForJson
             json_encode($rawJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
         );
 
-        // 3) README.md (markdown so tests that filter *.txt won't count it)
+        // 3) README.md
         $disk->put($baseDir.'/README.md', $this->buildReadmeText($result));
 
         // 4) chunk files
@@ -218,8 +264,7 @@ class GenerateQrForJson
             $disk->put("{$baseDir}/chunk_{$idx}of{$total}.txt", $text);
 
             if (!empty($chunk['png']) && is_string($chunk['png'])) {
-                // data:image/png;base64,<...>
-                $parts = explode(',', $chunk['png'], 2);
+                $parts = explode(',', $chunk['png'], 2); // data:image/png;base64,<...>
                 if (count($parts) === 2) {
                     $meta = $parts[0];
                     $b64  = $parts[1];
@@ -231,7 +276,7 @@ class GenerateQrForJson
     }
 
     /**
-     * Build README.txt content placed in each export folder.
+     * Build README.md content placed in each export folder.
      */
     private function buildReadmeText(array $result): string
     {
@@ -280,6 +325,7 @@ Where <PAYLOAD> is Base64URL( gzdeflate(JSON) ).
 
 Notes
 -----
+- 'payload=minimal' greatly reduces the number of QR codes.
 - Increasing 'max_chars_per_qr' generates fewer, denser QR codes. Lower it if scans fail.
 - 'single=1' tries to generate a single QR; it may be too dense for large payloads.
 - 'make_images=0' skips PNG generation to save bandwidth and storage.

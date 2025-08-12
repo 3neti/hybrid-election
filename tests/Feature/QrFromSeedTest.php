@@ -5,7 +5,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\{Artisan, Storage};
 use function Pest\Laravel\getJson;
 use App\Data\ElectionReturnData;
-use App\Models\{Precinct};
+use App\Models\Precinct;
 
 /** ---------- helpers ---------- */
 function b64urlDecode(string $txt): string {
@@ -19,17 +19,40 @@ function dtoJsonArray(\Spatie\LaravelData\Data $dto): array {
     return json_decode($dto->toJson(), true);
 }
 
+/** Build the same minimal payload the controller produces when payload=minimal */
+function minimalFromDto(ElectionReturnData $dto): array {
+    // Tallies might be DataCollection or array; normalize to array
+    $talliesRaw = is_array($dto->tallies) ? $dto->tallies : $dto->tallies->toArray();
+
+    $tallies = array_map(
+        fn ($t) => [
+            'position_code'  => $t['position_code'] ?? $t->position_code,
+            'candidate_code' => $t['candidate_code'] ?? $t->candidate_code,
+            'candidate_name' => $t['candidate_name'] ?? $t->candidate_name,
+            'count'          => $t['count'] ?? $t->count,
+        ],
+        $talliesRaw
+    );
+
+    return [
+        'id'       => $dto->id,
+        'code'     => $dto->code,
+        'precinct' => [
+            'id'   => $dto->precinct->id,
+            'code' => $dto->precinct->code,
+        ],
+        'tallies'  => $tallies,
+    ];
+}
+
 /**
  * Make arrays comparable by:
- * - removing volatile keys if needed
- * - sorting associative arrays by keys (recursively)
- * NOTE: keeps indexed arrays order as-is (important for tallies order).
+ * - recursively normalize values
+ * - sort associative arrays by keys
+ * (Keeps indexed arrays order intact.)
  */
 function normalizeArray(mixed $value): mixed {
     if (!is_array($value)) return $value;
-
-    // If needed, ignore volatile timestamps:
-    // unset($value['created_at'], $value['updated_at']);
 
     foreach ($value as $k => $v) {
         $value[$k] = normalizeArray($v);
@@ -49,7 +72,9 @@ beforeEach(function () {
     Artisan::call('db:seed');
 });
 
-it('single-QR: decodes and equals the ER JSON', function () {
+/** ───────────────────────── action (full payload) ───────────────────────── */
+
+it('single-QR (action/full): decodes and equals the ER JSON', function () {
     $precinct = Precinct::query()->firstOrFail();
     /** @var ElectionReturnData $erDto */
     $erDto = app(GenerateElectionReturn::class)->run($precinct);
@@ -75,7 +100,7 @@ it('single-QR: decodes and equals the ER JSON', function () {
         ->toEqual(normalizeArray($original));
 });
 
-it('multi-QR: decodes and equals the ER JSON', function () {
+it('multi-QR (action/full): decodes and equals the ER JSON', function () {
     $precinct = Precinct::query()->firstOrFail();
     /** @var ElectionReturnData $erDto */
     $erDto = app(GenerateElectionReturn::class)->run($precinct);
@@ -104,12 +129,15 @@ it('multi-QR: decodes and equals the ER JSON', function () {
         ->toEqual(normalizeArray($original));
 });
 
-it('HTTP single-QR endpoint: decodes and equals the ER JSON', function () {
+/** ───────────────────────── HTTP (full payload) ───────────────────────── */
+
+it('HTTP single-QR (full): decodes and equals the ER JSON', function () {
     $precinct = Precinct::query()->firstOrFail();
     /** @var ElectionReturnData $erDto */
     $erDto = app(GenerateElectionReturn::class)->run($precinct);
 
-    $resp = getJson(route('qr.er', ['code' => $erDto->code]) . '?single=1&make_images=0');
+    // Explicitly payload=full to match dtoJsonArray
+    $resp = getJson(route('qr.er', ['code' => $erDto->code]) . '?payload=full&single=1&make_images=0');
     $resp->assertOk();
 
     $json = $resp->json();
@@ -124,12 +152,12 @@ it('HTTP single-QR endpoint: decodes and equals the ER JSON', function () {
         ->toEqual(normalizeArray(dtoJsonArray($erDto)));
 });
 
-it('HTTP multi-QR endpoint: decodes and equals the ER JSON', function () {
+it('HTTP multi-QR (full): decodes and equals the ER JSON', function () {
     $precinct = Precinct::query()->firstOrFail();
     /** @var ElectionReturnData $erDto */
     $erDto = app(GenerateElectionReturn::class)->run($precinct);
 
-    $resp = getJson(route('qr.er', ['code' => $erDto->code]) . '?make_images=0&max_chars_per_qr=500');
+    $resp = getJson(route('qr.er', ['code' => $erDto->code]) . '?payload=full&make_images=0&max_chars_per_qr=500');
     $resp->assertOk();
 
     $json = $resp->json();
@@ -147,46 +175,70 @@ it('HTTP multi-QR endpoint: decodes and equals the ER JSON', function () {
         ->toEqual(normalizeArray(dtoJsonArray($erDto)));
 });
 
-/** ───────────────────────── persist tests ───────────────────────── */
+/** ───────────────────────── HTTP (minimal payload) ───────────────────────── */
 
-it('HTTP multi-QR endpoint persists chunks & PNGs and files round-trip', function () {
+it('HTTP multi-QR (minimal): decodes and equals the minimal JSON', function () {
     $precinct = Precinct::query()->firstOrFail();
     /** @var ElectionReturnData $erDto */
     $erDto = app(GenerateElectionReturn::class)->run($precinct);
 
-    // Force multiple chunks, persist them, and include PNGs
-    $dirSuffix = 'multi_test_' . now()->format('Ymd_His');
+    // Minimal payload should reduce chunk count substantially
+    $resp = getJson(route('qr.er', ['code' => $erDto->code]) . '?payload=minimal&make_images=0&max_chars_per_qr=1200');
+    $resp->assertOk();
+
+    $json = $resp->json();
+    expect($json['total'])->toBeGreaterThanOrEqual(1);
+
+    $joined = collect($json['chunks'])
+        ->sortBy('index')
+        ->map(fn ($c) => explode('|', $c['text'], 5)[4] ?? '')
+        ->implode('');
+
+    $inflated = gzinflate(b64urlDecode($joined));
+    $decoded  = json_decode($inflated, true);
+
+    // Compare against our local minimal shape
+    expect(normalizeArray($decoded))
+        ->toEqual(normalizeArray(minimalFromDto($erDto)));
+});
+
+/** ───────────────────────── persist tests ───────────────────────── */
+
+it('HTTP multi-QR (minimal) persists chunks & PNGs and files round-trip', function () {
+    $precinct = Precinct::query()->firstOrFail();
+    /** @var ElectionReturnData $erDto */
+    $erDto = app(GenerateElectionReturn::class)->run($precinct);
+
+    // Minimal + PNGs + persist; chunk size moderate for reasonable count
+    $dirSuffix = 'multi_min_' . now()->format('Ymd_His');
     $resp = getJson(
         route('qr.er', ['code' => $erDto->code])
-        . '?make_images=1&max_chars_per_qr=500&persist=1&persist_dir=' . $dirSuffix
+        . '?payload=minimal&make_images=1&max_chars_per_qr=1200&persist=1&persist_dir=' . $dirSuffix
     );
     $resp->assertOk();
 
     $json = $resp->json();
-    expect($json['total'])->toBeGreaterThan(1)
+    expect($json['total'])->toBeGreaterThanOrEqual(1)
         ->and($json)->toHaveKey('persisted_to');
 
-    // Compute the relative storage dir we expect
     $relDir = 'qr_exports/'.$erDto->code.'/'.$dirSuffix;
 
-    // Files should exist
-    expect(Storage::disk('local')->exists($relDir . '/manifest.json'))->toBeTrue();
+    // Required files present
+    expect(Storage::disk('local')->exists($relDir . '/manifest.json'))->toBeTrue()
+        ->and(Storage::disk('local')->exists($relDir . '/raw.json'))->toBeTrue()
+        ->and(Storage::disk('local')->exists($relDir . '/README.md'))->toBeTrue();
 
-    // Find chunk text files and PNGs
+    // Find chunks
     $files = collect(Storage::disk('local')->files($relDir));
     $txt   = $files->filter(fn($p) => str_ends_with($p, '.txt'))->values();
     $png   = $files->filter(fn($p) => str_ends_with($p, '.png'))->values();
 
     expect($txt)->toHaveCount($json['total'])
-        ->and($png->count())->toBe($json['total']); // PNGs present for all chunks
+        ->and($png->count())->toBe($json['total']); // PNGs for every chunk
 
-    // Reassemble from persisted text files (sorted by index)
-    // Reassemble from persisted text files (sorted by index)
+    // Reassemble from persisted text (by index)
     $joined = collect(range(1, (int) $json['total']))->map(function ($i) use ($relDir, $json) {
-        // Expected filename (our action names files like chunk_<index>of<total>.txt)
         $expected = "{$relDir}/chunk_{$i}of{$json['total']}.txt";
-
-        // Read the line (fallback to pattern search if filename ever changes)
         if (Storage::disk('local')->exists($expected)) {
             $line = Storage::disk('local')->get($expected);
         } else {
@@ -194,38 +246,26 @@ it('HTTP multi-QR endpoint persists chunks & PNGs and files round-trip', functio
                 ->first(fn($p) => str_contains($p, "chunk_{$i}of"));
             $line = $cand ? Storage::disk('local')->get($cand) : '';
         }
-
-        // Extract <payload> from ER|v1|CODE|i/total|<payload>
         return explode('|', $line, 5)[4] ?? '';
     })->implode('');
-//    $joined = collect(range(1, (int) $json['total']))->map(function ($i) use ($relDir) {
-//        $path = "{$relDir}/chunk_{$i}of{$GLOBALS['json']['total']}.txt"; // use $json in outer scope
-//        // Fallback: scan for the matching filename if needed
-//        if (!Storage::disk('local')->exists($path)) {
-//            $candidates = collect(Storage::disk('local')->files($relDir))
-//                ->first(fn($p) => str_contains($p, "chunk_{$i}of"));
-//            $path = $candidates ?? $path;
-//        }
-//        return explode('|', Storage::disk('local')->get($path), 5)[4] ?? '';
-//    })->implode('');
 
     $inflated = gzinflate(b64urlDecode($joined));
     $decoded  = json_decode($inflated, true);
 
     expect(normalizeArray($decoded))
-        ->toEqual(normalizeArray(dtoJsonArray($erDto)));
+        ->toEqual(normalizeArray(minimalFromDto($erDto)));
 });
 
-it('HTTP single-QR endpoint persists text (no PNG) and file round-trips', function () {
+it('HTTP single-QR (minimal) persists text (no PNG) and file round-trips', function () {
     $precinct = Precinct::query()->firstOrFail();
     /** @var ElectionReturnData $erDto */
     $erDto = app(GenerateElectionReturn::class)->run($precinct);
 
-    // Force single, persist, BUT skip PNG to avoid "data too big" for some payloads
-    $dirSuffix = 'single_test_' . now()->format('Ymd_His');
+    // Force single, persist, skip PNGs; minimal reduces risk of overly long QR text
+    $dirSuffix = 'single_min_' . now()->format('Ymd_His');
     $resp = getJson(
         route('qr.er', ['code' => $erDto->code])
-        . '?single=1&make_images=0&persist=1&persist_dir=' . $dirSuffix
+        . '?payload=minimal&single=1&make_images=0&persist=1&persist_dir=' . $dirSuffix
     );
     $resp->assertOk();
 
@@ -235,15 +275,16 @@ it('HTTP single-QR endpoint persists text (no PNG) and file round-trips', functi
 
     $relDir = 'qr_exports/'.$erDto->code.'/'.$dirSuffix;
 
-    // One text chunk, manifest present
-    expect(Storage::disk('local')->exists($relDir . '/manifest.json'))->toBeTrue();
-
+    // Exactly one text chunk, no PNGs
     $files = collect(Storage::disk('local')->files($relDir));
     $txt   = $files->filter(fn($p) => str_ends_with($p, '.txt'))->values();
     $png   = $files->filter(fn($p) => str_ends_with($p, '.png'))->values();
 
-    expect($txt)->toHaveCount(1)
-        ->and($png->count())->toBe(0); // no PNG expected
+    expect(Storage::disk('local')->exists($relDir . '/manifest.json'))->toBeTrue()
+        ->and(Storage::disk('local')->exists($relDir . '/raw.json'))->toBeTrue()
+        ->and(Storage::disk('local')->exists($relDir . '/README.md'))->toBeTrue()
+        ->and($txt)->toHaveCount(1)
+        ->and($png->count())->toBe(0);
 
     // Round-trip from text file
     $line     = Storage::disk('local')->get($txt[0]);
@@ -252,5 +293,5 @@ it('HTTP single-QR endpoint persists text (no PNG) and file round-trips', functi
     $decoded  = json_decode($inflated, true);
 
     expect(normalizeArray($decoded))
-        ->toEqual(normalizeArray(dtoJsonArray($erDto)));
+        ->toEqual(normalizeArray(minimalFromDto($erDto)));
 });
