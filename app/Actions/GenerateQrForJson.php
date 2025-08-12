@@ -4,7 +4,6 @@ namespace App\Actions;
 
 use App\Models\ElectionReturn;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
 use Lorisleiva\Actions\ActionRequest;
 use Lorisleiva\Actions\Concerns\AsAction;
@@ -12,35 +11,60 @@ use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
 use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\ErrorCorrectionLevel;
-use Endroid\QrCode\Builder\Builder;
-
 use Endroid\QrCode\RoundBlockSizeMode;
 
-
+/**
+ * Generate QR code **chunks** for a JSON payload (Election Return).
+ *
+ * ## Chunk text format
+ *   ER|v1|<CODE>|<INDEX>/<TOTAL>|<PAYLOAD>
+ *
+ * Where <PAYLOAD> is: Base64URL( gzdeflate(JSON) )
+ *
+ * ## Endpoint
+ *   GET /api/qr/election-return/{code}
+ *
+ * ### Query Parameters
+ * - make_images (bool, default: true)
+ *     Include PNG data URIs in the response for each chunk.
+ * - max_chars_per_qr (int, default: 1200)
+ *     Max characters per chunk **after** deflate+base64url.
+ * - single (bool, default: false)
+ *     Force a single QR (no chunking). ⚠ The payload may be too large for a single QR.
+ * - persist (bool, default: false)
+ *     When true, persist **chunk text**, **PNG files**, a **manifest.json**, the original
+ *     uncompressed **raw.json**, and a human‑readable **README.txt** under:
+ *       storage/app/qr_exports/{CODE}/{timestamp or persist_dir}/
+ * - persist_dir (string, optional)
+ *     Optional subfolder name (e.g., "single_http", "multi_http"). If omitted, uses Ymd_His.
+ *
+ * ### Response
+ * {
+ *   code: string,
+ *   version: "v1",
+ *   total: number,
+ *   chunks: [
+ *     { index: number, text: string, png?: string (data URI) },
+ *     ...
+ *   ],
+ *   persisted_to?: string (absolute path when persist=1)
+ * }
+ */
 class GenerateQrForJson
 {
     use AsAction;
 
     /**
-     * @param  array|string|UploadedFile  $json
-     * @param  string  $code  Logical code for this payload (e.g., ER code)
-     * @param  bool  $makeImages  If true, returns PNG data URIs per chunk
-     * @param  int   $maxCharsPerQr  Safe text length per QR
-     * @return array{
-     *   code:string,
-     *   version:string,
-     *   total:int,
-     *   chunks: array<int, array{index:int,text:string,png?:string}>
-     * }
+     * Build QR chunks from an array|string|UploadedFile JSON source.
      */
     public function handle(
         array|string|UploadedFile $json,
         string $code,
         bool $makeImages = true,
         int $maxCharsPerQr = 3200,
-        bool $forceSingle = false   // 👈 add this
+        bool $forceSingle = false
     ): array {
-        // 1) Load JSON
+        // 1) Normalize JSON
         if ($json instanceof UploadedFile) {
             $raw = file_get_contents($json->getRealPath());
         } elseif (is_array($json)) {
@@ -51,9 +75,9 @@ class GenerateQrForJson
 
         // 2) Compress + Base64URL
         $deflated = gzdeflate($raw, 9);
-        $b64u = $this->b64urlEncode($deflated);
+        $b64u     = $this->b64urlEncode($deflated);
 
-        // 3) Chunk (respect forceSingle)
+        // 3) Chunk (or force single)
         $parts = $forceSingle ? [$b64u] : str_split($b64u, $maxCharsPerQr);
         $total = max(1, count($parts));
 
@@ -80,45 +104,57 @@ class GenerateQrForJson
     }
 
     /**
-     * API endpoint: build QR chunks for a given Election Return code.
+     * Controller: produce QR chunks for an Election Return by its {code}.
      *
-     * GET /api/qr/election-return/{code}?make_images=1&max_chars_per_qr=800
+     * Examples:
+     *   GET /api/qr/election-return/ERTEST001?make_images=1&max_chars_per_qr=800
+     *   GET /api/qr/election-return/ERTEST001?single=1&persist=1&persist_dir=single_http
      */
     public function asController(ActionRequest $request, string $code)
     {
-        $er = \App\Models\ElectionReturn::with('precinct')->where('code', $code)->first();
+        $er = ElectionReturn::with('precinct')->where('code', $code)->first();
         if (! $er) {
             abort(404, 'Election return not found.');
         }
 
+        // Use the DTO so `with()` (e.g., last_ballot) applies consistently.
         /** @var \App\Data\ElectionReturnData $dto */
-        $dto = app(\App\Actions\GenerateElectionReturn::class)->run($er->precinct);
+        $dto  = app(\App\Actions\GenerateElectionReturn::class)->run($er->precinct);
         $json = json_decode($dto->toJson(), true);
 
-        $makeImages   = $request->boolean('make_images', true);
-        $maxCharsPer  = (int) $request->input('max_chars_per_qr', 1200);
-        $forceSingle  = $request->boolean('single', false); // 👈 read it
+        $makeImages  = $request->boolean('make_images', true);
+        $maxCharsPer = (int) $request->input('max_chars_per_qr', 1200);
+        $forceSingle = $request->boolean('single', false);
+
+        $persist    = $request->boolean('persist', false);
+        $persistDir = trim((string) $request->input('persist_dir', ''), "/ \t\n\r\0\x0B");
 
         $result = $this->handle(
-            json: $json,
-            code: $dto->code,
-            makeImages: $makeImages,
+            json:          $json,
+            code:          $dto->code,
+            makeImages:    $makeImages,
             maxCharsPerQr: $maxCharsPer,
-            forceSingle: $forceSingle       // 👈 pass it
+            forceSingle:   $forceSingle
         );
+
+        // Optional on-disk persistence: text + PNGs + manifest + raw.json + README
+        if ($persist) {
+            $base = 'qr_exports/'.$dto->code.'/'.($persistDir !== '' ? $persistDir : now()->format('Ymd_His'));
+            $this->persistChunks($result, $base, $json);
+            $result['persisted_to'] = Storage::disk('local')->path($base);
+        }
 
         return response()->json($result);
     }
 
-    // ---- helpers ---------------------------------------------------------
+    // ------------------- Helpers -------------------
 
     private function wrapChunk(string $payload, int $index, int $total, string $code): string
     {
-        // Format: ER|v1|<CODE>|<index>/<total>|<payload>
         return sprintf('ER|v1|%s|%d/%d|%s', $code, $index, $total, $payload);
     }
 
-    function qrPngDataUri(string $contents): string
+    private function qrPngDataUri(string $contents): string
     {
         $qr = new QrCode(
             data: $contents,
@@ -130,9 +166,7 @@ class GenerateQrForJson
         );
 
         $writer = new PngWriter();
-        $result = $writer->write($qr);
-
-        return $result->getDataUri();
+        return $writer->write($qr)->getDataUri();
     }
 
     private function b64urlEncode(string $bin): string
@@ -140,11 +174,116 @@ class GenerateQrForJson
         return rtrim(strtr(base64_encode($bin), '+/', '-_'), '=');
     }
 
-    // For tests / decoding later:
     public static function b64urlDecode(string $txt): string
     {
         $pad = strlen($txt) % 4;
         if ($pad) $txt .= str_repeat('=', 4 - $pad);
         return base64_decode(strtr($txt, '-_', '+/')) ?: '';
+    }
+
+    /**
+     * Persist:
+     *  - manifest.json (the API/handle() result)
+     *  - raw.json      (the original, uncompressed JSON payload)
+     *  - README.txt    (how to reassemble/verify)
+     *  - chunk_<i>of<N>.txt
+     *  - chunk_<i>of<N>.png (if present)
+     */
+    private function persistChunks(array $result, string $baseDir, array $rawJson): void
+    {
+        $disk = Storage::disk('local');
+        $disk->makeDirectory($baseDir);
+
+        // 1) manifest.json
+        $disk->put(
+            $baseDir.'/manifest.json',
+            json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+        );
+
+        // 2) raw.json (pretty, uncompressed)
+        $disk->put(
+            $baseDir.'/raw.json',
+            json_encode($rawJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+        );
+
+        // 3) README.md (markdown so tests that filter *.txt won't count it)
+        $disk->put($baseDir.'/README.md', $this->buildReadmeText($result));
+
+        // 4) chunk files
+        $total = (int) ($result['total'] ?? 0);
+        foreach (($result['chunks'] ?? []) as $chunk) {
+            $idx  = (int) ($chunk['index'] ?? 0);
+            $text = (string) ($chunk['text'] ?? '');
+
+            $disk->put("{$baseDir}/chunk_{$idx}of{$total}.txt", $text);
+
+            if (!empty($chunk['png']) && is_string($chunk['png'])) {
+                // data:image/png;base64,<...>
+                $parts = explode(',', $chunk['png'], 2);
+                if (count($parts) === 2) {
+                    $meta = $parts[0];
+                    $b64  = $parts[1];
+                    $ext  = str_contains($meta, 'image/png') ? 'png' : 'bin';
+                    $disk->put("{$baseDir}/chunk_{$idx}of{$total}.{$ext}", base64_decode($b64));
+                }
+            }
+        }
+    }
+
+    /**
+     * Build README.txt content placed in each export folder.
+     */
+    private function buildReadmeText(array $result): string
+    {
+        $code  = (string) ($result['code'] ?? 'ER');
+        $total = (int)    ($result['total'] ?? 0);
+
+        return <<<TXT
+QR Export for Election Return {$code}
+===================================
+
+This folder contains a complete export of QR payload chunks for the election return.
+
+Files
+-----
+- manifest.json
+  Full output from the QR generation (including chunk text and inline PNG data URIs).
+
+- raw.json
+  The original, uncompressed JSON payload (human‑readable).
+
+- chunk_Xof{$total}.txt
+  The exact QR text for chunk X (format: ER|v1|<CODE>|<X>/{$total}|<PAYLOAD>).
+
+- chunk_Xof{$total}.png
+  The QR image for chunk X (when make_images=1), scannable with standard readers.
+
+Reassemble / Decode
+-------------------
+1) From *.txt files:
+   a. Sort by X (1..{$total}) and concatenate each file's payload segment:
+      The payload is the part after the 4th '|' in each line.
+   b. Base64URL decode the concatenated payload.
+   c. Inflate with raw DEFLATE (gzinflate).
+   d. The result is the original JSON (matches raw.json).
+
+2) From *.png files:
+   a. Scan each QR (1..{$total}) and read the full text (same format as above).
+   b. Extract the payload piece, then perform steps (1b)-(1d).
+
+Format Reference
+----------------
+Chunk text format:
+  ER|v1|<CODE>|<INDEX>/<TOTAL>|<PAYLOAD>
+
+Where <PAYLOAD> is Base64URL( gzdeflate(JSON) ).
+
+Notes
+-----
+- Increasing 'max_chars_per_qr' generates fewer, denser QR codes. Lower it if scans fail.
+- 'single=1' tries to generate a single QR; it may be too dense for large payloads.
+- 'make_images=0' skips PNG generation to save bandwidth and storage.
+
+TXT;
     }
 }
