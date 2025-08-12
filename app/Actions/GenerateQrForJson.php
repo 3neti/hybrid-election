@@ -31,14 +31,27 @@ use Endroid\QrCode\RoundBlockSizeMode;
  *       • "minimal" → compact JSON: { id, code, precinct:{id,code}, tallies:[...] }
  *     Use "minimal" to reduce the number of QR chunks.
  *
- * - make_images (bool, default: true)
- *     Include PNG data URIs in the response for each chunk.
+ * - desired_chunks (int, optional)
+ *     Target number of QR codes (e.g., 4). If set (and single=0), the server computes a
+ *     max_chars_per_qr to land near this count. Useful for tuning density.
  *
  * - max_chars_per_qr (int, default: 1200)
- *     Max characters per chunk **after** deflate+base64url.
+ *     Max characters per chunk **after** deflate+base64url. Used when desired_chunks is not set.
  *
  * - single (bool, default: false)
  *     Force a single QR (no chunking). ⚠ The payload may be too large for a single QR.
+ *
+ * - make_images (bool, default: true)
+ *     Include PNG data URIs in the response for each chunk.
+ *
+ * - ecc (string, default: "medium")
+ *     QR error correction level: low | medium | quartile | high.
+ *
+ * - size (int, default: 640)
+ *     PNG size in pixels (square).
+ *
+ * - margin (int, default: 12)
+ *     Quiet zone in pixels around the QR.
  *
  * - persist (bool, default: false)
  *     When true, persist **chunk text**, **PNG files**, a **manifest.json**, the original
@@ -54,9 +67,10 @@ use Endroid\QrCode\RoundBlockSizeMode;
  *   version: "v1",
  *   total: number,
  *   chunks: [
- *     { index: number, text: string, png?: string (data URI) },
+ *     { index: number, text: string, png?: string (data URI), png_error?: string },
  *     ...
  *   ],
+ *   params: { effective_max_chars_per_qr: number, desired_chunks?: number, ecc: string, size: number, margin: number },
  *   persisted_to?: string (absolute path when persist=1)
  * }
  */
@@ -72,7 +86,8 @@ class GenerateQrForJson
         string $code,
         bool $makeImages = true,
         int $maxCharsPerQr = 3200,
-        bool $forceSingle = false
+        bool $forceSingle = false,
+        array $imageOptions = [] // ['ecc' => 'medium', 'size' => 640, 'margin' => 12]
     ): array {
         // 1) Normalize JSON
         if ($json instanceof UploadedFile) {
@@ -99,7 +114,12 @@ class GenerateQrForJson
             $chunk = ['index' => $index, 'text' => $text];
 
             if ($makeImages) {
-                $chunk['png'] = $this->qrPngDataUri($text);
+                try {
+                    $chunk['png'] = $this->qrPngDataUri($text, $imageOptions);
+                } catch (\Throwable $e) {
+                    // Preserve text even if PNG generation fails (too dense, etc.)
+                    $chunk['png_error'] = $e->getMessage();
+                }
             }
 
             $chunks[] = $chunk;
@@ -117,7 +137,7 @@ class GenerateQrForJson
      * Controller: produce QR chunks for an Election Return by its {code}.
      *
      * Examples:
-     *   GET /api/qr/election-return/ERTEST001?payload=minimal&make_images=1&max_chars_per_qr=1200
+     *   GET /api/qr/election-return/ERTEST001?payload=minimal&desired_chunks=4&make_images=1&ecc=medium&size=640&margin=12
      *   GET /api/qr/election-return/ERTEST001?payload=full&single=1&persist=1&persist_dir=single_http
      */
     public function asController(ActionRequest $request, string $code)
@@ -136,26 +156,58 @@ class GenerateQrForJson
         if ($payloadMode === 'minimal') {
             $json = $this->buildMinimalPayload($dto);
         } else {
-            // full DTO JSON
             $json = json_decode($dto->toJson(), true);
         }
 
-        $makeImages  = $request->boolean('make_images', true);
-        $maxCharsPer = (int) $request->input('max_chars_per_qr', 1200);
-        $forceSingle = $request->boolean('single', false);
+        // Knobs
+        $makeImages    = $request->boolean('make_images', true);
+        $forceSingle   = $request->boolean('single', false);
+        $desiredChunks = (int) $request->input('desired_chunks', 0);
+        $maxCharsPer   = (int) $request->input('max_chars_per_qr', 1200);
 
-        $persist    = $request->boolean('persist', false);
-        $persistDir = trim((string) $request->input('persist_dir', ''), "/ \t\n\r\0\x0B");
+        // Image options
+        $eccStr = strtolower((string) $request->input('ecc', 'medium'));
+        $size   = (int) $request->input('size', 640);
+        $margin = (int) $request->input('margin', 12);
+
+        // If caller asked for N chunks, compute a chunk size to hit ≈N (unless single)
+        if ($desiredChunks > 0 && ! $forceSingle) {
+            $raw     = json_encode($json, JSON_UNESCAPED_SLASHES);
+            $deflate = gzdeflate($raw, 9);
+            $b64u    = $this->b64urlEncode($deflate);
+            $len     = strlen($b64u);
+
+            $computed     = (int) ceil($len / max(1, $desiredChunks));
+            // Clamp for scan reliability (inkjet‑friendly)
+            $maxCharsPer  = max(600, min($computed, 2400));
+        }
 
         $result = $this->handle(
             json:          $json,
             code:          $dto->code,
             makeImages:    $makeImages,
             maxCharsPerQr: $maxCharsPer,
-            forceSingle:   $forceSingle
+            forceSingle:   $forceSingle,
+            imageOptions:  [
+                'ecc'    => $eccStr,
+                'size'   => $size,
+                'margin' => $margin,
+            ],
         );
 
+        // Add echo of effective params for transparency
+        $result['params'] = [
+            'payload'                     => $payloadMode,
+            'effective_max_chars_per_qr'  => $maxCharsPer,
+            'desired_chunks'              => $desiredChunks ?: null,
+            'ecc'                         => $eccStr,
+            'size'                        => $size,
+            'margin'                      => $margin,
+        ];
+
         // Optional on-disk persistence: text + PNGs + manifest + raw.json + README
+        $persist    = $request->boolean('persist', false);
+        $persistDir = trim((string) $request->input('persist_dir', ''), "/ \t\n\r\0\x0B");
         if ($persist) {
             $base = 'qr_exports/'.$dto->code.'/'.($persistDir !== '' ? $persistDir : now()->format('Ymd_His'));
             $this->persistChunks($result, $base, $json);
@@ -172,16 +224,16 @@ class GenerateQrForJson
      */
     private function buildMinimalPayload(\App\Data\ElectionReturnData $dto): array
     {
-        // Tallies are already simple (position_code, candidate_code, candidate_name, count)
+        $talliesArr = is_array($dto->tallies) ? $dto->tallies : $dto->tallies->toArray();
+
         $tallies = array_map(
             fn ($t) => [
-                'position_code'  => $t['position_code'] ?? $t->position_code,
-                'candidate_code' => $t['candidate_code'] ?? $t->candidate_code,
-                'candidate_name' => $t['candidate_name'] ?? $t->candidate_name,
-                'count'          => $t['count'] ?? $t->count,
+                'position_code'  => is_array($t) ? ($t['position_code'] ?? null) : $t->position_code,
+                'candidate_code' => is_array($t) ? ($t['candidate_code'] ?? null) : $t->candidate_code,
+                'candidate_name' => is_array($t) ? ($t['candidate_name'] ?? null) : $t->candidate_name,
+                'count'          => is_array($t) ? ($t['count'] ?? null) : $t->count,
             ],
-            // support both array-y and DTO collection cases
-            is_array($dto->tallies) ? $dto->tallies : $dto->tallies->toArray()
+            $talliesArr
         );
 
         return [
@@ -200,14 +252,25 @@ class GenerateQrForJson
         return sprintf('ER|v1|%s|%d/%d|%s', $code, $index, $total, $payload);
     }
 
-    private function qrPngDataUri(string $contents): string
+    private function qrPngDataUri(string $contents, array $opts = []): string
     {
+        $eccStr = strtolower((string)($opts['ecc'] ?? 'medium'));
+        $ecc    = match ($eccStr) {
+            'low'      => ErrorCorrectionLevel::Low,
+            'quartile' => ErrorCorrectionLevel::Quartile,
+            'high'     => ErrorCorrectionLevel::High,
+            default    => ErrorCorrectionLevel::Medium,
+        };
+
+        $size   = (int) ($opts['size']   ?? 640);
+        $margin = (int) ($opts['margin'] ?? 12);
+
         $qr = new QrCode(
             data: $contents,
             encoding: new Encoding('UTF-8'),
-            errorCorrectionLevel: ErrorCorrectionLevel::High,
-            size: 512,
-            margin: 8,
+            errorCorrectionLevel: $ecc,
+            size: $size,
+            margin: $margin,
             roundBlockSizeMode: RoundBlockSizeMode::Margin,
         );
 
@@ -326,6 +389,7 @@ Where <PAYLOAD> is Base64URL( gzdeflate(JSON) ).
 Notes
 -----
 - 'payload=minimal' greatly reduces the number of QR codes.
+- 'desired_chunks=N' asks the server to compute a chunk size to land near N codes.
 - Increasing 'max_chars_per_qr' generates fewer, denser QR codes. Lower it if scans fail.
 - 'single=1' tries to generate a single QR; it may be too dense for large payloads.
 - 'make_images=0' skips PNG generation to save bandwidth and storage.
