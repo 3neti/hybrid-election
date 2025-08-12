@@ -33,8 +33,13 @@ class GenerateQrForJson
      *   chunks: array<int, array{index:int,text:string,png?:string}>
      * }
      */
-    public function handle(array|string|UploadedFile $json, string $code, bool $makeImages = true, int $maxCharsPerQr = 3200): array
-    {
+    public function handle(
+        array|string|UploadedFile $json,
+        string $code,
+        bool $makeImages = true,
+        int $maxCharsPerQr = 3200,
+        bool $forceSingle = false   // 👈 add this
+    ): array {
         // 1) Load JSON
         if ($json instanceof UploadedFile) {
             $raw = file_get_contents($json->getRealPath());
@@ -48,8 +53,8 @@ class GenerateQrForJson
         $deflated = gzdeflate($raw, 9);
         $b64u = $this->b64urlEncode($deflated);
 
-        // 3) Chunk
-        $parts = str_split($b64u, $maxCharsPerQr);
+        // 3) Chunk (respect forceSingle)
+        $parts = $forceSingle ? [$b64u] : str_split($b64u, $maxCharsPerQr);
         $total = max(1, count($parts));
 
         $chunks = [];
@@ -67,10 +72,10 @@ class GenerateQrForJson
         }
 
         return [
-            'code'   => $code,
-            'version'=> 'v1',
-            'total'  => $total,
-            'chunks' => $chunks,
+            'code'    => $code,
+            'version' => 'v1',
+            'total'   => $total,
+            'chunks'  => $chunks,
         ];
     }
 
@@ -81,28 +86,25 @@ class GenerateQrForJson
      */
     public function asController(ActionRequest $request, string $code)
     {
-        $er = ElectionReturn::where('code', $code)->firstOrFail();
+        $er = \App\Models\ElectionReturn::with('precinct')->where('code', $code)->first();
+        if (! $er) {
+            abort(404, 'Election return not found.');
+        }
 
-        // Minimal payload that scanners will reconstruct
-        $payload = [
-            'id'       => $er->id,
-            'code'     => $er->code,
-            'precinct' => [
-                'id'   => $er->precinct->id,
-                'code' => $er->precinct->code,
-            ],
-            // use the computed tallies already exposed by your DTO
-            'tallies'  => $er->getData()->tallies->toArray(),
-        ];
+        /** @var \App\Data\ElectionReturnData $dto */
+        $dto = app(\App\Actions\GenerateElectionReturn::class)->run($er->precinct);
+        $json = json_decode($dto->toJson(), true);
 
         $makeImages   = $request->boolean('make_images', true);
-        $maxCharsPer  = (int) $request->input('max_chars_per_qr', 800);
+        $maxCharsPer  = (int) $request->input('max_chars_per_qr', 1200);
+        $forceSingle  = $request->boolean('single', false); // 👈 read it
 
         $result = $this->handle(
-            json: $payload,
-            code: $er->code,
+            json: $json,
+            code: $dto->code,
             makeImages: $makeImages,
-            maxCharsPerQr: $maxCharsPer
+            maxCharsPerQr: $maxCharsPer,
+            forceSingle: $forceSingle       // 👈 pass it
         );
 
         return response()->json($result);
