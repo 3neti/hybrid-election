@@ -28,3 +28,7 @@ use App\Actions\GenerateQrForJson;
 
 Route::get('/qr/election-return/{code}', GenerateQrForJson::class)
     ->name('qr.er');
+
+use App\Actions\DecodeQrChunks;
+
+Route::post('/qr/decode', DecodeQrChunks::class)->name('qr.decode');

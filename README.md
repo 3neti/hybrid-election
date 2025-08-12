@@ -6,7 +6,7 @@ White Paper – Version 1.51
 
 This document presents the Computer-Aided Manual Voting System (CAMVS) as a modern, lawful, time-efficient, cost-efficient, and transparent approach to conducting elections in the Philippines. CAMVS preserves the core characteristics of a manual election as defined under existing Philippine laws, while introducing non-automated technological aids that enhance accuracy, speed, and verifiability in the appreciation, tallying, and canvassing of votes.
 
-Legal Compliance
+#### Legal Compliance
 
 CAMVS is firmly grounded in the legal framework of manual voting, ensuring compliance with the Omnibus Election Code (Batas Pambansa Blg. 881) and relevant Commission on Elections (COMELEC) resolutions. It does not fall under the statutory definition of an Automated Election System (AES) in RA 8436 as amended by RA 9369, because:
 
@@ -14,7 +14,7 @@ CAMVS is firmly grounded in the legal framework of manual voting, ensuring compl
 
 • All processes are conducted in full public view, with no automation of voter intent interpretation.
 
-Core Technological Aids
+#### Core Technological Aids
 
 CAMVS introduces three complementary technologies that assist without replacing human judgment:
 
@@ -24,7 +24,7 @@ CAMVS introduces three complementary technologies that assist without replacing 
 
 3\. QR Tally – An embedded QR code printed on the Election Return (ER) contains its full contents in a compressed JSON format, digitally signed for integrity, ensuring that printed and electronic records are identical.
 
-Time Efficiency
+#### Time Efficiency
 
 • Precinct Level:
 
@@ -38,7 +38,7 @@ With QR Tally scanning and instant validation, canvassing time is reduced by 50�
 
 CAMVS shortens total election night operations by several hours per precinct and days in aggregate at the national level, without sacrificing transparency.
 
-Cost Efficiency
+#### Cost Efficiency
 
 • First Election Deployment: Comparable to AES costs (≈ ₱21.0–₱21.7B vs ₱22B AES) but with higher transparency and no centralized server dependency.
 
@@ -46,7 +46,7 @@ Cost Efficiency
 
 • Risk Reduction Savings: By minimizing server-side vulnerabilities, CAMVS reduces the cost of contested results and post-election audits.
 
-Transparency and Trust
+#### Transparency and Trust
 
 • Fully Observable – Every step, from ballot appreciation to QR verification, happens in public view.
 
@@ -54,7 +54,7 @@ Transparency and Trust
 
 • Tamper-Resilient – Decentralized, physical transmission of signed ERs and QR Tallies reduces the risk of centralized manipulation.
 
-Pathway to a Hybrid Future
+#### Pathway to a Hybrid Future
 
 While CAMVS is designed as a fully lawful manual process, its modular architecture allows for incremental adoption of automation where appropriate, paving the way for a future Hybrid Election System.
 
