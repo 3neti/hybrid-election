@@ -2,23 +2,18 @@
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { v4 as uuidv4 } from 'uuid'
-import TallyMarks from '@/components/TallyMarks.vue'
+import ErTallyView, { type ElectionReturnData } from '@/components/ErTallyView.vue'
 
 /* ---------------- Types ---------------- */
 interface CandidateData { code: string; name?: string; alias?: string }
 interface VoteData { position_code?: string; position?: { code: string }; candidate_codes?: CandidateData[]; candidates?: CandidateData[] }
 interface BallotData { id: string; code: string; votes: VoteData[] }
 interface TallyData { position_code: string; candidate_code: string; candidate_name: string; count: number }
-interface ElectionReturnData {
-    id: string
-    code: string
-    precinct: { id: string; code: string }
-    tallies: TallyData[]
-    ballots?: BallotData[]
-    last_ballot?: BallotData
-}
 
-interface QrChunk { index: number; text: string; png?: string; png_error?: string }
+/* Match ErTallyView's richer ER shape */
+type ER = ElectionReturnData
+
+interface QrChunk { index: number; text?: string; png?: string; png_error?: string }
 interface QrResponse {
     code: string
     version: string
@@ -35,14 +30,11 @@ interface QrResponse {
 }
 
 /* ---------------- State ---------------- */
-const er = ref<ElectionReturnData | null>(null)
-
-const highlights = ref<Set<string>>(new Set())
-const flashing = ref<Set<string>>(new Set())
+const er = ref<ER | null>(null)
 
 // QR generation settings (operator-tweakable)
 const payloadMode = ref<'minimal' | 'full'>('minimal')
-const desiredChunks = ref<number>(5)    // aim for ~4 by default
+const desiredChunks = ref<number>(5)
 const ecc = ref<'low' | 'medium' | 'quartile' | 'high'>('medium')
 const size = ref<number>(640)
 const margin = ref<number>(12)
@@ -54,51 +46,16 @@ const qrError = ref<string | null>(null)
 const qrMeta = ref<QrResponse['params'] | null>(null)
 
 /* ---------------- Helpers ---------------- */
-function keyOf(pos: string, cand: string) {
-    return `${pos}::${cand}`
-}
-
-function computeHighlights(erData: ElectionReturnData | null): Set<string> {
-    const set = new Set<string>()
-    if (!erData?.last_ballot?.votes) return set
-
-    for (const v of erData.last_ballot.votes as any[]) {
-        const pos =
-            v.position_code ??
-            v.position?.code ??
-            (typeof v.position === 'object' ? v.position?.code : undefined)
-
-        const cands: any[] = Array.isArray(v.candidate_codes)
-            ? v.candidate_codes
-            : Array.isArray(v.candidates)
-                ? v.candidates
-                : []
-
-        for (const c of cands) {
-            const code = typeof c === 'string' ? c : c?.code
-            if (pos && code) set.add(`${pos}::${code}`)
-        }
-    }
-    return set
-}
-
-function triggerFlash(newSet: Set<string>) {
-    if (!newSet.size) return
-    flashing.value = new Set(newSet)
-    setTimeout(() => { flashing.value = new Set() }, 1200)
-}
-
-function copyTextChunk(txt: string) {
+function copyTextChunk(txt?: string) {
+    if (!txt) return
     navigator.clipboard?.writeText(txt).catch(() => {})
 }
 
 /* ---------------- Fetchers ---------------- */
 async function fetchEr() {
-    const { data } = await axios.get<ElectionReturnData>(route('precinct-tally'))
+    // Make sure your /election-return returns the DTO with precinct extras + signatures
+    const { data } = await axios.get<ER>(route('precinct-tally'))
     er.value = data
-    const newHL = computeHighlights(er.value)
-    highlights.value = newHL
-    triggerFlash(newHL)
 }
 
 async function fetchQr() {
@@ -134,9 +91,7 @@ async function fetchQr() {
 }
 
 /* ---------------- Decoder (Scan & Paste) ---------------- */
-// Lightweight parser for full-line chunks: ER|v1|CODE|i/N|<payload>
 type ParsedHeader = { ok: true; code: string; idx: number; total: number } | { ok: false; reason: string }
-
 function parseHeader(line: string): ParsedHeader {
     const parts = line.split('|')
     if (parts.length < 5) return { ok: false, reason: 'Expected 5 segments separated by "|"' }
@@ -155,13 +110,13 @@ function parseHeader(line: string): ParsedHeader {
 
 interface PastedItem {
     id: string
-    raw: string            // what the operator pasted (full line or payload)
-    fullText: string       // resolved full line if we can, otherwise raw
-    parsed?: ParsedHeader  // header parse (only if fullText looked like a line)
+    raw: string
+    fullText: string
+    parsed?: ParsedHeader
 }
 
 const pasteInput = ref('')
-const pasted: PastedItem[] = ref([])
+const pasted = ref<PastedItem[]>([])
 const persistAudit = ref(false)
 
 function addPasted() {
@@ -170,39 +125,22 @@ function addPasted() {
 
     let item: PastedItem
     if (raw.includes('|')) {
-        // Treat as full line
         item = { id: uuidv4(), raw, fullText: raw, parsed: parseHeader(raw) }
     } else {
-        // Looks like payload only — keep raw, and still send raw to the server
         item = { id: uuidv4(), raw, fullText: raw }
     }
     pasted.value.push(item)
     pasteInput.value = ''
 }
+function removePasted(id: string) { pasted.value = pasted.value.filter(p => p.id !== id) }
+function clearPasted() { pasted.value = [] }
 
-function removePasted(id: string) {
-    pasted.value = pasted.value.filter(p => p.id !== id)
-}
+const detectedCode = computed(() => pasted.value.find(p => p.parsed && p.parsed.ok)?.parsed && (pasted.value.find(p => p.parsed && p.parsed.ok)!.parsed as any).code || null)
+const detectedTotal = computed<number | null>(() => pasted.value.find(p => p.parsed && p.parsed.ok)?.parsed && (pasted.value.find(p => p.parsed && p.parsed.ok)!.parsed as any).total || null)
 
-function clearPasted() {
-    pasted.value = []
-}
-
-// Derived: code and total (when we have at least one valid header)
-const detectedCode = computed(() => {
-    const good = pasted.value.find(p => p.parsed && p.parsed.ok)
-    return good?.parsed && (good.parsed as any).code || null
-})
-
-const detectedTotal = computed<number | null>(() => {
-    const good = pasted.value.find(p => p.parsed && p.parsed.ok)
-    return good?.parsed && (good.parsed as any).total || null
-})
-
-// Validation: duplicates, range, mismatches
 const issues = computed(() => {
     const problems: string[] = []
-    const headers = pasted.value.filter(p => p.parsed?.ok) as Array<PastedItem & { parsed: Extract<ParsedHeader, {ok:true}> }>
+    const headers = pasted.value.filter(p => p.parsed?.ok) as Array<PastedItem & { parsed: Extract<ParsedHeader, { ok: true }> }>
     const totals = new Set(headers.map(h => h.parsed.total))
     if (totals.size > 1) problems.push('Chunks disagree on TOTAL (i/N).')
     const codes = new Set(headers.map(h => h.parsed.code))
@@ -212,35 +150,25 @@ const issues = computed(() => {
         if (seen.has(h.parsed.idx)) problems.push(`Duplicate chunk index: ${h.parsed.idx}`)
         seen.add(h.parsed.idx)
     }
-    // If we know total, look for holes
     const N = detectedTotal.value
     if (N && seen.size && seen.size < N) {
         const missing: number[] = []
         for (let i = 1; i <= N; i++) if (!seen.has(i)) missing.push(i)
         problems.push(`Missing chunks: ${missing.join(', ')}`)
     }
-    // Note raw payloads without headers
     const payloadOnly = pasted.value.filter(p => !p.parsed).length
-    if (payloadOnly > 0) {
-        problems.push(`${payloadOnly} item(s) look like payload only — still acceptable, but header checks are skipped.`)
-    }
-    // Provide parsing errors
-    pasted.value.forEach(p => {
-        if (p.parsed && p.parsed.ok === false) problems.push(`Unparseable line: ${p.parsed.reason}`)
-    })
+    if (payloadOnly > 0) problems.push(`${payloadOnly} item(s) look like payload only — still acceptable, but header checks are skipped.`)
+    pasted.value.forEach(p => { if (p.parsed && p.parsed.ok === false) problems.push(`Unparseable line: ${p.parsed.reason}`) })
     return problems
 })
-
 const progressMsg = computed(() => {
     const N = detectedTotal.value
     const have = (pasted.value.filter(p => p.parsed?.ok) as any[]).length
     if (!N) return `Collected ${pasted.value.length} item(s).`
     return `Collected ${have}/${N} chunk(s).`
 })
-
 const canSubmit = computed(() => pasted.value.length > 0)
 
-// Server round‑trip
 const decodeLoading = ref(false)
 const decodeError = ref<string | null>(null)
 const decodedJson = ref<any | null>(null)
@@ -253,14 +181,12 @@ async function submitToServer() {
     decodedJson.value = null
     decodedFrom.value = null
     try {
-        // Send exactly what operator pasted (mixed header lines & payloads are fine if backend accepts them)
         const lines = pasted.value.map(p => p.raw)
         const { data } = await axios.post(route('qr.decode'), {
             chunks: lines,
             persist: persistAudit.value,
             persist_dir: 'manual_ui',
         })
-        // Expect: { ok: bool, json?: {...}, message?: string, details?: {...} }
         if (data?.json) {
             decodedJson.value = data.json
             decodedFrom.value = 'server'
@@ -274,13 +200,9 @@ async function submitToServer() {
     }
 }
 
-// Optional: replace the page’s ER with the decoded JSON
 function adoptDecodedJson() {
     if (!decodedJson.value) return
-    er.value = decodedJson.value as ElectionReturnData
-    const newHL = computeHighlights(er.value)
-    highlights.value = newHL
-    triggerFlash(newHL)
+    er.value = decodedJson.value as ER
 }
 
 /* ---------------- Derived (QR section) ---------------- */
@@ -355,86 +277,19 @@ onMounted(async () => {
             </div>
         </header>
 
-        <!-- Tallies Table -->
-        <section>
-            <table class="table-auto w-full border text-sm">
-                <thead class="bg-gray-200 text-left uppercase text-xs">
-                <tr>
-                    <th class="px-3 py-2">Position</th>
-                    <th class="px-3 py-2">Candidate</th>
-                    <th class="px-3 py-2 text-center">Votes</th>
-                    <th class="px-3 py-2">Tally</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr
-                    v-for="(tally, index) in er?.tallies"
-                    :key="index"
-                    class="border-t transition-colors duration-700 relative"
-                    :class="{
-              'bg-red-50': highlights.has(`${tally.position_code}::${tally.candidate_code}`),
-              'flash-ring': flashing.has(`${tally.position_code}::${tally.candidate_code}`)
-            }"
-                >
-                    <td class="px-3 py-2 font-mono">{{ tally.position_code }}</td>
-                    <td
-                        class="px-3 py-2 transition-colors duration-700"
-                        :class="{ 'text-red-600 font-bold': highlights.has(`${tally.position_code}::${tally.candidate_code}`) }"
-                    >
-                        {{ tally.candidate_name }}
-                    </td>
-                    <td class="px-3 py-2 text-center font-semibold">{{ tally.count }}</td>
-                    <td class="px-3 py-2">
-                        <TallyMarks
-                            :count="tally.count"
-                            :highlight-color="highlights.has(`${tally.position_code}::${tally.candidate_code}`) ? 'red' : undefined"
-                        />
-                    </td>
-                </tr>
-                </tbody>
-            </table>
+        <!-- Reuse ErTallyView (includes precinct info, officials/signatures, tallies, and QR thumbnails) -->
+        <section v-if="er" class="border rounded p-4">
+            <ErTallyView
+                :er="er"
+                :qrChunks="qrChunks"
+                :title="`Tally for Precinct ${er.precinct.code}`"
+                :flashMs="1200"
+            />
         </section>
 
-        <!-- QR Tally (Generator) -->
-        <section class="space-y-2">
-            <div class="flex items-center justify-between">
-                <h2 class="text-lg font-semibold">QR Tally</h2>
-                <div v-if="qrMeta" class="text-xs text-gray-600">
-                    <span class="mr-3">payload: <b>{{ qrMeta.payload }}</b></span>
-                    <span class="mr-3">desired: <b>{{ qrMeta.desired_chunks ?? '–' }}</b></span>
-                    <span>eff.max/chunk: <b>{{ qrMeta.effective_max_chars_per_qr }}</b></span>
-                </div>
-            </div>
-
-            <div v-if="qrError" class="text-sm text-red-600">{{ qrError }}</div>
-            <div v-else-if="qrLoading" class="text-sm text-gray-600">Generating QR chunks…</div>
-
-            <div v-if="totalChunks" class="text-xs text-gray-600">
-                Produced {{ totalChunks }} chunk(s).
-                <span v-if="anyPngError" class="text-amber-700">
-          Some PNGs could not be generated (density). You can still copy full chunk text.
-        </span>
-            </div>
-
-            <div v-if="totalChunks" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div v-for="c in qrChunks" :key="c.index" class="p-3 border rounded">
-                    <div class="text-xs mb-2 font-mono">Chunk {{ c.index }} / {{ totalChunks }}</div>
-
-                    <img v-if="c.png" :src="c.png" alt="QR chunk" class="w-full h-auto" />
-
-                    <div v-else class="text-xs text-amber-700 bg-amber-50 border border-amber-200 p-2 rounded">
-                        <div class="font-semibold mb-1">PNG not available for this chunk.</div>
-                        <div v-if="c.png_error" class="mb-2 break-words">Reason: {{ c.png_error }}</div>
-                        <button
-                            class="px-2 py-1 text-xs rounded bg-gray-800 text-white hover:bg-black"
-                            @click="copyTextChunk(c.text)"
-                            title="Copy full chunk text (ER|v1|CODE|i/N|<payload>)"
-                        >
-                            Copy chunk text
-                        </button>
-                    </div>
-                </div>
-            </div>
+        <!-- Meta for QR generation -->
+        <section v-if="qrMeta" class="text-xs text-gray-600">
+            <div>payload: <b>{{ qrMeta.payload }}</b> · desired: <b>{{ qrMeta.desired_chunks ?? '–' }}</b> · eff.max/chunk: <b>{{ qrMeta.effective_max_chars_per_qr }}</b></div>
         </section>
 
         <!-- Decoder (Scan & Paste) -->
@@ -474,7 +329,6 @@ onMounted(async () => {
                 </button>
             </div>
 
-            <!-- Progress / Guidance -->
             <div class="text-xs text-gray-700">
                 <div class="mb-1">{{ progressMsg }}</div>
                 <ul v-if="issues.length" class="list-disc pl-5 space-y-0.5 text-amber-700">
@@ -482,7 +336,6 @@ onMounted(async () => {
                 </ul>
             </div>
 
-            <!-- Collected items -->
             <div v-if="pasted.length" class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div v-for="p in pasted" :key="p.id" class="p-3 border rounded text-xs">
                     <div class="flex items-center justify-between mb-2">
@@ -516,7 +369,6 @@ onMounted(async () => {
                 <div v-if="decodeError" class="text-sm text-red-600">{{ decodeError }}</div>
             </div>
 
-            <!-- Live preview of decoded JSON -->
             <div v-if="decodedJson" class="border rounded overflow-hidden">
                 <div class="px-3 py-2 bg-gray-100 text-xs flex items-center justify-between">
                     <div>Decoded JSON ({{ decodedFrom }})</div>
