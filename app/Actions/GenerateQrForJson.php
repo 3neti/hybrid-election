@@ -26,10 +26,19 @@ use Endroid\QrCode\RoundBlockSizeMode;
  *
  * ### Query Parameters
  * - payload (string, default: "full")
- *     Which JSON shape to encode:
- *       • "full"    → the entire DTO JSON (dto->toJson()) including last_ballot, signatures, etc.
- *       • "minimal" → compact JSON: { id, code, precinct:{id,code}, tallies:[...] }
- *     Use "minimal" to reduce the number of QR chunks.
+ * *     Which JSON shape to encode:
+ * *       • "full"    → the entire DTO JSON (dto->toJson()) including last_ballot, signatures, etc.
+ * *       • "minimal" → compact JSON:
+ * *           {
+ * *             id, code,
+ * *             precinct: {
+ * *               id, code, location_name?, latitude?, longitude?,
+ * *               electoral_inspectors?: [{ id, name, role }]
+ * *             },
+ * *             tallies: [{ position_code, candidate_code, candidate_name, count }],
+ * *             signatures?: [{ id?, name?, role?, signed_at? }] // metadata only, no image/blob
+ * *           }
+ * *     Use "minimal" to reduce the number of QR chunks while still showing precinct info.
  *
  * - desired_chunks (int, optional)
  *     Target number of QR codes (e.g., 4). If set (and single=0), the server computes a
@@ -147,9 +156,14 @@ class GenerateQrForJson
             abort(404, 'Election return not found.');
         }
 
-        // Build the DTO so `with()` (e.g., last_ballot) is consistently applied.
+
+        // ✅ Serialize the persisted ER, do NOT rebuild it from precinct
         /** @var \App\Data\ElectionReturnData $dto */
-        $dto = app(\App\Actions\GenerateElectionReturn::class)->run($er->precinct);
+        $dto = $er->getData();   // provided by WithData trait (Spatie Data)
+
+//        // Build the DTO so `with()` (e.g., last_ballot) is consistently applied.
+//        /** @var \App\Data\ElectionReturnData $dto */
+//        $dto = app(\App\Actions\GenerateElectionReturn::class)->run($er->precinct);
 
         // Payload mode: full (default) or minimal
         $payloadMode = strtolower((string) $request->input('payload', 'full'));
@@ -220,12 +234,13 @@ class GenerateQrForJson
     // ------------------- Helpers -------------------
 
     /**
-     * Minimal payload: keep only essentials to shrink QR count.
+     * Minimal payload: keep essentials + precinct info (location + inspectors) and light signatures.
+     * Aims to be small but “complete enough” for the UI.
      */
     private function buildMinimalPayload(\App\Data\ElectionReturnData $dto): array
     {
+        // --- Tallies (unchanged: simple shape) ---
         $talliesArr = is_array($dto->tallies) ? $dto->tallies : $dto->tallies->toArray();
-
         $tallies = array_map(
             fn ($t) => [
                 'position_code'  => is_array($t) ? ($t['position_code'] ?? null) : $t->position_code,
@@ -236,15 +251,73 @@ class GenerateQrForJson
             $talliesArr
         );
 
-        return [
+        // --- Precinct core + location + electoral inspectors (lightweight) ---
+        $precinct = [
+            'id'   => $dto->precinct->id ?? null,
+            'code' => $dto->precinct->code ?? null,
+        ];
+
+        // Optional location fields if present on the DTO
+        foreach (['location_name', 'latitude', 'longitude'] as $k) {
+            if (isset($dto->precinct->$k) && $dto->precinct->$k !== null) {
+                $precinct[$k] = $dto->precinct->$k;
+            } elseif (is_array($dto->precinct) && array_key_exists($k, $dto->precinct)) {
+                $precinct[$k] = $dto->precinct[$k];
+            }
+        }
+
+        // Optional electoral inspectors, keeping only id/name/role
+        $inspectors = null;
+        if (isset($dto->precinct->electoral_inspectors)) {
+            $src = is_array($dto->precinct->electoral_inspectors)
+                ? $dto->precinct->electoral_inspectors
+                : (method_exists($dto->precinct->electoral_inspectors, 'toArray')
+                    ? $dto->precinct->electoral_inspectors->toArray()
+                    : []);
+            $inspectors = array_map(function ($i) {
+                // unify array/object access
+                $get = fn($key) => is_array($i) ? ($i[$key] ?? null) : ($i->$key ?? null);
+                return [
+                    'id'   => $get('id'),
+                    'name' => $get('name'),
+                    'role' => $get('role'),
+                ];
+            }, $src);
+        }
+        if ($inspectors && count($inspectors)) {
+            $precinct['electoral_inspectors'] = $inspectors;
+        }
+
+        // --- Optional lightweight signatures (metadata only; NO blobs/images) ---
+        $signatures = null;
+        if (isset($dto->signatures)) {
+            $src = is_array($dto->signatures)
+                ? $dto->signatures
+                : (method_exists($dto->signatures, 'toArray') ? $dto->signatures->toArray() : []);
+            $signatures = array_map(function ($s) {
+                $get = fn($key) => is_array($s) ? ($s[$key] ?? null) : ($s->$key ?? null);
+                return array_filter([
+                    'id'        => $get('id'),
+                    'name'      => $get('name') ?? $get('signatory_name'),
+                    'role'      => $get('role'),
+                    'signed_at' => $get('signed_at'),
+                    // DO NOT include any image/blob fields here
+                ], fn($v) => $v !== null);
+            }, $src);
+        }
+
+        $out = [
             'id'       => $dto->id,
             'code'     => $dto->code,
-            'precinct' => [
-                'id'   => $dto->precinct->id,
-                'code' => $dto->precinct->code,
-            ],
+            'precinct' => $precinct,
             'tallies'  => $tallies,
         ];
+
+        if ($signatures && count($signatures)) {
+            $out['signatures'] = $signatures;
+        }
+
+        return $out;
     }
 
     private function wrapChunk(string $payload, int $index, int $total, string $code): string

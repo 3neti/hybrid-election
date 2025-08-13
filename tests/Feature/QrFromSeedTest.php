@@ -26,23 +26,81 @@ function minimalFromDto(ElectionReturnData $dto): array {
 
     $tallies = array_map(
         fn ($t) => [
-            'position_code'  => $t['position_code'] ?? $t->position_code,
-            'candidate_code' => $t['candidate_code'] ?? $t->candidate_code,
-            'candidate_name' => $t['candidate_name'] ?? $t->candidate_name,
-            'count'          => $t['count'] ?? $t->count,
+            'position_code'  => is_array($t) ? ($t['position_code'] ?? null) : $t->position_code,
+            'candidate_code' => is_array($t) ? ($t['candidate_code'] ?? null) : $t->candidate_code,
+            'candidate_name' => is_array($t) ? ($t['candidate_name'] ?? null) : $t->candidate_name,
+            'count'          => is_array($t) ? ($t['count'] ?? null) : $t->count,
         ],
         $talliesRaw
     );
 
-    return [
+    // Precinct core
+    $precinct = [
+        'id'   => $dto->precinct->id,
+        'code' => $dto->precinct->code,
+    ];
+
+    // Precinct extras (match controller: include when available)
+    $locationName = $dto->precinct->location_name ?? null;
+    $lat          = $dto->precinct->latitude ?? null;
+    $lon          = $dto->precinct->longitude ?? null;
+
+    if ($locationName !== null && $locationName !== '') {
+        $precinct['location_name'] = $locationName;
+    }
+    if ($lat !== null)  $precinct['latitude']  = $lat;
+    if ($lon !== null)  $precinct['longitude'] = $lon;
+
+    // Electoral inspectors (subset of fields)
+    $eiRaw = $dto->precinct->electoral_inspectors ?? [];
+    // Support both array and collection-like
+    if (!is_array($eiRaw) && method_exists($eiRaw, 'toArray')) {
+        $eiRaw = $eiRaw->toArray();
+    }
+    $inspectors = array_values(array_map(function ($ei) {
+        // $ei may be array or object
+        $id   = is_array($ei) ? ($ei['id']   ?? null) : ($ei->id   ?? null);
+        $name = is_array($ei) ? ($ei['name'] ?? null) : ($ei->name ?? null);
+        $role = is_array($ei) ? ($ei['role'] ?? null) : ($ei->role ?? null);
+
+        $row = ['id' => $id, 'name' => $name];
+        if ($role !== null && $role !== '') $row['role'] = $role;
+        return $row;
+    }, is_array($eiRaw) ? $eiRaw : []));
+    if (count($inspectors) > 0) {
+        $precinct['electoral_inspectors'] = $inspectors;
+    }
+
+    $result = [
         'id'       => $dto->id,
         'code'     => $dto->code,
-        'precinct' => [
-            'id'   => $dto->precinct->id,
-            'code' => $dto->precinct->code,
-        ],
+        'precinct' => $precinct,
         'tallies'  => $tallies,
     ];
+
+    // Signatures (lightweight metadata only, no blobs)
+    $sigRaw = $dto->signatures ?? [];
+    if (!is_array($sigRaw) && method_exists($sigRaw, 'toArray')) {
+        $sigRaw = $sigRaw->toArray();
+    }
+    $signatures = array_values(array_map(function ($s) {
+        $id   = is_array($s) ? ($s['id']        ?? null) : ($s->id        ?? null);
+        $name = is_array($s) ? ($s['name']      ?? null) : ($s->name      ?? null);
+        $role = is_array($s) ? ($s['role']      ?? null) : ($s->role      ?? null);
+        $when = is_array($s) ? ($s['signed_at'] ?? null) : ($s->signed_at ?? null);
+
+        $row = [];
+        if ($id   !== null) $row['id']   = $id;
+        if ($name !== null) $row['name'] = $name;
+        if ($role !== null && $role !== '') $row['role'] = $role;
+        if ($when !== null && $when !== '') $row['signed_at'] = $when;
+        return $row;
+    }, is_array($sigRaw) ? $sigRaw : []));
+    if (count($signatures) > 0) {
+        $result['signatures'] = $signatures;
+    }
+
+    return $result;
 }
 
 /**

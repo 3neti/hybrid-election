@@ -70,6 +70,7 @@ function _norm(mixed $v): mixed {
 
 /** Build the “minimal” JSON payload (mirror of controller) */
 function _buildMinimalPayload(\App\Data\ElectionReturnData $dto): array {
+    // --- tallies ---
     $tArr = is_array($dto->tallies) ? $dto->tallies : $dto->tallies->toArray();
     $tallies = array_map(fn($t) => [
         'position_code'  => is_array($t) ? ($t['position_code'] ?? null) : $t->position_code,
@@ -78,12 +79,59 @@ function _buildMinimalPayload(\App\Data\ElectionReturnData $dto): array {
         'count'          => is_array($t) ? ($t['count'] ?? null) : $t->count,
     ], $tArr);
 
-    return [
+    // --- precinct core ---
+    $precinct = [
+        'id'   => $dto->precinct->id,
+        'code' => $dto->precinct->code,
+    ];
+
+    // precinct extras (include only when present)
+    $locationName = $dto->precinct->location_name ?? null;
+    $lat = $dto->precinct->latitude ?? null;
+    $lon = $dto->precinct->longitude ?? null;
+    if ($locationName !== null && $locationName !== '') $precinct['location_name'] = $locationName;
+    if ($lat !== null) $precinct['latitude'] = $lat;
+    if ($lon !== null) $precinct['longitude'] = $lon;
+
+    // electoral inspectors (id, name, optional role)
+    $eiRaw = $dto->precinct->electoral_inspectors ?? [];
+    if (!is_array($eiRaw) && method_exists($eiRaw, 'toArray')) $eiRaw = $eiRaw->toArray();
+    $inspectors = array_values(array_map(function ($ei) {
+        $id   = is_array($ei) ? ($ei['id']   ?? null) : ($ei->id   ?? null);
+        $name = is_array($ei) ? ($ei['name'] ?? null) : ($ei->name ?? null);
+        $role = is_array($ei) ? ($ei['role'] ?? null) : ($ei->role ?? null);
+        $row = ['id' => $id, 'name' => $name];
+        if ($role !== null && $role !== '') $row['role'] = $role;
+        return $row;
+    }, is_array($eiRaw) ? $eiRaw : []));
+    if (count($inspectors) > 0) $precinct['electoral_inspectors'] = $inspectors;
+
+    // assemble result
+    $result = [
         'id'       => $dto->id,
         'code'     => $dto->code,
-        'precinct' => ['id' => $dto->precinct->id, 'code' => $dto->precinct->code],
+        'precinct' => $precinct,
         'tallies'  => $tallies,
     ];
+
+    // --- signatures (lightweight only, include when present) ---
+    $sigRaw = $dto->signatures ?? [];
+    if (!is_array($sigRaw) && method_exists($sigRaw, 'toArray')) $sigRaw = $sigRaw->toArray();
+    $signatures = array_values(array_map(function ($s) {
+        $id   = is_array($s) ? ($s['id']        ?? null) : ($s->id        ?? null);
+        $name = is_array($s) ? ($s['name']      ?? null) : ($s->name      ?? null);
+        $role = is_array($s) ? ($s['role']      ?? null) : ($s->role      ?? null);
+        $when = is_array($s) ? ($s['signed_at'] ?? null) : ($s->signed_at ?? null);
+        $row = [];
+        if ($id   !== null) $row['id'] = $id;
+        if ($name !== null) $row['name'] = $name;
+        if ($role !== null && $role !== '') $row['role'] = $role;
+        if ($when !== null && $when !== '') $row['signed_at'] = $when;
+        return $row;
+    }, is_array($sigRaw) ? $sigRaw : []));
+    if (count($signatures) > 0) $result['signatures'] = $signatures;
+
+    return $result;
 }
 
 /** Unique folder per test to avoid collisions */

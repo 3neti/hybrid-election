@@ -42,7 +42,7 @@ const flashing = ref<Set<string>>(new Set())
 
 // QR generation settings (operator-tweakable)
 const payloadMode = ref<'minimal' | 'full'>('minimal')
-const desiredChunks = ref<number>(4)    // aim for ~4 by default
+const desiredChunks = ref<number>(5)    // aim for ~4 by default
 const ecc = ref<'low' | 'medium' | 'quartile' | 'high'>('medium')
 const size = ref<number>(640)
 const margin = ref<number>(12)

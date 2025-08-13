@@ -1,49 +1,52 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { inflateRaw } from 'pako'
 import ErTallyView, { type ElectionReturnData } from '@/components/ErTallyView.vue'
 
-/* ---------------- Types ---------------- */
-interface QrChunk { index: number; text: string; png?: string }
-interface ParsedLine { code: string; index: number; total: number; payload: string }
-
-/* ---------------- State ---------------- */
-// A) Direct JSON path
-const rawJson = ref<string>('')            // pretty JSON shown/edited by user
-const er = ref<ElectionReturnData | null>(null)
-const parseError = ref<string | null>(null)
-
-// B) Manual QR-chunk path
-const chunkTextInput = ref<string>('')     // paste one full chunk line here
-const chunkPngInput  = ref<string>('')     // optional data URI for the same chunk
-
-const chunkMap = ref<Map<number, QrChunk>>(new Map()) // gathered chunks by index
-const erCode   = ref<string | null>(null)             // detected from first chunk
-const total    = ref<number | null>(null)             // detected from first chunk
-const addStatus = ref<string | null>(null)
-const assembleStatus = ref<string | null>(null)
-
-/* ---------------- Utils ---------------- */
-function parseChunkLine(line: string): ParsedLine | null {
-    // ER|v1|<CODE>|<i>/<N>|<payload>
-    const m = line.match(/^ER\|v1\|([^|]+)\|(\d+)\/(\d+)\|(.+)$/)
-    if (!m) return null
-    return { code: m[1], index: +m[2], total: +m[3], payload: m[4] }
+/* ───────────────── Types ───────────────── */
+interface QrChunkItem {
+    id: string
+    index?: number | null
+    total?: number | null
+    text: string
+    png?: string
+    status: 'pending' | 'parsed' | 'invalid'
+    error?: string | null
 }
-function b64urlToBytes(s: string): Uint8Array {
-    s = s.replace(/-/g, '+').replace(/_/g, '/')
-    const pad = s.length % 4
-    if (pad) s += '='.repeat(4 - pad)
-    const bin = atob(s)
-    const out = new Uint8Array(bin.length)
-    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
+
+/* ───────────────── Utilities ───────────────── */
+function b64urlDecodeBytes(input: string): Uint8Array {
+    // Base64URL → Base64
+    input = input.replace(/-/g, '+').replace(/_/g, '/')
+    const pad = input.length % 4
+    if (pad) input += '='.repeat(4 - pad)
+    // atob to bytes
+    const binStr = atob(input)
+    const out = new Uint8Array(binStr.length)
+    for (let i = 0; i < binStr.length; i++) out[i] = binStr.charCodeAt(i)
     return out
 }
-function pretty(obj: any) {
-    return JSON.stringify(obj, null, 2)
+
+function parseChunkLine(line: string) {
+    // Format: ER|v1|<CODE>|<index>/<total>|<payload>
+    const parts = line.split('|', 5)
+    if (parts.length < 5 || parts[0] !== 'ER' || parts[1] !== 'v1') {
+        return null
+    }
+    const code = parts[2]
+    const [idxStr, totalStr] = parts[3].split('/')
+    const index = parseInt(idxStr, 10)
+    const total = parseInt(totalStr, 10)
+    const payload = parts[4]
+    if (!index || !total || !payload) return null
+    return { code, index, total, payload }
 }
 
-/* ---------------- Direct JSON path ---------------- */
+/* ───────────────── State: JSON path ───────────────── */
+const rawJson = ref<string>('')                // user-pasted or auto-filled from chunks
+const parseError = ref<string | null>(null)
+const er = ref<ElectionReturnData | null>(null)
+
 function parseAndPreview() {
     parseError.value = null
     try {
@@ -58,122 +61,112 @@ function parseAndPreview() {
     }
 }
 
-/* ---------------- Manual chunks path ---------------- */
-function addChunkFromInputs() {
-    addStatus.value = null
-    const raw = (chunkTextInput.value || '').trim()
-    if (!raw) {
-        addStatus.value = 'Paste a full chunk text first.'
-        return
+/* ───────────────── State: chunk helper path ───────────────── */
+const nextId = () => Math.random().toString(36).slice(2) // simple, no crypto.randomUUID
+
+// list UI
+const chunks = reactive<QrChunkItem[]>([])
+// assembly buffers
+const chunkMap = reactive<Map<number, string>>(new Map())
+const totalChunks = ref<number | null>(null)
+const assembling = ref(false)
+const assembleError = ref<string | null>(null)
+
+// optional PNG bulk helpers (thumbnails area)
+const pngBulkInput = ref<string>('')      // one data URI per line
+const textBulkInput = ref<string>('')     // one ER|v1|... line per row
+
+/* ───────────────── Chunk ingestion / assembly ───────────────── */
+function addChunkText(line: string) {
+    const item: QrChunkItem = {
+        id: nextId(),
+        text: line.trim(),
+        status: 'pending',
+        error: null
     }
-    const parsed = parseChunkLine(raw)
+    chunks.push(item)
+
+    const parsed = parseChunkLine(item.text)
     if (!parsed) {
-        addStatus.value = 'Chunk not in expected format: ER|v1|CODE|i/N|<payload>'
+        item.status = 'invalid'
+        item.error = 'Invalid chunk format.'
         return
     }
 
-    // lock set on first valid chunk
-    if (!erCode.value && !total.value) {
-        erCode.value = parsed.code
-        total.value = parsed.total
+    // total mismatch reset (start a fresh set)
+    if (totalChunks.value && totalChunks.value !== parsed.total) {
+        // wipe internal state but keep visual history (mark old entries)
+        chunkMap.clear()
+        totalChunks.value = null
     }
 
-    // if a different set shows up, reset to that new set
-    if (erCode.value !== parsed.code || total.value !== parsed.total) {
-        const old = `${erCode.value ?? '?'} / ${total.value ?? '?'}`
-        const neu = `${parsed.code} / ${parsed.total}`
-        resetChunksOnly()
-        erCode.value = parsed.code
-        total.value = parsed.total
-        addStatus.value = `Detected new set (${neu}). Cleared previous set (${old}).`
+    totalChunks.value = parsed.total
+    if (!chunkMap.has(parsed.index)) {
+        chunkMap.set(parsed.index, parsed.payload)
     }
+    item.status = 'parsed'
+    item.index = parsed.index
+    item.total = parsed.total
 
-    // store/replace
-    chunkMap.value.set(parsed.index, {
-        index: parsed.index,
-        text: raw,
-        ...(chunkPngInput.value.trim().startsWith('data:image/') ? { png: chunkPngInput.value.trim() } : {})
-    })
-
-    // clear inputs for next paste
-    chunkTextInput.value = ''
-    chunkPngInput.value = ''
-    addStatus.value = `Added chunk ${parsed.index} of ${parsed.total}.`
-
-    // auto-assemble if complete
     tryAssemble()
 }
 
-function removeChunk(i: number) {
-    chunkMap.value.delete(i)
-    er.value = null // require re-assembly if user wants a preview from chunks
-    assembleStatus.value = null
-}
-
 function tryAssemble() {
-    assembleStatus.value = null
-    parseError.value = null
-    if (!total.value) return
+    assembleError.value = null
+    if (!totalChunks.value) return
+    if (chunkMap.size !== totalChunks.value) return
 
-    // full set present?
-    for (let i = 1; i <= total.value; i++) {
-        if (!chunkMap.value.has(i)) {
-            assembleStatus.value = `Waiting for ${total.value - chunkMap.value.size} chunk(s)…`
-            return
-        }
-    }
-
+    assembling.value = true
     try {
-        const joined = Array.from({ length: total.value }, (_, idx) => {
-            const c = chunkMap.value.get(idx + 1)!
-            return c.text.split('|', 5)[4] ?? ''
-        }).join('')
-
-        const inflated = inflateRaw(b64urlToBytes(joined), { to: 'string' })
-        const obj = JSON.parse(inflated)
-        if (!obj?.precinct?.code || !Array.isArray(obj?.tallies)) {
-            throw new Error('Decoded data does not look like an Election Return.')
-        }
-
-        // success: update both preview AND the JSON textarea
-        er.value = obj
-        rawJson.value = pretty(obj)
-        assembleStatus.value = `OK — assembled ${total.value} chunk(s).`
+        const joined = Array.from({ length: totalChunks.value }, (_, i) => chunkMap.get(i + 1)).join('')
+        const inflated = inflateRaw(b64urlDecodeBytes(joined), { to: 'string' })
+        // Fill JSON textarea and parse preview
+        rawJson.value = JSON.stringify(JSON.parse(inflated), null, 2)
+        parseAndPreview()
     } catch (e: any) {
-        er.value = null
-        assembleStatus.value = 'Assembly failed.'
-        parseError.value = e?.message || String(e)
+        assembleError.value = e?.message || String(e)
+    } finally {
+        assembling.value = false
     }
 }
 
-/* ---------------- Shared ---------------- */
-function resetAll() {
-    // reset JSON side
-    rawJson.value = ''
-    er.value = null
-    parseError.value = null
-    // reset chunk side
-    resetChunksOnly()
-}
-function resetChunksOnly() {
-    chunkMap.value = new Map()
-    chunkTextInput.value = ''
-    chunkPngInput.value = ''
-    erCode.value = null
-    total.value = null
-    addStatus.value = null
-    assembleStatus.value = null
+function resetChunks() {
+    chunks.splice(0, chunks.length)
+    chunkMap.clear()
+    totalChunks.value = null
+    assembling.value = false
+    assembleError.value = null
+    pngBulkInput.value = ''
+    textBulkInput.value = ''
 }
 
-/* ---------------- Derived ---------------- */
-const collected = computed(() => chunkMap.value.size)
-const totalKnown = computed(() => !!total.value)
-const completionPct = computed(() =>
-    total.value ? Math.round((collected.value / total.value) * 100) : 0
-)
-const orderedChunks = computed(() => {
-    if (!total.value) return Array.from(chunkMap.value.values()).sort((a,b) => a.index - b.index)
-    return Array.from({ length: total.value }, (_, i) => chunkMap.value.get(i + 1) || null)
+function pasteBulkTexts() {
+    // Accept one chunk text per line
+    const lines = textBulkInput.value.split('\n').map(s => s.trim()).filter(Boolean)
+    for (const line of lines) addChunkText(line)
+}
+
+function pasteBulkPngs() {
+    // For now, only display thumbnails; decoding PNG to text is not done client-side here.
+    // If you later wire a client QR decoder, you can auto-extract chunk text.
+    const lines = pngBulkInput.value.split('\n').map(s => s.trim()).filter(Boolean)
+    for (const uri of lines) {
+        const it: QrChunkItem = { id: nextId(), text: '', png: uri, status: 'pending' }
+        chunks.push(it)
+    }
+}
+
+/* Show progress */
+const progressLabel = computed(() => {
+    if (!totalChunks.value) {
+        return `Collected ${chunkMap.size} chunk(s)`
+    }
+    return `Collected ${chunkMap.size} / ${totalChunks.value} chunk(s)`
+})
+
+/* Keep preview in sync if user edits JSON manually after assembly */
+watch(rawJson, (v, old) => {
+    // Don’t loop needlessly; parsing already happens on paste and assembly
 })
 </script>
 
@@ -182,183 +175,143 @@ const orderedChunks = computed(() => {
         <header class="flex items-center justify-between">
             <h1 class="text-2xl font-bold">QR Tally — Stand‑alone Viewer</h1>
             <div class="flex gap-2">
-                <button class="px-3 py-2 rounded bg-gray-200" @click="resetAll">Reset All</button>
+                <button class="px-3 py-2 rounded bg-gray-200" @click="() => { rawJson=''; er=null; parseError=null }">Clear JSON</button>
+                <button class="px-3 py-2 rounded bg-gray-200" @click="resetChunks">Reset Chunks</button>
             </div>
         </header>
 
-        <!-- A) Direct JSON input -->
+        <!-- Row: JSON path (left) + Chunk helper (right) -->
         <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Direct JSON paste / preview -->
             <div class="space-y-2">
                 <label class="block text-sm font-semibold text-gray-700">Decoded ER JSON</label>
                 <textarea
                     v-model="rawJson"
-                    rows="14"
+                    rows="16"
                     class="w-full border rounded p-3 font-mono text-xs"
-                    placeholder='Paste the decoded JSON here (after QR chunk assembly)…'
+                    placeholder='Paste the decoded JSON here (after QR chunk assembly OR from backend)…'
                 ></textarea>
 
                 <div class="flex gap-2">
                     <button class="px-3 py-2 rounded bg-blue-600 text-white" @click="parseAndPreview">
                         Preview
                     </button>
-                    <button
-                        class="px-3 py-2 rounded bg-gray-200"
-                        @click="
-              rawJson = pretty({
-                id:'SAMPLE-ER-001',
-                code:'ERDEMO001',
-                precinct:{ id:'P-1', code:'CURRIMAO-001' },
-                tallies:[
-                  { position_code:'PRESIDENT', candidate_code:'AA', candidate_name:'Alice A.', count:22 },
-                  { position_code:'PRESIDENT', candidate_code:'BB', candidate_name:'Benedict B.', count:15 },
-                  { position_code:'VP',        candidate_code:'CC', candidate_name:'Carla C.', count:19 },
-                ],
-                last_ballot:{
-                  id:'BAL-999', code:'BAL999',
-                  votes:[
-                    { position_code:'PRESIDENT', candidate_codes:[{ code:'AA' }] },
-                    { position_code:'VP',        candidate_codes:[{ code:'CC' }] },
-                  ]
-                }
-              })
-            "
-                    >
-                        Load Sample JSON
-                    </button>
-                    <button class="px-3 py-2 rounded bg-gray-200" @click="rawJson = ''">Clear JSON</button>
                 </div>
 
                 <p v-if="parseError" class="text-sm text-red-600 mt-2">Error: {{ parseError }}</p>
             </div>
 
-            <!-- B) Manual chunk intake -->
-            <div class="space-y-2">
-                <label class="block text-sm font-semibold text-gray-700">Paste ONE QR chunk text</label>
-                <textarea
-                    v-model="chunkTextInput"
-                    rows="5"
-                    class="w-full border rounded p-3 font-mono text-xs"
-                    placeholder="ER|v1|ERXXXX|1/4|<payload>..."
-                ></textarea>
+            <!-- Chunk helper (one-by-one OR bulk) -->
+            <div class="space-y-3">
+                <div>
+                    <h2 class="text-sm font-semibold text-gray-700">QR Chunk Helper</h2>
+                    <p class="text-xs text-gray-500">
+                        Enter each QR chunk’s full text (the entire <code>ER|v1|CODE|i/N|&lt;payload&gt;</code> line).
+                        When all chunks are present, the JSON box will auto‑fill and preview will update.
+                    </p>
+                </div>
 
-                <label class="block text-xs font-semibold text-gray-600">Optional PNG Data URI for this same chunk</label>
-                <textarea
-                    v-model="chunkPngInput"
-                    rows="3"
-                    class="w-full border rounded p-2 font-mono text-[11px]"
-                    placeholder="data:image/png;base64,iVBORw0K..."
-                ></textarea>
-
-                <div class="flex items-center gap-3">
+                <div class="flex items-start gap-2">
+                    <input
+                        type="text"
+                        class="flex-1 border rounded px-3 py-2 font-mono text-xs"
+                        placeholder="Paste one chunk text here…"
+                        @keyup.enter="(e:any) => { const v=e.target.value?.trim(); if(v){ addChunkText(v); e.target.value='' } }"
+                    />
                     <button
-                        class="px-3 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700"
-                        @click="addChunkFromInputs"
+                        class="px-3 py-2 rounded bg-emerald-600 text-white"
+                        @click="(e:any) => { const el=e?.target?.previousElementSibling as HTMLInputElement; const v = el?.value?.trim(); if(v){ addChunkText(v); el.value='' } }"
                     >
                         Add chunk
                     </button>
-                    <span class="text-xs" :class="addStatus?.startsWith('Added') ? 'text-emerald-700' : 'text-amber-700'">
-            {{ addStatus }}
-          </span>
                 </div>
 
-                <!-- progress -->
-                <div class="text-xs text-gray-600 mt-1">
-                    <template v-if="totalKnown">
-                        Set: <b class="font-mono">{{ erCode }}</b> — expecting <b>{{ total }}</b> chunk(s).
-                    </template>
-                    <template v-else>
-                        Waiting for the first valid chunk to detect set/code and total…
-                    </template>
-                </div>
-                <div v-if="totalKnown" class="mt-2">
-                    <div class="h-2 bg-gray-200 rounded overflow-hidden">
-                        <div class="h-full bg-emerald-500 transition-all" :style="{ width: completionPct + '%' }" />
-                    </div>
-                    <div class="text-xs text-gray-600 mt-1">
-                        Collected <b>{{ collected }}</b> / <b>{{ total }}</b> ({{ completionPct }}%)
-                    </div>
+                <div class="text-xs text-gray-600">
+                    <strong>{{ progressLabel }}</strong>
+                    <span v-if="assembling" class="ml-2 text-gray-500">(assembling…)</span>
+                    <span v-if="assembleError" class="ml-2 text-red-600">Assemble error: {{ assembleError }}</span>
                 </div>
 
-                <p v-if="assembleStatus" class="text-xs mt-2"
-                   :class="assembleStatus.startsWith('OK') ? 'text-emerald-700' : 'text-amber-700'">
-                    {{ assembleStatus }}
-                </p>
+                <!-- Bulk areas (optional) -->
+                <details class="rounded border p-3">
+                    <summary class="cursor-pointer text-sm font-semibold">Bulk paste (optional)</summary>
+                    <div class="mt-3 space-y-2">
+                        <label class="block text-xs font-semibold text-gray-600">One chunk text per line</label>
+                        <textarea
+                            v-model="textBulkInput"
+                            rows="5"
+                            class="w-full border rounded p-2 font-mono text-xs"
+                            placeholder="ER|v1|...|1/N|<payload>\nER|v1|...|2/N|<payload>\n…"
+                        ></textarea>
+                        <div class="flex gap-2">
+                            <button class="px-3 py-2 rounded bg-gray-800 text-white" @click="pasteBulkTexts">Add all chunk texts</button>
+                            <button class="px-3 py-2 rounded bg-gray-200" @click="textBulkInput = ''">Clear</button>
+                        </div>
+
+                        <label class="block text-xs font-semibold text-gray-600 mt-4">One PNG Data URI per line (optional)</label>
+                        <textarea
+                            v-model="pngBulkInput"
+                            rows="4"
+                            class="w-full border rounded p-2 font-mono text-xs"
+                            placeholder="data:image/png;base64,iVBORw0KGgoAAA...\n..."
+                        ></textarea>
+                        <div class="flex gap-2">
+                            <button class="px-3 py-2 rounded bg-gray-800 text-white" @click="pasteBulkPngs">Add all PNGs</button>
+                            <button class="px-3 py-2 rounded bg-gray-200" @click="pngBulkInput = ''">Clear</button>
+                        </div>
+                        <p class="text-[11px] text-gray-500">
+                            PNGs are shown as thumbnails here. Client‑side decoding from PNG → text isn’t wired
+                            (use your backend or camera scanner for that). You can still paste the chunk texts above.
+                        </p>
+                    </div>
+                </details>
+
+                <!-- Current chunk list -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div
+                        v-for="c in chunks"
+                        :key="c.id"
+                        class="p-2 border rounded text-xs space-y-2"
+                        :class="{
+              'border-emerald-300 bg-emerald-50': c.status==='parsed',
+              'border-amber-300 bg-amber-50': c.status==='pending',
+              'border-red-300 bg-red-50': c.status==='invalid'
+            }"
+                    >
+                        <div class="flex items-center justify-between">
+                            <div class="font-mono">
+                                <span v-if="c.index">#{{ c.index }}</span>
+                                <span v-if="c.total">/ {{ c.total }}</span>
+                                <span v-if="!c.index || !c.total" class="text-gray-500">unparsed</span>
+                            </div>
+                            <div class="text-[11px]">
+                                <span v-if="c.status==='parsed'" class="text-emerald-700">parsed</span>
+                                <span v-else-if="c.status==='pending'" class="text-amber-700">pending</span>
+                                <span v-else class="text-red-700">invalid</span>
+                            </div>
+                        </div>
+
+                        <div v-if="c.png">
+                            <img :src="c.png" alt="QR" class="w-full h-auto rounded" />
+                        </div>
+
+                        <div class="font-mono break-all">{{ c.text || '(no text)' }}</div>
+                        <div v-if="c.error" class="text-red-700">{{ c.error }}</div>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <!-- Chunks grid -->
-        <section class="space-y-3">
-            <div class="flex items-center justify-between">
-                <h2 class="text-sm font-semibold text-gray-700">Chunks in this set</h2>
-                <div v-if="totalKnown" class="text-xs text-gray-600">
-                    ER Code: <b class="font-mono">{{ erCode }}</b> • Total: <b>{{ total }}</b>
-                </div>
-            </div>
-
-            <div v-if="orderedChunks.length" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div
-                    v-for="(c, idx) in orderedChunks"
-                    :key="idx"
-                    class="border rounded p-3"
-                    :class="c ? 'ring-1 ring-emerald-200' : 'opacity-60'"
-                >
-                    <div class="flex items-center justify-between text-xs mb-2">
-                        <div>Chunk {{ idx + 1 }} / {{ total ?? '?' }}</div>
-                        <button
-                            v-if="c"
-                            class="px-2 py-1 text-[11px] rounded bg-gray-800 text-white hover:bg-black"
-                            @click="removeChunk(idx + 1)"
-                            title="Remove this chunk"
-                        >
-                            Remove
-                        </button>
-                    </div>
-
-                    <template v-if="c">
-                        <img v-if="c.png" :src="c.png" alt="QR" class="w-full h-auto rounded mb-2" />
-                        <div class="text-[11px] font-mono break-words bg-gray-50 border p-2 rounded">
-                            {{ c.text }}
-                        </div>
-                        <div class="mt-2 flex gap-2">
-                            <button
-                                class="px-2 py-1 text-[11px] rounded bg-indigo-600 text-white hover:bg-indigo-700"
-                                @click="navigator.clipboard?.writeText(c.text)"
-                            >
-                                Copy text
-                            </button>
-                            <button
-                                v-if="!c.png"
-                                class="px-2 py-1 text-[11px] rounded bg-gray-200"
-                                @click="chunkPngInput = ''; chunkTextInput = c.text"
-                                title="Prefill inputs with this chunk to attach a PNG"
-                            >
-                                Attach PNG…
-                            </button>
-                        </div>
-                    </template>
-
-                    <template v-else>
-                        <div class="text-xs text-gray-500 italic">Missing…</div>
-                    </template>
-                </div>
-            </div>
-
-            <div v-else class="text-xs text-gray-500">
-                No chunks yet. Paste one chunk line and click <b>Add chunk</b>.
-            </div>
-        </section>
-
-        <!-- Preview -->
+        <!-- Output -->
         <section v-if="er" class="border rounded p-4">
-            <!-- Pass the gathered chunks to the viewer (it will show them if it wants) -->
-            <ErTallyView :er="er" :qrChunks="[...chunkMap.values()].sort((a,b)=>a.index-b.index)" />
+            <ErTallyView :er="er" />
         </section>
         <section v-else class="text-sm text-gray-600">
-            Paste **decoded JSON** and click <b>Preview</b> — or — keep adding chunks until all are present; the tally will appear automatically.
+            Paste the decoded JSON and click <b>Preview</b>, or enter all QR chunk texts (the viewer will auto‑assemble into JSON).
         </section>
     </div>
 </template>
 
 <style scoped>
-/* progress bar styling handled inline */
+/* keep it minimal and readable */
 </style>

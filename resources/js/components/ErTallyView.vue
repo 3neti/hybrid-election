@@ -4,16 +4,39 @@ import TallyMarks from '@/components/TallyMarks.vue'
 
 /** ---------------- Types ---------------- */
 interface CandidateData { code: string; name?: string; alias?: string }
-interface VoteData { position_code?: string; position?: { code: string }; candidate_codes?: CandidateData[]; candidates?: CandidateData[] }
+interface VoteData {
+    position_code?: string
+    position?: { code: string }
+    candidate_codes?: CandidateData[]
+    candidates?: CandidateData[]
+}
 interface BallotData { id: string; code: string; votes: VoteData[] }
 interface TallyData { position_code: string; candidate_code: string; candidate_name: string; count: number }
 export interface ElectionReturnData {
     id: string
     code: string
-    precinct: { id: string; code: string }
+    precinct: {
+        id: string
+        code: string
+        location_name?: string | null
+        latitude?: number | null
+        longitude?: number | null
+        electoral_inspectors?: Array<{
+            id: string
+            name: string
+            role?: string | null
+        }>
+    }
     tallies: TallyData[]
     ballots?: BallotData[]
     last_ballot?: BallotData
+    /** optional, lightweight metadata only (no blobs) */
+    signatures?: Array<{
+        id?: string
+        name?: string
+        role?: string | null
+        signed_at?: string | null
+    }>
 }
 
 interface QrChunkLike {
@@ -78,9 +101,74 @@ function copyTextChunk(txt?: string) {
     navigator.clipboard?.writeText(txt).catch(() => {})
 }
 
+function formatWhen(s?: string | null) {
+    if (!s) return ''
+    try { return new Date(s).toLocaleString() } catch { return s }
+}
+
+function mapsHref(lat?: number | null, lon?: number | null) {
+    if (lat == null || lon == null) return null
+    return `https://maps.google.com/?q=${lat},${lon}`
+}
+
 /** ---------------- Derived ---------------- */
 const totalChunks = computed(() => props.qrChunks?.length ?? 0)
 const anyPngError = computed(() => (props.qrChunks ?? []).some(c => !!c.png_error))
+
+const hasPrecinctExtras = computed(() => {
+    const p = props.er?.precinct
+    return !!(p?.location_name || p?.latitude || p?.longitude)
+})
+
+/** Merge inspectors + signatures by (name, role); we don’t show “source” */
+type MergedSigner = {
+    key: string
+    name: string
+    role?: string | null
+    signed_at?: string | null
+}
+const mergedPeople = computed<MergedSigner[]>(() => {
+    const map = new Map<string, MergedSigner>()
+
+    const inspectors = props.er?.precinct?.electoral_inspectors ?? []
+    for (const ei of inspectors) {
+        const key = `${(ei.name || '').trim().toLowerCase()}|${(ei.role || '').trim().toLowerCase()}`
+        map.set(key, {
+            key,
+            name: ei.name,
+            role: ei.role ?? null,
+            signed_at: undefined,
+        })
+    }
+
+    const sigs = props.er?.signatures ?? []
+    for (const s of sigs) {
+        const key = `${(s.name || '').trim().toLowerCase()}|${(s.role || '').trim().toLowerCase()}`
+        const existing = map.get(key)
+        if (existing) {
+            existing.signed_at = existing.signed_at ?? s.signed_at
+        } else {
+            map.set(key, {
+                key,
+                name: s.name || '—',
+                role: s.role ?? null,
+                signed_at: s.signed_at ?? undefined,
+            })
+        }
+    }
+
+    // Stable, human-friendly sort: by role, then name
+    return Array.from(map.values()).sort((a, b) => {
+        const ra = (a.role || '').toLowerCase()
+        const rb = (b.role || '').toLowerCase()
+        if (ra !== rb) return ra < rb ? -1 : 1
+        const na = a.name.toLowerCase()
+        const nb = b.name.toLowerCase()
+        return na < nb ? -1 : na > nb ? 1 : 0
+    })
+})
+
+const hasPeople = computed(() => mergedPeople.value.length > 0)
 
 /** ---------------- Lifecycle / watchers ---------------- */
 onMounted(() => {
@@ -108,6 +196,87 @@ watch(() => props.er?.last_ballot, () => {
                 </p>
             </div>
         </header>
+
+        <!-- Precinct + Officials (merged with signatures) -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Precinct card -->
+            <div v-if="hasPrecinctExtras" class="p-4 border rounded bg-gray-50">
+                <h3 class="text-sm font-semibold mb-2">Precinct</h3>
+                <dl class="text-sm space-y-1">
+                    <div v-if="er.precinct.location_name" class="flex gap-2">
+                        <dt class="text-gray-600 w-28">Location</dt>
+                        <dd class="font-medium">{{ er.precinct.location_name }}</dd>
+                    </div>
+                    <div v-if="er.precinct.latitude != null || er.precinct.longitude != null" class="flex gap-2">
+                        <dt class="text-gray-600 w-28">Coordinates</dt>
+                        <dd class="font-mono">
+                            <template v-if="er.precinct.latitude != null">{{ er.precinct.latitude }}</template>
+                            <template v-if="er.precinct.latitude != null && er.precinct.longitude != null">, </template>
+                            <template v-if="er.precinct.longitude != null">{{ er.precinct.longitude }}</template>
+                            <a
+                                v-if="mapsHref(er.precinct.latitude, er.precinct.longitude)"
+                                :href="mapsHref(er.precinct.latitude, er.precinct.longitude)!"
+                                target="_blank"
+                                rel="noopener"
+                                class="ml-2 underline text-blue-700"
+                                title="Open in Google Maps"
+                            >
+                                Map
+                            </a>
+                        </dd>
+                    </div>
+                </dl>
+            </div>
+
+            <!-- Combined Officials & Signatures card (no “Source” column) -->
+            <div v-if="hasPeople" class="p-4 border rounded bg-gray-50 md:col-span-2">
+                <h3 class="text-sm font-semibold mb-2">Officials & Signatures</h3>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead>
+                        <tr class="text-left text-gray-600 uppercase text-xs">
+                            <th class="py-2 pr-3">Name</th>
+                            <th class="py-2 pr-3">Role</th>
+                            <th class="py-2">Status</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr v-for="p in mergedPeople" :key="p.key" class="border-t">
+                            <td class="py-2 pr-3 font-medium">{{ p.name }}</td>
+                            <td class="py-2 pr-3 text-xs uppercase tracking-wide text-gray-700">
+                                {{ p.role || '—' }}
+                            </td>
+                            <td class="py-2">
+                  <span v-if="p.signed_at" class="inline-block px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                    signed: {{ formatWhen(p.signed_at) }}
+                  </span>
+                                <span v-else class="inline-block px-2 py-0.5 rounded bg-amber-100 text-amber-800">
+                    pending
+                  </span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- signature lines for printing (optional, purely visual) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 print:mt-6">
+                    <div class="border rounded p-3 text-center">
+                        <div class="h-12"></div>
+                        <div class="border-t pt-1 mt-2 text-xs text-gray-600">
+                            Signature over Printed Name
+                        </div>
+                    </div>
+                    <div class="border rounded p-3 text-center">
+                        <div class="h-12"></div>
+                        <div class="border-t pt-1 mt-2 text-xs text-gray-600">
+                            Signature over Printed Name
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
         <!-- Tallies Table -->
         <section>
