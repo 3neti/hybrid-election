@@ -35,23 +35,16 @@ interface QrResponse {
 
 const props = withDefaults(defineProps<{
     er: ElectionReturnData
-    /** If provided, bypass auto generation */
     qrChunks?: QrChunk[]
-    /** 'legal' | 'a4' */
     paper?: 'legal' | 'a4'
-    /** Base font size in pt */
     basePt?: number
-    /** Auto-generate QR chunks on mount/prop changes */
     autoQr?: boolean
-    /** QR generation knobs (used when autoQr=true) */
     payload?: 'minimal' | 'full'
     desiredChunks?: number | null
     ecc?: ECC
     size?: number
     margin?: number
-    /** Optional: override endpoint. If omitted, uses window.route(...) or /api/qr/election-return/{code} */
     qrEndpoint?: string | null
-    /** Print only this component (hide rest of page) */
     printIsolated?: boolean
 }>(), {
     paper: 'legal',
@@ -79,7 +72,7 @@ const scopeId = ref(
 /* ---------------- Derived ---------------- */
 const totalChunks = computed(() => qr.value.length)
 const anyPngError = computed(() => qr.value.some(c => c.png_error))
-const showQrRail = computed(() => totalChunks.value > 0)
+const showQrBlock = computed(() => totalChunks.value > 0)
 
 const hasPrecinctExtras = computed(() => {
     const p = props.er?.precinct
@@ -128,8 +121,7 @@ const hasPeople = computed(() => mergedPeople.value.length > 0)
 /* ---------------- QR generation ---------------- */
 function resolveQrUrl(erCode: string): string {
     if (props.qrEndpoint) return props.qrEndpoint
-    // Ziggy route() if available
-    // @ts-ignore
+    // @ts-ignore Ziggy route() if available
     if (typeof window !== 'undefined' && typeof window.route === 'function') {
         // @ts-ignore
         return window.route('qr.er', { code: erCode })
@@ -192,7 +184,8 @@ function injectPrintIsolation(id: string) {
     }
     el.textContent = `
 @media print {
-  body * { visibility: hidden !important; }
+  body, html { height: auto !important; }
+  body * { visibility: hidden !important; margin: 0 !important; }
   #${id}, #${id} * { visibility: visible !important; }
   #${id} { position: absolute !important; left: 0 !important; top: 0 !important; width: auto !important; }
 }`
@@ -225,7 +218,6 @@ async function handlePrint() {
     await nextTick()
     await waitForImagesWithin(scopeId.value, '.qr-img')
 
-    // Give the browser a beat to apply @media print isolation
     setTimeout(() => window.print(), 60)
 }
 
@@ -282,8 +274,8 @@ watch(() => props.qrChunks, v => { if (v?.length) qr.value = v })
                 <!-- Tallies: 2 columns (Position • Candidate • Votes) -->
                 <section class="tallies two-col">
                     <div v-for="(t, i) in er.tallies" :key="i" class="trow">
-                        <div class="pos mono">{{ t.position_code }}</div>
-                        <div class="cand">{{ t.candidate_name }}</div>
+                        <div class="pos mono" :title="t.position_code">{{ t.position_code }}</div>
+                        <div class="cand" :title="t.candidate_name">{{ t.candidate_name }}</div>
                         <div class="votes mono">{{ t.count }}</div>
                     </div>
                 </section>
@@ -307,23 +299,32 @@ watch(() => props.qrChunks, v => { if (v?.length) qr.value = v })
                         </tbody>
                     </table>
                 </section>
-            </main>
 
-            <!-- QR Rail -->
-            <aside v-if="showQrRail" class="qr-rail">
-                <div class="qr-title">QR Tally</div>
-                <div class="qr-col">
-                    <div v-for="c in qr" :key="c.index" class="qr-card">
-                        <div class="qr-caption mono">Chunk {{ c.index }} / {{ totalChunks }}</div>
-                        <img v-if="c.png" :src="c.png" class="qr-img" alt="QR chunk" />
-                        <div v-else class="qr-fallback">
-                            <div class="warn">PNG not available.</div>
-                            <div v-if="c.png_error" class="err mono">{{ c.png_error }}</div>
-                            <button class="btn tiny no-print" @click="copyTextChunk(c.text)">Copy text</button>
+                <!-- QR Block at bottom (3 per row, ~2"x2") -->
+                <section v-if="showQrBlock" class="qr-block">
+                    <div class="qr-title">QR Tally</div>
+                    <div class="qr-grid">
+                        <div v-for="c in qr" :key="c.index" class="qr-card" :class="{ 'qr-has-error': !c.png }">
+                            <div class="qr-caption mono">Chunk {{ c.index }} / {{ totalChunks }}</div>
+
+                            <template v-if="c.png">
+                                <img :src="c.png" class="qr-img" alt="QR chunk" />
+                            </template>
+
+                            <template v-else>
+                                <div class="qr-fallback">
+                                    <div class="warn">PNG not available.</div>
+                                    <div v-if="c.png_error" class="err mono">{{ c.png_error }}</div>
+                                    <button class="btn tiny no-print" @click="copyTextChunk(c.text)">Copy text</button>
+                                </div>
+                            </template>
                         </div>
                     </div>
-                </div>
-            </aside>
+                    <div v-if="anyPngError" class="qr-note">
+                        Some PNGs could not be generated; you can still copy chunk text.
+                    </div>
+                </section>
+            </main>
         </div>
     </div>
 </template>
@@ -336,45 +337,107 @@ watch(() => props.qrChunks, v => { if (v?.length) qr.value = v })
 .btn.tiny { padding:2px 6px; font-size:11px; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
 
-.layout { display:grid; grid-template-columns: 1fr auto; gap:16px; padding:16px; }
+.layout { padding: 10px; } /* single column layout now */
 .content { min-width:0; }
+
+/* Header */
 .header .title { font-size: 1.4em; font-weight: 700; margin-bottom: 6px; }
 .header .meta { display:grid; grid-auto-rows:minmax(18px,auto); gap:2px; font-size:.95em; }
 .header .coords .map-link { margin-left:6px; text-decoration:underline; color:#2563eb; }
 
-.tallies.two-col { columns:2; column-gap:16px; }
-.trow { break-inside:avoid; display:grid; grid-template-columns:110px 1fr 60px; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid #f1f5f9; }
-.pos { font-weight:600; }
-.cand { overflow-wrap:anywhere; }
+/* Tallies: two balanced columns; keep rows whole */
+.tallies.two-col {
+    columns: 2;
+    column-gap: 14px;
+    /* better balance across columns; support varies but harmless */
+    column-fill: balance;
+}
+.trow {
+    break-inside: avoid;
+    display: grid;
+    grid-template-columns: 150px 1fr 56px; /* was 110px 1fr 60px */
+    gap: 6px;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+.pos {
+    font-weight:600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cand {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 .votes { text-align:right; font-weight:700; }
 
-.signers { margin-top:16px; }
+/* Officials */
+.signers { margin-top:14px; page-break-inside: avoid; }
 .section-title { font-weight:700; margin-bottom:6px; }
 .signers-table { width:100%; border-collapse:collapse; font-size:.95em; }
 .signers-table th, .signers-table td { border-top:1px solid #e5e7eb; padding:6px 8px; text-align:left; }
 
-/* QR rail */
-.qr-rail { width: 2.2in; border-left:1px solid #e5e7eb; padding-left:12px; }
+/* QR block at bottom */
+.qr-block { margin-top: 16px; }
 .qr-title { font-weight:700; margin:2px 0 8px; }
-.qr-col { display:flex; flex-direction:column; gap:12px; }
-.qr-card { border:1px solid #e5e7eb; border-radius:8px; padding:8px; }
-.qr-caption { font-size:11px; margin-bottom:6px; color:#4b5563; }
-.qr-img { width:100%; height:auto; image-rendering:pixelated; }
-.qr-fallback .warn { color:#92400e; font-size:12px; margin-bottom:4px; }
+.qr-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 2.5in); /* was 2in */
+    gap: 0.10in;                              /* was 0.15in */
+    justify-content: start;
+}
+.qr-card {
+    width: 2.5in;           /* was 2in */
+    height: 2.85in;         /* a bit taller to fit caption + QR */
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    page-break-inside: avoid;
+}
+.qr-caption {
+    flex: 0 0 auto;
+    text-align: center;
+    font-size: 10px;        /* slightly smaller to free space */
+    line-height: 1.2;
+    padding: 2px 4px;
+    color: #4b5563;
+    border-bottom: 1px solid #eef2f7;
+}
+.qr-img {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;     /* fill card without cropping */
+    image-rendering: pixelated;
+}
+.qr-fallback { padding:6px; font-size:12px; }
+.qr-fallback .warn { color:#92400e; margin-bottom:4px; }
 .qr-fallback .err { color:#991b1b; font-size:11px; }
+.qr-note { margin-top:6px; font-size:12px; color:#92400e; }
+
+/* Paper width shells (screen preview) */
+.paper-legal { width: 8.5in; box-sizing: border-box; }
+.paper-a4    { width: 210mm; box-sizing: border-box; }
 </style>
 
-<!-- Unscoped: preview width + print resets (keep @page injected at runtime) -->
+<!-- Unscoped: print fixes -->
 <style>
-.paper-legal { width: 8.5in; min-height: 14in; box-sizing: border-box; }
-.paper-a4    { width: 210mm; min-height: 297mm; box-sizing: border-box; }
-
 @media print {
     .no-print, .toolbar { display:none !important; }
-    html, body { padding:0; margin:0; }
-    .sheet { border:none; }
-    .layout { padding:0.4in; gap:0.25in; }
-    .tallies.two-col { column-gap:0.25in; }
-    /* @page size is injected dynamically by JS for the chosen paper */
+    html, body { padding:0 !important; margin:0 !important; height:auto !important; }
+    /* Remove min-heights to avoid huge blank areas after content */
+    .paper-legal, .paper-a4 { min-height: auto !important; height: auto !important; }
+    .sheet { border:none !important; }
+    /* Tighter page padding for print; prevents stray overflow = extra pages */
+    .layout { padding:0.35in !important; }
+    .tallies.two-col { column-gap:0.22in !important; }
+    /* Avoid breaking inside logical blocks */
+    .trow, .signers, .qr-card { page-break-inside: avoid !important; break-inside: avoid !important; }
 }
 </style>
