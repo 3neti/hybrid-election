@@ -22,5 +22,9 @@ Route::get('/decoder', function () {
     return Inertia::render('Decoder');
 });
 
+Route::get('/tally-standalone', function () {
+    return Inertia::render('TallyStandalone');
+});
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
