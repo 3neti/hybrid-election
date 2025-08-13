@@ -2,6 +2,7 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { inflateRaw } from 'pako'
 import ErTallyView, { type ElectionReturnData } from '@/components/ErTallyView.vue'
+import ElectionReturn from '@/components/ElectionReturn.vue';
 
 /* ───────────────── Types ───────────────── */
 interface QrChunkItem {
@@ -308,6 +309,13 @@ watch(rawJson, (v, old) => {
         </section>
         <section v-else class="text-sm text-gray-600">
             Paste the decoded JSON and click <b>Preview</b>, or enter all QR chunk texts (the viewer will auto‑assemble into JSON).
+        </section>
+        <section v-if="er" class="border rounded p-4">
+            <ElectionReturn
+                :er="er"
+                paper="legal"
+                :basePt="10"
+            />
         </section>
     </div>
 </template>
