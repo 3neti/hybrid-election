@@ -364,6 +364,7 @@ watch(rawJson, () => {
                 paper="legal"
                 :basePt="10"
                 :desired-chunks="16"
+                :qr-endpoint="route('qr.er.from_json')"
             />
         </section>
     </div>

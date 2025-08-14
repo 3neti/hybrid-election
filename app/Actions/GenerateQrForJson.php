@@ -12,6 +12,7 @@ use Endroid\QrCode\Writer\PngWriter;
 use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\ErrorCorrectionLevel;
 use Endroid\QrCode\RoundBlockSizeMode;
+use Illuminate\Support\Str;
 
 /**
  * Generate QR code **chunks** for a JSON payload (Election Return).
@@ -225,6 +226,99 @@ class GenerateQrForJson
         if ($persist) {
             $base = 'qr_exports/'.$dto->code.'/'.($persistDir !== '' ? $persistDir : now()->format('Ymd_His'));
             $this->persistChunks($result, $base, $json);
+            $result['persisted_to'] = Storage::disk('local')->path($base);
+        }
+
+        return response()->json($result);
+    }
+
+    /**
+     * POST controller: build QR chunks directly from a JSON payload (no DB).
+     *
+     * Route: POST /api/qr/election-return
+     * Name : qr.er.from_json
+     *
+     * Body (JSON):
+     * {
+     *   json: object|string,   // ER payload (array or JSON string)
+     *   code?: string,         // optional code; defaults to json['code'] or random
+     *   desired_chunks?: int,
+     *   max_chars_per_qr?: int,
+     *   single?: bool,
+     *   make_images?: bool,
+     *   ecc?: "low"|"medium"|"quartile"|"high",
+     *   size?: int,
+     *   margin?: int,
+     *   persist?: bool,
+     *   persist_dir?: string
+     * }
+     */
+    public function fromBody(ActionRequest $request)
+    {
+        $payload = $request->input('json');
+
+        // Accept either an array or a JSON string
+        if (is_string($payload)) {
+            $decoded = json_decode($payload, true);
+            if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+                abort(422, 'Invalid JSON provided in "json" field.');
+            }
+            $payload = $decoded;
+        }
+
+        if (!is_array($payload)) {
+            abort(422, '"json" must be an object/array or a JSON string.');
+        }
+
+        $code = (string) ($request->input('code') ?? ($payload['code'] ?? ('ER-' . Str::upper(Str::random(6)))));
+
+        // Knobs (mirror GET controller)
+        $makeImages    = $request->boolean('make_images', true);
+        $forceSingle   = $request->boolean('single', false);
+        $desiredChunks = (int) $request->input('desired_chunks', 0);
+        $maxCharsPer   = (int) $request->input('max_chars_per_qr', 1200);
+
+        $eccStr = strtolower((string) $request->input('ecc', 'medium'));
+        $size   = (int) $request->input('size', 640);
+        $margin = (int) $request->input('margin', 12);
+
+        if ($desiredChunks > 0 && ! $forceSingle) {
+            $raw     = json_encode($payload, JSON_UNESCAPED_SLASHES);
+            $deflate = gzdeflate($raw, 9);
+            $b64u    = $this->b64urlEncode($deflate);
+            $len     = strlen($b64u);
+            $computed    = (int) ceil($len / max(1, $desiredChunks));
+            $maxCharsPer = max(600, min($computed, 2400));
+        }
+
+        $result = $this->handle(
+            json:          $payload,
+            code:          $code,
+            makeImages:    $makeImages,
+            maxCharsPerQr: $maxCharsPer,
+            forceSingle:   $forceSingle,
+            imageOptions:  [
+                'ecc'    => $eccStr,
+                'size'   => $size,
+                'margin' => $margin,
+            ],
+        );
+
+        $result['params'] = [
+            'payload'                    => 'direct', // informative
+            'effective_max_chars_per_qr' => $maxCharsPer,
+            'desired_chunks'             => $desiredChunks ?: null,
+            'ecc'                        => $eccStr,
+            'size'                       => $size,
+            'margin'                     => $margin,
+        ];
+
+        // Optional persistence (same behavior as GET)
+        $persist    = $request->boolean('persist', false);
+        $persistDir = trim((string) $request->input('persist_dir', ''), "/ \t\n\r\0\x0B");
+        if ($persist) {
+            $base = 'qr_exports/'.$code.'/'.($persistDir !== '' ? $persistDir : now()->format('Ymd_His'));
+            $this->persistChunks($result, $base, $payload);
             $result['persisted_to'] = Storage::disk('local')->path($base);
         }
 

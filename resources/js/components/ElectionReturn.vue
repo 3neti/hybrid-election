@@ -153,19 +153,38 @@ async function generateQr() {
     qrLoading.value = true
     qrError.value = null
     qr.value = []
+
     try {
-        const url = resolveQrUrl(props.er.code)
-        const { data } = await axios.get<QrResponse>(url, {
-            params: {
-                payload: props.payload,
+        // If a qrEndpoint is provided, POST the in-memory ER JSON to it.
+        if (props.qrEndpoint) {
+            console.log('[ElectionReturn] POSTing ER JSON to', props.qrEndpoint)
+            const { data } = await axios.post<QrResponse>(props.qrEndpoint, {
+                json: props.er,                 // <- the in-memory payload
+                code: props.er.code,            // reuse ER code
                 desired_chunks: props.desiredChunks ?? undefined,
                 make_images: 1,
                 ecc: props.ecc,
                 size: props.size,
                 margin: props.margin
-            }
-        })
-        qr.value = (data?.chunks ?? []).sort((a, b) => a.index - b.index)
+            })
+            qr.value = (data?.chunks ?? []).sort((a,b) => a.index - b.index)
+        } else {
+            // Default: GET by code (DB-backed endpoint)
+            const url = resolveQrUrl(props.er.code)
+            console.log('[ElectionReturn] GETting QR chunks from', url)
+            const { data } = await axios.get<QrResponse>(url, {
+                params: {
+                    payload: props.payload,
+                    desired_chunks: props.desiredChunks ?? undefined,
+                    make_images: 1,
+                    ecc: props.ecc,
+                    size: props.size,
+                    margin: props.margin
+                }
+            })
+            qr.value = (data?.chunks ?? []).sort((a,b) => a.index - b.index)
+        }
+
         if (!qr.value.length) qrError.value = 'No QR chunks were returned.'
     } catch (e: any) {
         qrError.value = e?.response?.data?.message || String(e)
