@@ -26,6 +26,7 @@ class BallotSeeder extends Seeder
             $votes = $positions->map(function ($position) {
                 $maxVotes = $position->count;
 
+                // Decide how many votes to cast for this position
                 if ($maxVotes > 1) {
                     $minVotes = max(1, $maxVotes - rand(1, 3));
                     $votesToCast = rand($minVotes, $maxVotes);
@@ -33,6 +34,7 @@ class BallotSeeder extends Seeder
                     $votesToCast = 1;
                 }
 
+                // Random candidates for this position
                 $candidates = Candidate::where('position_code', $position->code)
                     ->inRandomOrder()
                     ->take($votesToCast)
@@ -56,6 +58,7 @@ class BallotSeeder extends Seeder
                 );
             });
 
+            // Store the ballot using the SubmitBallot action
             SubmitBallot::run(
                 precinctId: $precinct->id,
                 code: sprintf('BAL-%03d', $i),

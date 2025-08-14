@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\Position;
 
@@ -13,7 +12,7 @@ class PositionSeeder extends Seeder
      */
     public function run(): void
     {
-        Position::factory()->createMany([
+        $positions = [
             // National positions
             [
                 'code' => 'PRESIDENT',
@@ -23,7 +22,7 @@ class PositionSeeder extends Seeder
             ],
             [
                 'code' => 'VICE-PRESIDENT',
-                'name' => 'Vice‑President of the Philippines',
+                'name' => 'Vice-President of the Philippines',
                 'level' => 'national',
                 'count' => 1,
             ],
@@ -55,7 +54,7 @@ class PositionSeeder extends Seeder
             ],
             [
                 'code' => 'VICE-GOVERNOR-PH-ILN',
-                'name' => 'Vice‑Governor of Ilocos Norte',
+                'name' => 'Vice-Governor of Ilocos Norte',
                 'level' => 'local',
                 'count' => 1,
             ],
@@ -75,7 +74,7 @@ class PositionSeeder extends Seeder
             ],
             [
                 'code' => 'VICE-MAYOR-PH-ILN-CURRIMAO',
-                'name' => 'Vice‑Mayor of Currimao, Ilocos Norte',
+                'name' => 'Vice-Mayor of Currimao, Ilocos Norte',
                 'level' => 'local',
                 'count' => 1,
             ],
@@ -91,6 +90,13 @@ class PositionSeeder extends Seeder
                 'level' => 'national',
                 'count' => 1,
             ],
-        ]);
+        ];
+
+        foreach ($positions as $pos) {
+            Position::updateOrCreate(
+                ['code' => $pos['code']], // ensure no duplicates
+                $pos
+            );
+        }
     }
 }

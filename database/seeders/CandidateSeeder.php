@@ -108,9 +108,9 @@ class CandidateSeeder extends Seeder
                     $title = $movieTitles->shift() ?? 'Party ' . Str::random(5);
                     $alias = Str::slug($title, '_');
                     $candidates[] = [
-                        'code' => Str::uuid()->toString(),
-                        'name' => $title,
-                        'alias' => $alias,
+                        'code'          => Str::uuid()->toString(),
+                        'name'          => $title,
+                        'alias'         => $alias,
                         'position_code' => $position->code,
                     ];
                 } else {
@@ -124,15 +124,21 @@ class CandidateSeeder extends Seeder
                         ->join('');
 
                     $candidates[] = [
-                        'code' => strtoupper($alias) . '_' . Str::random(2),
-                        'name' => $name,
-                        'alias' => $alias,
+                        'code'          => strtoupper($alias) . '_' . Str::random(2),
+                        'name'          => $name,
+                        'alias'         => $alias,
                         'position_code' => $position->code,
                     ];
                 }
             }
         });
 
-        Candidate::factory()->createMany($candidates);
+        // Persist without using factories/Faker.
+        foreach ($candidates as $c) {
+            Candidate::updateOrCreate(
+                ['code' => $c['code']], // unique key to avoid duplicates on reseed
+                $c
+            );
+        }
     }
 }
