@@ -35,7 +35,7 @@ use App\Models\Precinct;
  *
  * UTILITIES:
  * - `_b64uToBin()` – Decodes base64-url strings to binary.
- * - `_norm()` – Normalizes associative/ordered arrays for comparison.
+ * - `normalizeArray()` – Normalizes associative/ordered arrays for comparison.
  * - `_buildMinimalPayload()` – Extracts only the minimal fields from
  *   `ElectionReturnData` for minimal payload scenarios.
  * - `uniqueDir()` – Generates a unique export folder name per test run.
@@ -58,14 +58,6 @@ function _b64uToBin(string $s): string {
     $pad = strlen($s) % 4;
     if ($pad) $s .= str_repeat('=', 4 - $pad);
     return base64_decode(strtr($s, '-_', '+/')) ?: '';
-}
-
-function _norm(mixed $v): mixed {
-    if (!is_array($v)) return $v;
-    foreach ($v as $k => $vv) $v[$k] = _norm($vv);
-    $assoc = array_keys($v) !== range(0, count($v) - 1);
-    if ($assoc) ksort($v);
-    return $v;
 }
 
 /** Build the “minimal” JSON payload (mirror of controller) */
@@ -178,7 +170,7 @@ it('HTTP minimal payload hits ~4 chunks and round-trips (PNG on)', function () {
     $decoded  = json_decode($inflated, true);
 
     $expected = _buildMinimalPayload($dto);
-    expect(_norm($decoded))->toEqual(_norm($expected));
+    expect(normalizeArray($decoded))->toEqual(normalizeArray($expected));
 });
 
 it('HTTP minimal payload (~4 chunks) persists files and round-trips', function () {
@@ -230,7 +222,7 @@ it('HTTP minimal payload (~4 chunks) persists files and round-trips', function (
     $decoded  = json_decode($inflated, true);
 
     $expected = _buildMinimalPayload($dto);
-    expect(_norm($decoded))->toEqual(_norm($expected));
+    expect(normalizeArray($decoded))->toEqual(normalizeArray($expected));
 
     // ---- visibility: tell you where the files are ----
     $abs = Storage::disk('local')->path($rel);
@@ -287,7 +279,7 @@ it('HTTP full payload persists text and round-trips from disk (no PNGs)', functi
     $decoded  = json_decode($inflated, true);
 
     $expected = json_decode($dto->toJson(), true);
-    expect(_norm($decoded))->toEqual(_norm($expected));
+    expect(normalizeArray($decoded))->toEqual(normalizeArray($expected));
 
     // Show where they landed
     $abs = Storage::disk('local')->path($rel);
@@ -323,7 +315,7 @@ it('HTTP full payload also round-trips with desired_chunks', function () {
     $decoded  = json_decode($inflated, true);
 
     $expected = json_decode($dto->toJson(), true);
-    expect(_norm($decoded))->toEqual(_norm($expected));
+    expect(normalizeArray($decoded))->toEqual(normalizeArray($expected));
 })->skip();
 
 /** Persistence with minimal payload and desired_chunks */
@@ -372,7 +364,7 @@ it('HTTP minimal+persist writes files and round-trips from disk', function () {
     $decoded  = json_decode($inflated, true);
 
     $expected = _buildMinimalPayload($dto);
-    expect(_norm($decoded))->toEqual(_norm($expected));
+    expect(normalizeArray($decoded))->toEqual(normalizeArray($expected));
 
     // Show persisted location
     $abs = Storage::disk('local')->path($rel);

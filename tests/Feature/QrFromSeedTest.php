@@ -103,27 +103,6 @@ function minimalFromDto(ElectionReturnData $dto): array {
     return $result;
 }
 
-/**
- * Make arrays comparable by:
- * - recursively normalize values
- * - sort associative arrays by keys
- * (Keeps indexed arrays order intact.)
- */
-function normalizeArray(mixed $value): mixed {
-    if (!is_array($value)) return $value;
-
-    foreach ($value as $k => $v) {
-        $value[$k] = normalizeArray($v);
-    }
-
-    $isAssoc = array_keys($value) !== range(0, count($value) - 1);
-    if ($isAssoc) {
-        ksort($value);
-    }
-
-    return $value;
-}
-
 uses(RefreshDatabase::class);
 
 beforeEach(function () {

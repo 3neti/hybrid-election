@@ -53,16 +53,31 @@ class DecodeQrChunks
                 abort(422, 'Invalid index/total segment.');
             }
             $i = (int)$m[1]; $N = (int)$m[2];
-            if ($i < 1 || $N < 1) abort(422, 'Index/total must be positive.');
+            if ($i < 1 || $N < 1) {
+                abort(422, 'Index/total must be positive.');
+            }
+            if ($i > $N) { // NEW: guard i <= N
+                abort(422, "Index {$i} cannot exceed total {$N}.");
+            }
 
             // Cross-check consistency
             $code    ??= $c;
             $version ??= $ver;
             $total   ??= $N;
 
-            if ($c !== $code)    abort(422, "Mismatched code '{$c}' (expected '{$code}').");
+            if ($c !== $code)      abort(422, "Mismatched code '{$c}' (expected '{$code}').");
             if ($ver !== $version) abort(422, "Mismatched version '{$ver}' (expected '{$version}').");
-            if ($N !== $total)   abort(422, "Mismatched total {$N} (expected {$total}).");
+            if ($N !== $total)     abort(422, "Mismatched total {$N} (expected {$total}).");
+
+            // NEW: duplicate index handling:
+            // - ignore exact duplicate
+            // - reject conflicting duplicate
+            if (array_key_exists($i, $records)) {
+                if ($records[$i] !== $payload) {
+                    abort(422, "Duplicate chunk #{$i} has conflicting payload.");
+                }
+                continue; // exact dup, ignore
+            }
 
             // keep the payload only (we’ll join later)
             $records[$i] = $payload;
