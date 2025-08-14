@@ -170,7 +170,7 @@ it('HTTP minimal payload hits ~4 chunks and round-trips (PNG on)', function () {
     $decoded  = json_decode($inflated, true);
 
     $expected = _buildMinimalPayload($dto);
-    expect(normalizeArray($decoded))->toEqual(normalizeArray($expected));
+    expect($decoded)->toEqualNormalized($expected);
 });
 
 it('HTTP minimal payload (~4 chunks) persists files and round-trips', function () {
@@ -222,7 +222,7 @@ it('HTTP minimal payload (~4 chunks) persists files and round-trips', function (
     $decoded  = json_decode($inflated, true);
 
     $expected = _buildMinimalPayload($dto);
-    expect(normalizeArray($decoded))->toEqual(normalizeArray($expected));
+    expect($decoded)->toEqualNormalized($expected);
 
     // ---- visibility: tell you where the files are ----
     $abs = Storage::disk('local')->path($rel);
@@ -279,7 +279,7 @@ it('HTTP full payload persists text and round-trips from disk (no PNGs)', functi
     $decoded  = json_decode($inflated, true);
 
     $expected = json_decode($dto->toJson(), true);
-    expect(normalizeArray($decoded))->toEqual(normalizeArray($expected));
+    expect($decoded)->toEqualNormalized($expected);
 
     // Show where they landed
     $abs = Storage::disk('local')->path($rel);
@@ -315,7 +315,7 @@ it('HTTP full payload also round-trips with desired_chunks', function () {
     $decoded  = json_decode($inflated, true);
 
     $expected = json_decode($dto->toJson(), true);
-    expect(normalizeArray($decoded))->toEqual(normalizeArray($expected));
+    expect($decoded)->toEqualNormalized($expected);
 })->skip();
 
 /** Persistence with minimal payload and desired_chunks */
@@ -364,7 +364,7 @@ it('HTTP minimal+persist writes files and round-trips from disk', function () {
     $decoded  = json_decode($inflated, true);
 
     $expected = _buildMinimalPayload($dto);
-    expect(normalizeArray($decoded))->toEqual(normalizeArray($expected));
+    expect($decoded)->toEqualNormalized($expected);
 
     // Show persisted location
     $abs = Storage::disk('local')->path($rel);

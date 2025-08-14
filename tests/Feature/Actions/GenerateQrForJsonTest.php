@@ -31,7 +31,7 @@ it('encodes json to chunked QR payload(s) and decodes back', function () {
         ->map(fn ($c) => explode('|', $c['text'], 5)[4]) // take the <payload> part
         ->implode('');
 
-    $inflated = gzinflate(GenerateQrForJson::b64urlDecode($joinedPayload));
+    $inflated = gzinflate(b64urlDecode($joinedPayload));
     $decoded  = json_decode($inflated, true);
 
     expect($decoded)->toMatchArray($payload);
@@ -88,7 +88,7 @@ it('encodes & decodes a large election return (25 positions, 200 candidates) via
         })
         ->implode('');
 
-    $inflated = gzinflate(GenerateQrForJson::b64urlDecode($joinedPayload));
+    $inflated = gzinflate(b64urlDecode($joinedPayload));
     $decoded  = json_decode($inflated, true);
 
     // Round-trip integrity

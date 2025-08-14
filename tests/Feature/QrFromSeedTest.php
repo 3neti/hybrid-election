@@ -8,12 +8,6 @@ use App\Data\ElectionReturnData;
 use App\Models\Precinct;
 
 /** ---------- helpers ---------- */
-function b64urlDecode(string $txt): string {
-    $pad = strlen($txt) % 4;
-    if ($pad) $txt .= str_repeat('=', 4 - $pad);
-    return base64_decode(strtr($txt, '-_', '+/')) ?: '';
-}
-
 /** Use Spatie Data JSON serialization so `with()` (last_ballot) is applied */
 function dtoJsonArray(\Spatie\LaravelData\Data $dto): array {
     return json_decode($dto->toJson(), true);
@@ -133,8 +127,7 @@ it('single-QR (action/full): decodes and equals the ER JSON', function () {
     $inflated = gzinflate(b64urlDecode($payload));
     $decoded  = json_decode($inflated, true);
 
-    expect(normalizeArray($decoded))
-        ->toEqual(normalizeArray($original));
+    expect($decoded)->toEqualNormalized($original);
 });
 
 it('multi-QR (action/full): decodes and equals the ER JSON', function () {
@@ -162,8 +155,7 @@ it('multi-QR (action/full): decodes and equals the ER JSON', function () {
     $inflated = gzinflate(b64urlDecode($joined));
     $decoded  = json_decode($inflated, true);
 
-    expect(normalizeArray($decoded))
-        ->toEqual(normalizeArray($original));
+    expect($decoded)->toEqualNormalized($original);
 });
 
 /** ───────────────────────── HTTP (full payload) ───────────────────────── */
@@ -185,8 +177,9 @@ it('HTTP single-QR (full): decodes and equals the ER JSON', function () {
     $inflated = gzinflate(b64urlDecode($payload));
     $decoded  = json_decode($inflated, true);
 
-    expect(normalizeArray($decoded))
-        ->toEqual(normalizeArray(dtoJsonArray($erDto)));
+    $erDtoArray = dtoJsonArray($erDto);
+    expect($decoded)
+        ->toEqualNormalized($erDtoArray);
 });
 
 it('HTTP multi-QR (full): decodes and equals the ER JSON', function () {
@@ -208,8 +201,10 @@ it('HTTP multi-QR (full): decodes and equals the ER JSON', function () {
     $inflated = gzinflate(b64urlDecode($joined));
     $decoded  = json_decode($inflated, true);
 
-    expect(normalizeArray($decoded))
-        ->toEqual(normalizeArray(dtoJsonArray($erDto)));
+
+    $erDtoArray = dtoJsonArray($erDto);
+    expect($decoded)
+        ->toEqualNormalized($erDtoArray);
 });
 
 /** ───────────────────────── HTTP (minimal payload) ───────────────────────── */
@@ -235,8 +230,10 @@ it('HTTP multi-QR (minimal): decodes and equals the minimal JSON', function () {
     $decoded  = json_decode($inflated, true);
 
     // Compare against our local minimal shape
-    expect(normalizeArray($decoded))
-        ->toEqual(normalizeArray(minimalFromDto($erDto)));
+
+    $erDtoArray = minimalFromDto($erDto);
+    expect($decoded)
+        ->toEqualNormalized($erDtoArray);
 });
 
 /** ───────────────────────── persist tests ───────────────────────── */
@@ -289,8 +286,10 @@ it('HTTP multi-QR (minimal) persists chunks & PNGs and files round-trip', functi
     $inflated = gzinflate(b64urlDecode($joined));
     $decoded  = json_decode($inflated, true);
 
-    expect(normalizeArray($decoded))
-        ->toEqual(normalizeArray(minimalFromDto($erDto)));
+
+    $erDtoArray = minimalFromDto($erDto);
+    expect($decoded)
+        ->toEqualNormalized($erDtoArray);
 });
 
 it('HTTP single-QR (minimal) persists text (no PNG) and file round-trips', function () {
@@ -329,6 +328,8 @@ it('HTTP single-QR (minimal) persists text (no PNG) and file round-trips', funct
     $inflated = gzinflate(b64urlDecode($payload));
     $decoded  = json_decode($inflated, true);
 
-    expect(normalizeArray($decoded))
-        ->toEqual(normalizeArray(minimalFromDto($erDto)));
+
+    $erDtoArray = minimalFromDto($erDto);
+    expect($decoded)
+        ->toEqualNormalized($erDtoArray);
 });

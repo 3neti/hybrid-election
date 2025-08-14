@@ -2,7 +2,6 @@
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use function Pest\Laravel\getJson;
-use App\Actions\GenerateQrForJson;
 use App\Models\ElectionReturn;
 use App\Models\Precinct;
 
@@ -63,7 +62,7 @@ it('encodes a reassemble payload in the chunks', function () {
 
     $payloadJoined = implode('', $pieces);
 
-    $inflated = gzinflate(GenerateQrForJson::b64urlDecode($payloadJoined));
+    $inflated = gzinflate(b64urlDecode($payloadJoined));
     $decoded  = json_decode($inflated, true);
 
     expect($decoded)->toBeArray()

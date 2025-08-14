@@ -356,13 +356,6 @@ class GenerateQrForJson
         return rtrim(strtr(base64_encode($bin), '+/', '-_'), '=');
     }
 
-    public static function b64urlDecode(string $txt): string
-    {
-        $pad = strlen($txt) % 4;
-        if ($pad) $txt .= str_repeat('=', 4 - $pad);
-        return base64_decode(strtr($txt, '-_', '+/')) ?: '';
-    }
-
     /**
      * Persist:
      *  - manifest.json (the API/handle() result)
