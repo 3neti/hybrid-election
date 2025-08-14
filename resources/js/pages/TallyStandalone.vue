@@ -3,6 +3,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import { inflateRaw } from 'pako'
 import ErTallyView, { type ElectionReturnData } from '@/components/ErTallyView.vue'
 import ElectionReturn from '@/components/ElectionReturn.vue';
+import ErQrCapture from '@/components/ErQrCapture.vue' // NEW: scanner
 
 /* ───────────────── Types ───────────────── */
 interface QrChunkItem {
@@ -76,6 +77,17 @@ const assembleError = ref<string | null>(null)
 // optional PNG bulk helpers (thumbnails area)
 const pngBulkInput = ref<string>('')      // one data URI per line
 const textBulkInput = ref<string>('')     // one ER|v1|... line per row
+
+/* ───────────── NEW: camera-capture integration (minimal) ───────────── */
+const showScanner = ref(false)
+const capturedLines = ref<string[]>([])
+function onResolvedEr(json: any, meta?: { lines?: string[] }) {
+    // Fill JSON + preview, close scanner; keep existing chunk UI untouched
+    rawJson.value = JSON.stringify(json, null, 2)
+    parseAndPreview()
+    showScanner.value = false
+    capturedLines.value = meta?.lines ?? []
+}
 
 /* ───────────────── Chunk ingestion / assembly ───────────────── */
 function addChunkText(line: string) {
@@ -174,12 +186,23 @@ watch(rawJson, (v, old) => {
 <template>
     <div class="max-w-6xl mx-auto p-6 space-y-8">
         <header class="flex items-center justify-between">
-            <h1 class="text-2xl font-bold">QR Tally — Stand‑alone Viewer</h1>
+            <h1 class="text-2xl font-bold">QR Tally — Stand-alone Viewer</h1>
             <div class="flex gap-2">
+                <!-- NEW: open scanner -->
+                <button class="px-3 py-2 rounded bg-emerald-600 text-white" @click="showScanner = true">Scan QR Codes</button>
                 <button class="px-3 py-2 rounded bg-gray-200" @click="() => { rawJson=''; er=null; parseError=null }">Clear JSON</button>
                 <button class="px-3 py-2 rounded bg-gray-200" @click="resetChunks">Reset Chunks</button>
             </div>
         </header>
+
+        <!-- NEW: capture component (kept simple; style/overlay later as you like) -->
+        <section v-if="showScanner" class="border rounded p-4">
+            <ErQrCapture
+                @resolved-er="onResolvedEr"
+                @update:chunks="(ls:any) => { capturedLines = ls }"
+                @cancel="showScanner = false"
+            />
+        </section>
 
         <!-- Row: JSON path (left) + Chunk helper (right) -->
         <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -208,7 +231,7 @@ watch(rawJson, (v, old) => {
                     <h2 class="text-sm font-semibold text-gray-700">QR Chunk Helper</h2>
                     <p class="text-xs text-gray-500">
                         Enter each QR chunk’s full text (the entire <code>ER|v1|CODE|i/N|&lt;payload&gt;</code> line).
-                        When all chunks are present, the JSON box will auto‑fill and preview will update.
+                        When all chunks are present, the JSON box will auto-fill and preview will update.
                     </p>
                 </div>
 
@@ -261,7 +284,7 @@ watch(rawJson, (v, old) => {
                             <button class="px-3 py-2 rounded bg-gray-200" @click="pngBulkInput = ''">Clear</button>
                         </div>
                         <p class="text-[11px] text-gray-500">
-                            PNGs are shown as thumbnails here. Client‑side decoding from PNG → text isn’t wired
+                            PNGs are shown as thumbnails here. Client-side decoding from PNG → text isn’t wired
                             (use your backend or camera scanner for that). You can still paste the chunk texts above.
                         </p>
                     </div>
@@ -308,13 +331,14 @@ watch(rawJson, (v, old) => {
             <ErTallyView :er="er" />
         </section>
         <section v-else class="text-sm text-gray-600">
-            Paste the decoded JSON and click <b>Preview</b>, or enter all QR chunk texts (the viewer will auto‑assemble into JSON).
+            Paste the decoded JSON and click <b>Preview</b>, or enter all QR chunk texts (the viewer will auto-assemble into JSON).
         </section>
         <section v-if="er" class="border rounded p-4">
             <ElectionReturn
                 :er="er"
                 paper="legal"
                 :basePt="10"
+                :desired-chunks="16"
             />
         </section>
     </div>
