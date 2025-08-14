@@ -32,3 +32,7 @@ Route::get('/qr/election-return/{code}', GenerateQrForJson::class)
 use App\Actions\DecodeQrChunks;
 
 Route::post('/qr/decode', DecodeQrChunks::class)->name('qr.decode');
+
+use App\Actions\GetSampleERjson;
+
+Route::get('/sample-er', GetSampleERjson::class)->name('er.sample');

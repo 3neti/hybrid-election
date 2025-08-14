@@ -1,0 +1,1560 @@
+{
+    "id": "0198833e-1ba8-73c7-b770-fcd5ddbf8530",
+    "code": "DJOFE5FEQJ9Z",
+    "precinct": {
+        "id": "8b41978f-58d8-4ea2-9443-d565675e79b0",
+        "code": "CURRIMAO-001",
+        "location_name": "Currimao Central School",
+        "latitude": 17.993217,
+        "longitude": 120.488902,
+        "electoral_inspectors": [
+            {
+                "id": "28c19679-69c1-4dad-875e-447d6847a85a",
+                "name": "Juan dela Cruz",
+                "role": "chairperson"
+            },
+            {
+                "id": "e4485156-2753-4042-8d48-d325b3dc37bc",
+                "name": "Maria Santos",
+                "role": "member"
+            },
+            {
+                "id": "9df11bbd-3611-4147-91af-611406e54c11",
+                "name": "Pedro Reyes",
+                "role": "member"
+            }
+        ]
+    },
+    "tallies": [
+        {
+            "position_code": "PRESIDENT",
+            "candidate_code": "JDL_ea",
+            "candidate_name": "Joey de Leon",
+            "count": 30
+        },
+        {
+            "position_code": "PRESIDENT",
+            "candidate_code": "KW_aS",
+            "candidate_name": "Kate Winslet",
+            "count": 28
+        },
+        {
+            "position_code": "PRESIDENT",
+            "candidate_code": "JB_jw",
+            "candidate_name": "John Boyega",
+            "count": 27
+        },
+        {
+            "position_code": "PRESIDENT",
+            "candidate_code": "JB_oV",
+            "candidate_name": "Josh Brolin",
+            "count": 25
+        },
+        {
+            "position_code": "PRESIDENT",
+            "candidate_code": "JR_vN",
+            "candidate_name": "Jeremy Renner",
+            "count": 25
+        },
+        {
+            "position_code": "PRESIDENT",
+            "candidate_code": "ER_ds",
+            "candidate_name": "Eddie Redmayne",
+            "count": 20
+        },
+        {
+            "position_code": "PRESIDENT",
+            "candidate_code": "JH_WQ",
+            "candidate_name": "Jennifer Hudson",
+            "count": 19
+        },
+        {
+            "position_code": "PRESIDENT",
+            "candidate_code": "RW_gh",
+            "candidate_name": "Reese Witherspoon",
+            "count": 17
+        },
+        {
+            "position_code": "PRESIDENT",
+            "candidate_code": "KA_gv",
+            "candidate_name": "Kyline Alcantara",
+            "count": 14
+        },
+        {
+            "position_code": "VICE-PRESIDENT",
+            "candidate_code": "FP_qd",
+            "candidate_name": "Florence Pugh",
+            "count": 26
+        },
+        {
+            "position_code": "VICE-PRESIDENT",
+            "candidate_code": "JH_34",
+            "candidate_name": "Jhong Hilario",
+            "count": 25
+        },
+        {
+            "position_code": "VICE-PRESIDENT",
+            "candidate_code": "JG_id",
+            "candidate_name": "Jake Gyllenhaal",
+            "count": 24
+        },
+        {
+            "position_code": "VICE-PRESIDENT",
+            "candidate_code": "KR_Q9",
+            "candidate_name": "Keanu Reeves",
+            "count": 24
+        },
+        {
+            "position_code": "VICE-PRESIDENT",
+            "candidate_code": "JS_ez",
+            "candidate_name": "J.K. Simmons",
+            "count": 24
+        },
+        {
+            "position_code": "VICE-PRESIDENT",
+            "candidate_code": "EM_3p",
+            "candidate_name": "Empoy Marquez",
+            "count": 21
+        },
+        {
+            "position_code": "VICE-PRESIDENT",
+            "candidate_code": "BM_ip",
+            "candidate_name": "Belle Mariano",
+            "count": 20
+        },
+        {
+            "position_code": "VICE-PRESIDENT",
+            "candidate_code": "KC_UJ",
+            "candidate_name": "Kim Chiu",
+            "count": 19
+        },
+        {
+            "position_code": "VICE-PRESIDENT",
+            "candidate_code": "LS_Ti",
+            "candidate_name": "Liza Soberano",
+            "count": 17
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "AA_Xa",
+            "candidate_name": "Aljur Abrenica",
+            "count": 51
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "OA_3q",
+            "candidate_name": "Ogie Alcasid",
+            "count": 50
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "MDT_yi",
+            "candidate_name": "Moira Dela Torre",
+            "count": 47
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "WS_F6",
+            "candidate_name": "Will Smith",
+            "count": 46
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "PD_cJ",
+            "candidate_name": "Paul Dano",
+            "count": 46
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "JL_J5",
+            "candidate_name": "Jared Leto",
+            "count": 46
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "RM_wK",
+            "candidate_name": "Ruru Madrid",
+            "count": 45
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "SG_Qr",
+            "candidate_name": "Stephen Graham",
+            "count": 45
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "AG_00",
+            "candidate_name": "Andrew Garfield",
+            "count": 44
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "JC_ZD",
+            "candidate_name": "Jessica Chastain",
+            "count": 44
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "EN_Mk",
+            "candidate_name": "Edward Norton",
+            "count": 44
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "AJ_Rw",
+            "candidate_name": "Angelina Jolie",
+            "count": 43
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "JM_Vw",
+            "candidate_name": "Jennylyn Mercado",
+            "count": 42
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "MC_6X",
+            "candidate_name": "Marion Cotillard",
+            "count": 42
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "LDL_tR",
+            "candidate_name": "Lotlot de Leon",
+            "count": 42
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "DP_Y9",
+            "candidate_name": "Daniel Padilla",
+            "count": 41
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "JM_yx",
+            "candidate_name": "Jason Momoa",
+            "count": 41
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "BP_Qa",
+            "candidate_name": "Brad Pitt",
+            "count": 40
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "SB_cK",
+            "candidate_name": "Sandra Bullock",
+            "count": 40
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "JF_Lh",
+            "candidate_name": "Jamie Foxx",
+            "count": 39
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "AA_c8",
+            "candidate_name": "Amy Adams",
+            "count": 39
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "SG_i4",
+            "candidate_name": "Sarah Geronimo",
+            "count": 39
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "BM_e8",
+            "candidate_name": "Ben Mendelsohn",
+            "count": 38
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "TT_n9",
+            "candidate_name": "Tessa Thompson",
+            "count": 38
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "MR_CF",
+            "candidate_name": "Mark Ruffalo",
+            "count": 38
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "CA_lC",
+            "candidate_name": "Carla Abellana",
+            "count": 37
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "MS_10",
+            "candidate_name": "Maja Salvador",
+            "count": 37
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "TH_mc",
+            "candidate_name": "Tom Hardy",
+            "count": 37
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "JB_n7",
+            "candidate_name": "Julia Barretto",
+            "count": 37
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "CB_Da",
+            "candidate_name": "Chadwick Boseman",
+            "count": 37
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "AG_5i",
+            "candidate_name": "Alex Gonzaga",
+            "count": 37
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "MF_be",
+            "candidate_name": "Michael Fassbender",
+            "count": 37
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "EJ_sC",
+            "candidate_name": "Elisse Joson",
+            "count": 36
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "LN_Bg",
+            "candidate_name": "Lupita Nyong’o",
+            "count": 36
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "BV_pq",
+            "candidate_name": "Buboy Villar",
+            "count": 36
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "JL_8B",
+            "candidate_name": "Jennifer Lawrence",
+            "count": 35
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "VS_7D",
+            "candidate_name": "Vic Sotto",
+            "count": 35
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "JB_b9",
+            "candidate_name": "Javier Bardem",
+            "count": 35
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "MY_Mr",
+            "candidate_name": "Michelle Yeoh",
+            "count": 35
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "CT_15",
+            "candidate_name": "Charlize Theron",
+            "count": 35
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "TG_5I",
+            "candidate_name": "Tonton Gutierrez",
+            "count": 34
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "AR_ep",
+            "candidate_name": "Alden Richards",
+            "count": 34
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "BDT_GX",
+            "candidate_name": "Benicio Del Toro",
+            "count": 34
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "CM_wl",
+            "candidate_name": "Coco Martin",
+            "count": 33
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "RP_jM",
+            "candidate_name": "Rica Peralejo",
+            "count": 33
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "KA_BM",
+            "candidate_name": "Kris Aquino",
+            "count": 33
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "AB_Q1",
+            "candidate_name": "Andrea Brillantes",
+            "count": 33
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "DO_H6",
+            "candidate_name": "David Oyelowo",
+            "count": 32
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "MF_ZG",
+            "candidate_name": "Morgan Freeman",
+            "count": 32
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "HM_h7",
+            "candidate_name": "Helen Mirren",
+            "count": 31
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "VS_Qg",
+            "candidate_name": "Vilma Santos",
+            "count": 31
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "TS_oN",
+            "candidate_name": "Tito Sotto",
+            "count": 31
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "JD_Ig",
+            "candidate_name": "Johnny Depp",
+            "count": 31
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "SF_Go",
+            "candidate_name": "Seth Fedelin",
+            "count": 30
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "HB_mL",
+            "candidate_name": "Halle Berry",
+            "count": 28
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "IP_My",
+            "candidate_name": "Iñigo Pascual",
+            "count": 26
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "XL_rK",
+            "candidate_name": "Xian Lim",
+            "count": 25
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "NP_bh",
+            "candidate_name": "Natalie Portman",
+            "count": 24
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "GA_dM",
+            "candidate_name": "Gerald Anderson",
+            "count": 24
+        },
+        {
+            "position_code": "SENATOR",
+            "candidate_code": "NL_9Z",
+            "candidate_name": "Nadine Lustre",
+            "count": 24
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-ILN-1",
+            "candidate_code": "AC_zQ",
+            "candidate_name": "Anne Curtis",
+            "count": 43
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-ILN-1",
+            "candidate_code": "KE_Zi",
+            "candidate_name": "Kiko Estrada",
+            "count": 33
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-ILN-1",
+            "candidate_code": "JR_iz",
+            "candidate_name": "James Reid",
+            "count": 31
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-ILN-1",
+            "candidate_code": "SJ_ZX",
+            "candidate_name": "Scarlett Johansson",
+            "count": 30
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-ILN-1",
+            "candidate_code": "PA_wP",
+            "candidate_name": "Paulo Avelino",
+            "count": 23
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-ILN-1",
+            "candidate_code": "PH_Lk",
+            "candidate_name": "Pepe Herrera",
+            "count": 21
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-ILN-1",
+            "candidate_code": "DJ_7y",
+            "candidate_name": "Dakota Johnson",
+            "count": 19
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-ILN-2",
+            "candidate_code": "JB_P5",
+            "candidate_name": "Jeff Bridges",
+            "count": 33
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-ILN-2",
+            "candidate_code": "EB_Uw",
+            "candidate_name": "Emily Blunt",
+            "count": 28
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-ILN-2",
+            "candidate_code": "NK_MR",
+            "candidate_name": "Nicole Kidman",
+            "count": 27
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-ILN-2",
+            "candidate_code": "A_lF",
+            "candidate_name": "Awkwafina",
+            "count": 27
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-ILN-2",
+            "candidate_code": "RDJ_uK",
+            "candidate_name": "Robert Downey Jr.",
+            "count": 26
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-ILN-2",
+            "candidate_code": "DK_Xm",
+            "candidate_name": "Daniel Kaluuya",
+            "count": 26
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-ILN-2",
+            "candidate_code": "KT_X6",
+            "candidate_name": "KZ Tandingan",
+            "count": 21
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-ILN-2",
+            "candidate_code": "RW_HH",
+            "candidate_name": "Robin Wright",
+            "count": 12
+        },
+        {
+            "position_code": "GOVERNOR-PH-ILN",
+            "candidate_code": "AL_ip",
+            "candidate_name": "Angel Locsin",
+            "count": 26
+        },
+        {
+            "position_code": "GOVERNOR-PH-ILN",
+            "candidate_code": "JR_yT",
+            "candidate_name": "Julia Roberts",
+            "count": 25
+        },
+        {
+            "position_code": "GOVERNOR-PH-ILN",
+            "candidate_code": "MS_A3",
+            "candidate_name": "Michael Shannon",
+            "count": 24
+        },
+        {
+            "position_code": "GOVERNOR-PH-ILN",
+            "candidate_code": "MAF_QR",
+            "candidate_name": "Mark Anthony Fernandez",
+            "count": 23
+        },
+        {
+            "position_code": "GOVERNOR-PH-ILN",
+            "candidate_code": "AD_yl",
+            "candidate_name": "Adam Driver",
+            "count": 22
+        },
+        {
+            "position_code": "GOVERNOR-PH-ILN",
+            "candidate_code": "JAS_59",
+            "candidate_name": "Judy Ann Santos",
+            "count": 22
+        },
+        {
+            "position_code": "GOVERNOR-PH-ILN",
+            "candidate_code": "BF_Sn",
+            "candidate_name": "Barbie Forteza",
+            "count": 17
+        },
+        {
+            "position_code": "GOVERNOR-PH-ILN",
+            "candidate_code": "KB_IG",
+            "candidate_name": "Kathryn Bernardo",
+            "count": 17
+        },
+        {
+            "position_code": "GOVERNOR-PH-ILN",
+            "candidate_code": "GB_7h",
+            "candidate_name": "Gretchen Barretto",
+            "count": 13
+        },
+        {
+            "position_code": "GOVERNOR-PH-ILN",
+            "candidate_code": "RG_xM",
+            "candidate_name": "Richard Gutierrez",
+            "count": 11
+        },
+        {
+            "position_code": "VICE-GOVERNOR-PH-ILN",
+            "candidate_code": "HJ_iM",
+            "candidate_name": "Hugh Jackman",
+            "count": 27
+        },
+        {
+            "position_code": "VICE-GOVERNOR-PH-ILN",
+            "candidate_code": "RM_TC",
+            "candidate_name": "Rachel McAdams",
+            "count": 24
+        },
+        {
+            "position_code": "VICE-GOVERNOR-PH-ILN",
+            "candidate_code": "DC_9f",
+            "candidate_name": "Daniel Craig",
+            "count": 23
+        },
+        {
+            "position_code": "VICE-GOVERNOR-PH-ILN",
+            "candidate_code": "ES_zP",
+            "candidate_name": "Emma Stone",
+            "count": 22
+        },
+        {
+            "position_code": "VICE-GOVERNOR-PH-ILN",
+            "candidate_code": "DC_L4",
+            "candidate_name": "Don Cheadle",
+            "count": 20
+        },
+        {
+            "position_code": "VICE-GOVERNOR-PH-ILN",
+            "candidate_code": "CH_Eo",
+            "candidate_name": "Chris Hemsworth",
+            "count": 20
+        },
+        {
+            "position_code": "VICE-GOVERNOR-PH-ILN",
+            "candidate_code": "KD_7L",
+            "candidate_name": "Kisses Delavin",
+            "count": 20
+        },
+        {
+            "position_code": "VICE-GOVERNOR-PH-ILN",
+            "candidate_code": "MA_Aa",
+            "candidate_name": "Morissette Amon",
+            "count": 17
+        },
+        {
+            "position_code": "VICE-GOVERNOR-PH-ILN",
+            "candidate_code": "DR_RT",
+            "candidate_name": "Daniel Radcliffe",
+            "count": 14
+        },
+        {
+            "position_code": "VICE-GOVERNOR-PH-ILN",
+            "candidate_code": "MD_F8",
+            "candidate_name": "Matt Damon",
+            "count": 13
+        },
+        {
+            "position_code": "BOARD-PH-ILN",
+            "candidate_code": "TH_0O",
+            "candidate_name": "Tom Holland",
+            "count": 106
+        },
+        {
+            "position_code": "BOARD-PH-ILN",
+            "candidate_code": "JDL_MV",
+            "candidate_name": "Jane de Leon",
+            "count": 105
+        },
+        {
+            "position_code": "BOARD-PH-ILN",
+            "candidate_code": "GV_yv",
+            "candidate_name": "Gary Valenciano",
+            "count": 102
+        },
+        {
+            "position_code": "BOARD-PH-ILN",
+            "candidate_code": "TS_93",
+            "candidate_name": "Tilda Swinton",
+            "count": 96
+        },
+        {
+            "position_code": "BOARD-PH-ILN",
+            "candidate_code": "NA_Ka",
+            "candidate_name": "Nora Aunor",
+            "count": 96
+        },
+        {
+            "position_code": "BOARD-PH-ILN",
+            "candidate_code": "RW_hx",
+            "candidate_name": "Rachel Weisz",
+            "count": 92
+        },
+        {
+            "position_code": "BOARD-PH-ILN",
+            "candidate_code": "DT_vI",
+            "candidate_name": "Dennis Trillo",
+            "count": 91
+        },
+        {
+            "position_code": "BOARD-PH-ILN",
+            "candidate_code": "AH_Vb",
+            "candidate_name": "Anne Hathaway",
+            "count": 90
+        },
+        {
+            "position_code": "BOARD-PH-ILN",
+            "candidate_code": "HP_2I",
+            "candidate_name": "Heaven Peralejo",
+            "count": 89
+        },
+        {
+            "position_code": "BOARD-PH-ILN",
+            "candidate_code": "KP_nA",
+            "candidate_name": "Kylie Padilla",
+            "count": 85
+        },
+        {
+            "position_code": "MAYOR-PH-ILN-CURRIMAO",
+            "candidate_code": "MA_VB",
+            "candidate_name": "Mahershala Ali",
+            "count": 43
+        },
+        {
+            "position_code": "MAYOR-PH-ILN-CURRIMAO",
+            "candidate_code": "MN_Vt",
+            "candidate_name": "Martin Nievera",
+            "count": 34
+        },
+        {
+            "position_code": "MAYOR-PH-ILN-CURRIMAO",
+            "candidate_code": "ADA_0U",
+            "candidate_name": "Ai-Ai delas Alas",
+            "count": 34
+        },
+        {
+            "position_code": "MAYOR-PH-ILN-CURRIMAO",
+            "candidate_code": "LS_ev",
+            "candidate_name": "Lea Salonga",
+            "count": 32
+        },
+        {
+            "position_code": "MAYOR-PH-ILN-CURRIMAO",
+            "candidate_code": "AT_Sl",
+            "candidate_name": "Antoinette Taus",
+            "count": 30
+        },
+        {
+            "position_code": "MAYOR-PH-ILN-CURRIMAO",
+            "candidate_code": "MM_zK",
+            "candidate_name": "Maine Mendoza",
+            "count": 27
+        },
+        {
+            "position_code": "VICE-MAYOR-PH-ILN-CURRIMAO",
+            "candidate_code": "EC_zN",
+            "candidate_name": "Ella Cruz",
+            "count": 40
+        },
+        {
+            "position_code": "VICE-MAYOR-PH-ILN-CURRIMAO",
+            "candidate_code": "HA_pd",
+            "candidate_name": "Hero Angeles",
+            "count": 36
+        },
+        {
+            "position_code": "VICE-MAYOR-PH-ILN-CURRIMAO",
+            "candidate_code": "GR_CL",
+            "candidate_name": "Gina Rodriguez",
+            "count": 32
+        },
+        {
+            "position_code": "VICE-MAYOR-PH-ILN-CURRIMAO",
+            "candidate_code": "IE_dZ",
+            "candidate_name": "Idris Elba",
+            "count": 31
+        },
+        {
+            "position_code": "VICE-MAYOR-PH-ILN-CURRIMAO",
+            "candidate_code": "GDC_W8",
+            "candidate_name": "Glaiza de Castro",
+            "count": 31
+        },
+        {
+            "position_code": "VICE-MAYOR-PH-ILN-CURRIMAO",
+            "candidate_code": "CF_6d",
+            "candidate_name": "Colin Firth",
+            "count": 30
+        },
+        {
+            "position_code": "COUNCILOR-PH-ILN-CURRIMAO",
+            "candidate_code": "GG_Yi",
+            "candidate_name": "Gal Gadot",
+            "count": 165
+        },
+        {
+            "position_code": "COUNCILOR-PH-ILN-CURRIMAO",
+            "candidate_code": "EG_sM",
+            "candidate_name": "Eva Green",
+            "count": 165
+        },
+        {
+            "position_code": "COUNCILOR-PH-ILN-CURRIMAO",
+            "candidate_code": "GM_5o",
+            "candidate_name": "Gugu Mbatha-Raw",
+            "count": 162
+        },
+        {
+            "position_code": "COUNCILOR-PH-ILN-CURRIMAO",
+            "candidate_code": "VN_kD",
+            "candidate_name": "Vhong Navarro",
+            "count": 160
+        },
+        {
+            "position_code": "COUNCILOR-PH-ILN-CURRIMAO",
+            "candidate_code": "BC_BC",
+            "candidate_name": "Bryan Cranston",
+            "count": 159
+        },
+        {
+            "position_code": "COUNCILOR-PH-ILN-CURRIMAO",
+            "candidate_code": "BC_hn",
+            "candidate_name": "Billy Crawford",
+            "count": 158
+        },
+        {
+            "position_code": "COUNCILOR-PH-ILN-CURRIMAO",
+            "candidate_code": "BC_Hk",
+            "candidate_name": "Benedict Cumberbatch",
+            "count": 155
+        },
+        {
+            "position_code": "COUNCILOR-PH-ILN-CURRIMAO",
+            "candidate_code": "VG_K7",
+            "candidate_name": "Vice Ganda",
+            "count": 148
+        },
+        {
+            "position_code": "COUNCILOR-PH-ILN-CURRIMAO",
+            "candidate_code": "DP_Ib",
+            "candidate_name": "Dev Patel",
+            "count": 141
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "ce6d8e0b-aaa8-405f-8ca3-53ebfcd73d04",
+            "candidate_name": "Lady Bird",
+            "count": 6
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "a29d1d09-7be3-4d04-b2da-3fbb0c48f208",
+            "candidate_name": "Soul",
+            "count": 5
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "8c592d17-f852-4d37-b60c-50db830a369c",
+            "candidate_name": "The Farewell",
+            "count": 4
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "a55df20a-d954-4b5a-9db9-e6f4aded40e5",
+            "candidate_name": "Monsters, Inc.",
+            "count": 4
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "444d685c-16fd-4ae6-843a-606fd7aaf4c5",
+            "candidate_name": "The Green Mile",
+            "count": 4
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "8ddcdf85-ad4e-41db-bf65-96644f32f6e7",
+            "candidate_name": "Inception",
+            "count": 3
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "717221bd-c0cb-4299-b5fe-6a9be609480d",
+            "candidate_name": "Knock at the Cabin",
+            "count": 3
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "a8d9833a-d40d-4178-8e56-ede77c9bbefa",
+            "candidate_name": "The Big Short",
+            "count": 3
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "9d4125b2-8e1a-46aa-8dc3-ce7e79bf4b27",
+            "candidate_name": "Parasite",
+            "count": 3
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "2027e724-7489-4ff6-8d87-75920b7fae05",
+            "candidate_name": "The Prestige",
+            "count": 3
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "ecb9fbe9-c8b2-4506-9a1f-b026b89fbfcc",
+            "candidate_name": "Shutter Island",
+            "count": 3
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "e6962781-6f85-4a28-b6f2-6f44f5f39996",
+            "candidate_name": "Get Out",
+            "count": 3
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "b7567c8c-1e37-4f0f-b7d0-9da9d8d0f9a8",
+            "candidate_name": "Reservoir Dogs",
+            "count": 3
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "2d6a7e9c-0166-49d3-b6c1-19580c77e0f3",
+            "candidate_name": "Tenet",
+            "count": 3
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "6b7a2f54-6a7a-480c-a40c-30181f426050",
+            "candidate_name": "The Lord of the Rings",
+            "count": 3
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "d3d4c76e-4c37-41da-ab03-d0594d519aaf",
+            "candidate_name": "Pulp Fiction",
+            "count": 3
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "faa9aae6-088e-4aaf-8169-6265e461a423",
+            "candidate_name": "Spotlight",
+            "count": 3
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "65034086-a811-4503-af31-f0d2eeb22c5a",
+            "candidate_name": "Frozen",
+            "count": 3
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "8f5d6a68-7d40-4074-a584-cc57c7e82cad",
+            "candidate_name": "The Revenant",
+            "count": 3
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "82d8bb3b-3826-4e4b-930f-822cd6d64c20",
+            "candidate_name": "Avengers: Endgame",
+            "count": 3
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "4782154c-a94b-46ff-9d3b-60d5974282d6",
+            "candidate_name": "The Hurt Locker",
+            "count": 3
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "fe6e942d-5079-41d7-b313-3ebb09364edf",
+            "candidate_name": "The Midnight Sky",
+            "count": 3
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "aac10daa-467a-4995-bd4e-39f8107476ad",
+            "candidate_name": "The Martian",
+            "count": 3
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "0ea92f73-bbb9-4aec-b133-2c1f8a34d1da",
+            "candidate_name": "Coda",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "c2f92963-f640-4471-8704-e2a26cc67a4f",
+            "candidate_name": "Justice League",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "8f7f2fcf-24ea-4857-bb69-3f15e43f792b",
+            "candidate_name": "Iron Man",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "c100825e-4389-4fa5-917a-786d1db927f1",
+            "candidate_name": "Ratatouille",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "61e6489e-711e-4866-a77d-c01e31a783fb",
+            "candidate_name": "The Imitation Game",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "a597783a-b3a4-4772-9a24-02db7c1bf162",
+            "candidate_name": "Don’t Worry Darling",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "5fcfdda5-834b-47fa-bf84-3ec9e93a80a9",
+            "candidate_name": "The Suicide Squad",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "fdbe85bd-68f7-425c-83b7-d5f545829bf1",
+            "candidate_name": "Thor: Ragnarok",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "50a038ff-5d63-4459-9f8c-54c341022fe5",
+            "candidate_name": "Moneyball",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "6a838eea-fe6d-48cc-ba01-2e00b3ed33db",
+            "candidate_name": "Spider-Man: No Way Home",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "770544cd-da40-479a-9d58-ba6874dcce07",
+            "candidate_name": "The King’s Speech",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "51565d15-49db-4f35-a01e-5a57059359a8",
+            "candidate_name": "Slumdog Millionaire",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "53bf0d3d-5f40-457c-a0d1-13cfcc23eddf",
+            "candidate_name": "Avatar",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "2979aed4-de1a-4785-9cbe-c741fe81eb06",
+            "candidate_name": "The Batman",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "43909485-3545-4c81-a192-d901bf959ca5",
+            "candidate_name": "No Time to Die",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "81c4130c-eef5-4f93-8a92-9fbf7de3d714",
+            "candidate_name": "Man of Steel",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "236aeb48-b8fc-44fd-8753-2f941063ab15",
+            "candidate_name": "Little Women",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "9a4a2fda-9d22-46f3-afdf-5ce1185b057a",
+            "candidate_name": "The Avengers",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "0930fba5-89ce-426e-98bc-9dd2ff809c5b",
+            "candidate_name": "Frozen II",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "986c43c0-457d-447e-a4dc-4d14271f6953",
+            "candidate_name": "The Banshees of Inisherin",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "2e0d41a7-4e23-40b5-816c-8453d2b2ee5c",
+            "candidate_name": "The Matrix",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "1dc737d9-bda4-4952-baf6-def76d754cf8",
+            "candidate_name": "Les Misérables",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "3575b338-5db8-4888-ba45-68776bdf1236",
+            "candidate_name": "Turning Red",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "212826c1-9c71-458e-929b-68d8e0174362",
+            "candidate_name": "The Incredibles",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "ce1f707a-487b-4b95-8b77-bc730c8353ca",
+            "candidate_name": "No Country for Old Men",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "61728bd6-89f6-45f8-960e-b1ec3ea24c55",
+            "candidate_name": "Kill Bill",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "8c14ea1e-953d-4718-b512-f3c5166d8888",
+            "candidate_name": "Doctor Strange",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "973e1dcb-cd0b-482f-829c-eeaf065344c3",
+            "candidate_name": "Mission: Impossible",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "6a449938-334a-40d4-ba8e-750ce76338b8",
+            "candidate_name": "Crazy Rich Asians",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "e04931c6-aa93-425f-b631-88fd6d8aef01",
+            "candidate_name": "Looper",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "98a2890a-db26-44fe-8756-f49be6578a97",
+            "candidate_name": "The Dark Knight",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "82cc2f48-89eb-433d-bc89-ecaa3bbf550b",
+            "candidate_name": "The Grand Budapest Hotel",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "96961414-0f82-4495-8251-2a5a786619f2",
+            "candidate_name": "Moana",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "a9ddcc58-d925-4b1e-a47b-bbb99958237d",
+            "candidate_name": "Birdman",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "4f01b4fb-2954-424d-a1de-550d55a5e71e",
+            "candidate_name": "Whiplash",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "48fd7eaa-e006-4ebd-ad2f-100ea8eecb35",
+            "candidate_name": "Despicable Me",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "09071172-7a0c-4631-8cd0-c13dc77c65da",
+            "candidate_name": "Coco",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "0e7e96c5-ffc6-4eb5-a448-1b40f7dad270",
+            "candidate_name": "Argo",
+            "count": 2
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "f0be0679-4914-4f43-8638-c6b33ca2e794",
+            "candidate_name": "500 Days of Summer",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "9fc99dce-5dcd-4d47-9be5-77e5621242d0",
+            "candidate_name": "Ant-Man",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "2142fc9e-4359-4d06-a3b5-8fd4110b5cb3",
+            "candidate_name": "Lightyear",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "afa0662f-3c88-41b8-89f5-a4c49214545f",
+            "candidate_name": "The Shawshank Redemption",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "8ada66ef-26eb-4218-ba8a-74bcfc46118d",
+            "candidate_name": "Shazam!",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "3590d8b3-5be7-4ac6-a305-5cfdfc2df940",
+            "candidate_name": "Aquaman",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "8f349cab-d1d0-4f44-9108-f19b8be0a600",
+            "candidate_name": "Birds of Prey",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "f08a7248-4f8c-4e7d-8bfc-943e9d0b2631",
+            "candidate_name": "The Lion King",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "95e5058a-0d86-4e45-b5b6-ebd5b83c5c94",
+            "candidate_name": "Raya and the Last Dragon",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "36b2ea31-86e8-4557-bca1-2dd6935b017a",
+            "candidate_name": "The Irishman",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "77fc144e-7cde-45d8-8736-7101e0cc1bec",
+            "candidate_name": "Fight Club",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "56a27e28-beba-4b09-9f6e-dc6d39ebe57b",
+            "candidate_name": "A Beautiful Mind",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "3c0b7b77-672f-41b0-9fa1-701d8604be9b",
+            "candidate_name": "The Pianist",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "3d3da3b6-670d-4012-8d57-23f790b59409",
+            "candidate_name": "There Will Be Blood",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "edcfb0bb-fcbc-4a77-a0ac-4d20c9686ecb",
+            "candidate_name": "The Good Dinosaur",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "bec8e501-064c-4693-a647-21efd29e93b4",
+            "candidate_name": "The Blind Side",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "4d0fb9ca-77f7-41e3-8099-1d53ad58bd33",
+            "candidate_name": "Titanic",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "d69f2765-2400-4cb0-8734-f8d31d16b945",
+            "candidate_name": "Interstellar",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "138107bf-1dad-4e75-8785-d975913b1440",
+            "candidate_name": "Captain America: Civil War",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "b8cb9418-0379-4b90-bf9d-0184c9072bf9",
+            "candidate_name": "Brooklyn",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "5447c349-10ba-4b45-bc25-0465553f987f",
+            "candidate_name": "Onward",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "45e0eacf-2d9c-4abc-85d2-031231a378a7",
+            "candidate_name": "The Post",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "e6e0d2aa-ae20-46d7-aef7-ef1e73db3698",
+            "candidate_name": "Luca",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "9c862564-65aa-48c3-8bc7-f7515fe29d99",
+            "candidate_name": "Lincoln",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "9a47bddc-d8d0-4abc-8666-7b166883718e",
+            "candidate_name": "Bohemian Rhapsody",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "90624585-4c7d-440f-b165-21378b6064ef",
+            "candidate_name": "The Truman Show",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "4e58d4a1-4c30-4b90-9f9f-0eb1e7a92b77",
+            "candidate_name": "The Proposal",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "65751206-1a80-4732-a52e-b8df85c59f04",
+            "candidate_name": "American Beauty",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "bb709a2a-747f-439d-a0bf-aea6110c1b29",
+            "candidate_name": "Zootopia",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "fd68e9d9-9250-4b54-b5b1-2c7124124c13",
+            "candidate_name": "Once Upon a Time in Hollywood",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "5a52e192-6ebd-46c8-b2b9-3b62abf2c22f",
+            "candidate_name": "Glass Onion",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "1d8552f6-f981-4679-a35f-44539c11707a",
+            "candidate_name": "Tár",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "451bbcfc-ed07-4f7d-9326-7c6434e5063c",
+            "candidate_name": "The Shape of Water",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "eaf396db-d668-425a-bc19-8c91c9c2d472",
+            "candidate_name": "The Menu",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "873db840-4e9d-4cc7-bee8-756fc6517803",
+            "candidate_name": "Black Panther",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "e3e06d7b-bb14-46df-a2ef-0718fae4b52a",
+            "candidate_name": "The Vow",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "0e1c1b18-1140-46b8-9cf7-cbbd050bd1d7",
+            "candidate_name": "The Flash",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "3020e6a7-edf5-405f-b7ed-e09df9a8c0b9",
+            "candidate_name": "Minari",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "6c24e392-93eb-4a43-8829-9aab9162befe",
+            "candidate_name": "The Big Lebowski",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "3bcf7ab4-85be-4ccd-83fd-f0f6bb97fd49",
+            "candidate_name": "Darkest Hour",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "5a020ad7-9f0d-444c-a0d4-db46720b3fba",
+            "candidate_name": "Knives Out",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "9e1a3f71-f673-4871-89d7-0b19c31a1ef5",
+            "candidate_name": "Brave",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "7df08c75-0ef7-4cd7-ac90-ebded03f3560",
+            "candidate_name": "The Curious Case of Benjamin Button",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "1354eba5-99fb-48a0-99ab-c7e1f3ba346e",
+            "candidate_name": "Her",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "0e836e74-c7f9-4d89-895d-d669113b49b0",
+            "candidate_name": "Ex Machina",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "a4045bf8-3e16-4759-94eb-02c89c39107a",
+            "candidate_name": "Cars",
+            "count": 1
+        },
+        {
+            "position_code": "REPRESENTATIVE-PH-PARTY-LIST",
+            "candidate_code": "3cabd48e-4a8d-4a77-80af-ea7bca1b6855",
+            "candidate_name": "Silver Linings Playbook",
+            "count": 1
+        }
+    ],
+    "signatures": [
+        {
+            "id": "e4485156-2753-4042-8d48-d325b3dc37bc",
+            "name": "Maria Santos",
+            "role": "member"
+        },
+        {
+            "id": "9df11bbd-3611-4147-91af-611406e54c11",
+            "name": "Pedro Reyes",
+            "role": "member"
+        },
+        {
+            "id": "28c19679-69c1-4dad-875e-447d6847a85a",
+            "name": "Juan dela Cruz",
+            "role": "chairperson",
+            "signed_at": "2025-08-13T14:06:48+08:00"
+        }
+    ]
+}

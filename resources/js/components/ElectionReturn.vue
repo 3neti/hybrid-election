@@ -120,13 +120,29 @@ const hasPeople = computed(() => mergedPeople.value.length > 0)
 
 /* ---------------- QR generation ---------------- */
 function resolveQrUrl(erCode: string): string {
-    if (props.qrEndpoint) return props.qrEndpoint
-    // @ts-ignore Ziggy route() if available
-    if (typeof window !== 'undefined' && typeof window.route === 'function') {
-        // @ts-ignore
-        return window.route('qr.er', { code: erCode })
+    if (props.qrEndpoint) {
+        console.log('[resolveQrUrl] Using props.qrEndpoint:', props.qrEndpoint)
+        return props.qrEndpoint
     }
-    return `/api/qr/election-return/${encodeURIComponent(erCode)}`
+
+    // Prefer a global `route()` if @routes injected it
+    if (typeof (window as any).route === 'function') {
+        console.log('[resolveQrUrl] Global route() detected.')
+        try {
+            const url = (window as any).route('qr.er', { code: erCode })
+            console.log('[resolveQrUrl] Successfully resolved via route("qr.er"):', url)
+            return url
+        } catch (err) {
+            console.error('[resolveQrUrl] route("qr.er") threw an error:', err)
+        }
+    } else {
+        console.warn('[resolveQrUrl] No global route() found.')
+    }
+
+    // Last-resort fallback
+    const fallbackUrl = `/api/qr/election-return/${encodeURIComponent(erCode)}`
+    console.log('[resolveQrUrl] Falling back to default API path:', fallbackUrl)
+    return fallbackUrl
 }
 
 async function generateQr() {

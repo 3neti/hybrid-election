@@ -4,6 +4,7 @@ import { inflateRaw } from 'pako'
 import ErTallyView, { type ElectionReturnData } from '@/components/ErTallyView.vue'
 import ElectionReturn from '@/components/ElectionReturn.vue';
 import ErQrCapture from '@/components/ErQrCapture.vue' // NEW: scanner
+import axios from 'axios' // NEW: ensure axios is available here
 
 /* ───────────────── Types ───────────────── */
 interface QrChunkItem {
@@ -18,11 +19,9 @@ interface QrChunkItem {
 
 /* ───────────────── Utilities ───────────────── */
 function b64urlDecodeBytes(input: string): Uint8Array {
-    // Base64URL → Base64
     input = input.replace(/-/g, '+').replace(/_/g, '/')
     const pad = input.length % 4
     if (pad) input += '='.repeat(4 - pad)
-    // atob to bytes
     const binStr = atob(input)
     const out = new Uint8Array(binStr.length)
     for (let i = 0; i < binStr.length; i++) out[i] = binStr.charCodeAt(i)
@@ -30,7 +29,6 @@ function b64urlDecodeBytes(input: string): Uint8Array {
 }
 
 function parseChunkLine(line: string) {
-    // Format: ER|v1|<CODE>|<index>/<total>|<payload>
     const parts = line.split('|', 5)
     if (parts.length < 5 || parts[0] !== 'ER' || parts[1] !== 'v1') {
         return null
@@ -63,33 +61,53 @@ function parseAndPreview() {
     }
 }
 
-/* ───────────────── State: chunk helper path ───────────────── */
-const nextId = () => Math.random().toString(36).slice(2) // simple, no crypto.randomUUID
+/* ───────────── NEW: load sample ER JSON from storage ───────────── */
+const sampleUrl = ref('/storage/sample-er.json')        // kept for fallback; no input field now
+const loadingSample = ref(false)
+const sampleError = ref<string | null>(null)
 
-// list UI
-const chunks = reactive<QrChunkItem[]>([])
-// assembly buffers
-const chunkMap = reactive<Map<number, string>>(new Map())
-const totalChunks = ref<number | null>(null)
-const assembling = ref(false)
-const assembleError = ref<string | null>(null)
+async function loadSampleFromStorage() {
+    loadingSample.value = true
+    sampleError.value = null
+    try {
+        // Prefer named route via Ziggy when present
+        const url = (typeof (window as any).route === 'function')
+            ? (window as any).route('er.sample', { name: 'demo' })
+            : sampleUrl.value
 
-// optional PNG bulk helpers (thumbnails area)
-const pngBulkInput = ref<string>('')      // one data URI per line
-const textBulkInput = ref<string>('')     // one ER|v1|... line per row
+        const { data } = await axios.get(url)
+        // Accept either raw object or pre-stringified JSON file
+        rawJson.value = typeof data === 'string' ? data : JSON.stringify(data, null, 2)
+        parseAndPreview()
+    } catch (err: any) {
+        sampleError.value = err?.response?.data?.message || String(err)
+    } finally {
+        loadingSample.value = false
+    }
+}
 
 /* ───────────── NEW: camera-capture integration (minimal) ───────────── */
 const showScanner = ref(false)
 const capturedLines = ref<string[]>([])
 function onResolvedEr(json: any, meta?: { lines?: string[] }) {
-    // Fill JSON + preview, close scanner; keep existing chunk UI untouched
     rawJson.value = JSON.stringify(json, null, 2)
     parseAndPreview()
     showScanner.value = false
     capturedLines.value = meta?.lines ?? []
 }
 
-/* ───────────────── Chunk ingestion / assembly ───────────────── */
+/* ───────────────── State: chunk helper path ───────────────── */
+const nextId = () => Math.random().toString(36).slice(2)
+
+const chunks = reactive<QrChunkItem[]>([])
+const chunkMap = reactive<Map<number, string>>(new Map())
+const totalChunks = ref<number | null>(null)
+const assembling = ref(false)
+const assembleError = ref<string | null>(null)
+
+const pngBulkInput = ref<string>('')      // one data URI per line
+const textBulkInput = ref<string>('')     // one ER|v1|... line per row
+
 function addChunkText(line: string) {
     const item: QrChunkItem = {
         id: nextId(),
@@ -106,9 +124,7 @@ function addChunkText(line: string) {
         return
     }
 
-    // total mismatch reset (start a fresh set)
     if (totalChunks.value && totalChunks.value !== parsed.total) {
-        // wipe internal state but keep visual history (mark old entries)
         chunkMap.clear()
         totalChunks.value = null
     }
@@ -133,7 +149,6 @@ function tryAssemble() {
     try {
         const joined = Array.from({ length: totalChunks.value }, (_, i) => chunkMap.get(i + 1)).join('')
         const inflated = inflateRaw(b64urlDecodeBytes(joined), { to: 'string' })
-        // Fill JSON textarea and parse preview
         rawJson.value = JSON.stringify(JSON.parse(inflated), null, 2)
         parseAndPreview()
     } catch (e: any) {
@@ -154,14 +169,11 @@ function resetChunks() {
 }
 
 function pasteBulkTexts() {
-    // Accept one chunk text per line
     const lines = textBulkInput.value.split('\n').map(s => s.trim()).filter(Boolean)
     for (const line of lines) addChunkText(line)
 }
 
 function pasteBulkPngs() {
-    // For now, only display thumbnails; decoding PNG to text is not done client-side here.
-    // If you later wire a client QR decoder, you can auto-extract chunk text.
     const lines = pngBulkInput.value.split('\n').map(s => s.trim()).filter(Boolean)
     for (const uri of lines) {
         const it: QrChunkItem = { id: nextId(), text: '', png: uri, status: 'pending' }
@@ -177,9 +189,8 @@ const progressLabel = computed(() => {
     return `Collected ${chunkMap.size} / ${totalChunks.value} chunk(s)`
 })
 
-/* Keep preview in sync if user edits JSON manually after assembly */
-watch(rawJson, (v, old) => {
-    // Don’t loop needlessly; parsing already happens on paste and assembly
+watch(rawJson, () => {
+    // parsing is manual via Preview button (and done on assembly), so no auto-op here
 })
 </script>
 
@@ -187,15 +198,21 @@ watch(rawJson, (v, old) => {
     <div class="max-w-6xl mx-auto p-6 space-y-8">
         <header class="flex items-center justify-between">
             <h1 class="text-2xl font-bold">QR Tally — Stand-alone Viewer</h1>
-            <div class="flex gap-2">
+            <div class="flex gap-2 items-center flex-wrap">
                 <!-- NEW: open scanner -->
                 <button class="px-3 py-2 rounded bg-emerald-600 text-white" @click="showScanner = true">Scan QR Codes</button>
+
+                <!-- (Removed the editable file path input) -->
+
                 <button class="px-3 py-2 rounded bg-gray-200" @click="() => { rawJson=''; er=null; parseError=null }">Clear JSON</button>
                 <button class="px-3 py-2 rounded bg-gray-200" @click="resetChunks">Reset Chunks</button>
             </div>
         </header>
 
-        <!-- NEW: capture component (kept simple; style/overlay later as you like) -->
+        <!-- Optional error display for sample loading -->
+        <p v-if="sampleError" class="text-sm text-red-600 -mt-4">{{ sampleError }}</p>
+
+        <!-- NEW: capture component -->
         <section v-if="showScanner" class="border rounded p-4">
             <ErQrCapture
                 @resolved-er="onResolvedEr"
@@ -216,9 +233,17 @@ watch(rawJson, (v, old) => {
                     placeholder='Paste the decoded JSON here (after QR chunk assembly OR from backend)…'
                 ></textarea>
 
+                <!-- Preview + Load sample aligned side-by-side -->
                 <div class="flex gap-2">
                     <button class="px-3 py-2 rounded bg-blue-600 text-white" @click="parseAndPreview">
                         Preview
+                    </button>
+                    <button
+                        class="px-3 py-2 rounded bg-indigo-600 text-white"
+                        :disabled="loadingSample"
+                        @click="loadSampleFromStorage"
+                    >
+                        {{ loadingSample ? 'Loading…' : 'Load sample' }}
                     </button>
                 </div>
 
