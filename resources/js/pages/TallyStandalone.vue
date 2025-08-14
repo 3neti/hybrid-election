@@ -5,6 +5,7 @@ import ErTallyView, { type ElectionReturnData } from '@/components/ErTallyView.v
 import ElectionReturn from '@/components/ElectionReturn.vue';
 import ErQrCapture from '@/components/ErQrCapture.vue' // NEW: scanner
 import axios from 'axios' // NEW: ensure axios is available here
+import { Button } from '@/components/ui/button';
 
 /* ───────────────── Types ───────────────── */
 interface QrChunkItem {
@@ -55,6 +56,8 @@ function parseAndPreview() {
             throw new Error('JSON does not look like an Election Return payload.')
         }
         er.value = obj
+        // ensure QR generates once with the current UI value
+        debouncedDesiredChunks.value = Math.max(5, Math.min(16, desiredChunksUi.value))
     } catch (e: any) {
         parseError.value = e?.message || String(e)
         er.value = null
@@ -192,6 +195,25 @@ const progressLabel = computed(() => {
 watch(rawJson, () => {
     // parsing is manual via Preview button (and done on assembly), so no auto-op here
 })
+
+// ───────── desired-chunks control (debounced) ─────────
+const desiredChunksUi = ref<number>(5)         // user-facing control
+const debouncedDesiredChunks = ref<number>(5)  // prop passed down
+
+let dcTimer: number | undefined
+watch(desiredChunksUi, (v) => {
+    // clamp 5..16
+    const n = Math.max(5, Math.min(16, Number(v) || 5))
+    if (n !== v) desiredChunksUi.value = n
+
+    // only trigger regeneration when we actually have an ER loaded
+    if (!er.value) return
+
+    if (dcTimer) clearTimeout(dcTimer)
+    dcTimer = window.setTimeout(() => {
+        debouncedDesiredChunks.value = n
+    }, 400) // debounce
+})
 </script>
 
 <template>
@@ -199,13 +221,21 @@ watch(rawJson, () => {
         <header class="flex items-center justify-between">
             <h1 class="text-2xl font-bold">QR Tally — Stand-alone Viewer</h1>
             <div class="flex gap-2 items-center flex-wrap">
-                <!-- NEW: open scanner -->
-                <button class="px-3 py-2 rounded bg-emerald-600 text-white" @click="showScanner = true">Scan QR Codes</button>
-
-                <!-- (Removed the editable file path input) -->
-
-                <button class="px-3 py-2 rounded bg-gray-200" @click="() => { rawJson=''; er=null; parseError=null }">Clear JSON</button>
-                <button class="px-3 py-2 rounded bg-gray-200" @click="resetChunks">Reset Chunks</button>
+                <!-- NEW: desired chunks control -->
+                <label class="text-sm text-gray-700 flex items-center gap-1">
+                    <span>Chunks</span>
+                    <input
+                        type="number"
+                        min="5"
+                        max="16"
+                        v-model.number="desiredChunksUi"
+                        class="w-16 px-2 py-1 border rounded text-sm"
+                        title="Desired number of QR chunks (5–16)"
+                    />
+                </label>
+                <Button class="px-3 py-2 rounded bg-emerald-600 text-white" @click="showScanner = true">Scan QR Codes</Button>
+                <Button class="px-3 py-2 rounded bg-gray-400" @click="() => { rawJson=''; er=null; parseError=null }">Clear JSON</Button>
+                <Button class="px-3 py-2 rounded bg-gray-400" @click="resetChunks">Reset Chunks</Button>
             </div>
         </header>
 
@@ -235,16 +265,16 @@ watch(rawJson, () => {
 
                 <!-- Preview + Load sample aligned side-by-side -->
                 <div class="flex gap-2">
-                    <button class="px-3 py-2 rounded bg-blue-600 text-white" @click="parseAndPreview">
+                    <Button class="px-3 py-2 rounded bg-blue-600 text-white" @click="parseAndPreview">
                         Preview
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         class="px-3 py-2 rounded bg-indigo-600 text-white"
                         :disabled="loadingSample"
                         @click="loadSampleFromStorage"
                     >
                         {{ loadingSample ? 'Loading…' : 'Load sample' }}
-                    </button>
+                    </Button>
                 </div>
 
                 <p v-if="parseError" class="text-sm text-red-600 mt-2">Error: {{ parseError }}</p>
@@ -267,12 +297,12 @@ watch(rawJson, () => {
                         placeholder="Paste one chunk text here…"
                         @keyup.enter="(e:any) => { const v=e.target.value?.trim(); if(v){ addChunkText(v); e.target.value='' } }"
                     />
-                    <button
+                    <Button
                         class="px-3 py-2 rounded bg-emerald-600 text-white"
                         @click="(e:any) => { const el=e?.target?.previousElementSibling as HTMLInputElement; const v = el?.value?.trim(); if(v){ addChunkText(v); el.value='' } }"
                     >
                         Add chunk
-                    </button>
+                    </Button>
                 </div>
 
                 <div class="text-xs text-gray-600">
@@ -363,7 +393,7 @@ watch(rawJson, () => {
                 :er="er"
                 paper="legal"
                 :basePt="10"
-                :desired-chunks="16"
+                :desired-chunks="debouncedDesiredChunks"
                 :qr-endpoint="route('qr.er.from_json')"
             />
         </section>
