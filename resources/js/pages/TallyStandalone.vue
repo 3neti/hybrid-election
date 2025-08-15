@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onBeforeUnmount } from 'vue'
-import { inflateRaw } from 'pako'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import ErTallyView, { type ElectionReturnData } from '@/components/ErTallyView.vue'
 import ElectionReturn from '@/components/ElectionReturn.vue'
 import ErQrCapture from '@/components/ErQrCapture.vue'
 import axios from 'axios'
 import { Button } from '@/components/ui/button'
 import { route as ziggyRoute } from 'ziggy-js' // ✅ bring route() into scope
+import { useChunkAssembler } from '@/composables/useChunkAssembler' // ✅ single ingestion path
 
 /* Safely expose a route() function for the template:
    - Prefer global window.route injected by @routes (Ziggy)
@@ -26,41 +26,9 @@ interface QrChunkItem {
     status: 'pending' | 'parsed' | 'invalid'
     error?: string | null
 }
-type ParsedChunk = { code: string; index: number; total: number; payload: string }
-
-/* ───────────────── Utilities ───────────────── */
-function b64urlDecodeBytes(input: string): Uint8Array {
-    input = input.replace(/-/g, '+').replace(/_/g, '/')
-    const pad = input.length % 4
-    if (pad) input += '='.repeat(4 - pad)
-    const binStr = atob(input)
-    const out = new Uint8Array(binStr.length)
-    for (let i = 0; i < binStr.length; i++) out[i] = binStr.charCodeAt(i)
-    return out
-}
-
-// Strict Base64URL payload validation
-const B64URL_RE = /^[A-Za-z0-9_-]+$/
-
-function parseChunkLine(line: string): ParsedChunk | null {
-    // Format: ER|v1|<CODE>|<index>/<total>|<payload>
-    const parts = line.split('|', 5)
-    if (parts.length < 5 || parts[0] !== 'ER' || parts[1] !== 'v1') return null
-
-    const code = parts[2]
-    const [idxStr, totalStr] = parts[3].split('/')
-    const index = parseInt(idxStr, 10)
-    const total = parseInt(totalStr, 10)
-    const payload = parts[4]
-
-    if (!Number.isFinite(index) || !Number.isFinite(total) || index < 1 || total < 1 || index > total) return null
-    if (!payload || !B64URL_RE.test(payload)) return null
-
-    return { code, index, total, payload }
-}
 
 /* ───────────────── State: JSON path ───────────────── */
-const rawJson = ref<string>('') // user-pasted or auto-filled from chunks
+const rawJson = ref<string>('') // user-pasted or assembled
 const parseError = ref<string | null>(null)
 const er = ref<ElectionReturnData | null>(null)
 
@@ -80,7 +48,7 @@ function parseAndPreview(): void {
     }
 }
 
-/* ───────────── NEW: load sample ER JSON from storage ───────────── */
+/* ───────────── load sample ER JSON from storage ───────────── */
 const sampleUrl = ref('/storage/sample-er.json') // fallback path when no Ziggy
 const loadingSample = ref(false)
 const sampleError = ref<string | null>(null)
@@ -89,7 +57,7 @@ async function loadSampleFromStorage(): Promise<void> {
     loadingSample.value = true
     sampleError.value = null
     try {
-        const url = (typeof (route) === 'function')
+        const url = (typeof route === 'function')
             ? route('er.sample', { name: 'demo' })
             : sampleUrl.value
 
@@ -103,154 +71,75 @@ async function loadSampleFromStorage(): Promise<void> {
     }
 }
 
-/* ───────────── NEW: camera-capture integration (single ingestion path) ───────────── */
+/* ───────────── camera-capture integration (single ingestion path) ───────────── */
 const showScanner = ref(false)
 const capturedLines = ref<string[]>([])
 
-// Keep raw lines you've already ingested (scanner can repeat)
-const seenLines = new Set<string>()
+// Use the composable for ALL ingestion & assembly
+const assembler = useChunkAssembler()
+const {
+    chunks,
+    assembling,
+    assembleError,
+    addChunkLine,
+    addMany,
+    reset: resetChunksCore,
+    total: totalChunksComputed,
+    receivedIndices,
+    jsonText,
+    jsonObject,
+} = assembler
 
 function onScannerLines(lines: string[]): void {
     if (!Array.isArray(lines)) return
     capturedLines.value = lines
-    for (const raw of lines) {
-        const line = (raw || '').trim()
-        if (!line) continue
-        if (seenLines.has(line)) continue // de-dup full line
-        addChunkText(line)
-    }
+    addMany(lines) // ✅ scanner produces lines, composable ingests them
 }
 
 // We deliberately do not use scanner-side decoded JSON to avoid double logic.
-// Just close the scanner if it emits a "resolved" event.
 function onScannerResolvedEr(): void {
     showScanner.value = false
 }
 
-/* ───────────────── State: chunk helper path ───────────────── */
-const nextId = () => Math.random().toString(36).slice(2)
-
-const chunks = reactive<QrChunkItem[]>([])
-const chunkMap = reactive<Map<number, string>>(new Map())
-const totalChunks = ref<number | null>(null)
-const assembling = ref(false)
-const assembleError = ref<string | null>(null)
-
-const pngBulkInput = ref<string>('') // one data URI per line
-const textBulkInput = ref<string>('') // one ER|v1|... line per row
-
-// Debounce assembling to avoid races during rapid scans
-let assembleTimer: ReturnType<typeof setTimeout> | undefined
-function scheduleAssemble() {
-    if (assembleTimer) clearTimeout(assembleTimer)
-    assembleTimer = setTimeout(() => {
-        tryAssemble()
-    }, 80)
-}
-
-function addChunkText(line: string): void {
-    const trimmed = line.trim()
-    if (!trimmed) return
-
-    // Deduplicate full line
-    if (seenLines.has(trimmed)) return
-    seenLines.add(trimmed)
-
-    const item: QrChunkItem = {
-        id: nextId(),
-        text: trimmed,
-        status: 'pending',
-        error: null
-    }
-    chunks.push(item)
-
-    const parsed = parseChunkLine(item.text)
-    if (!parsed) {
-        // Give a slightly more helpful error if we can parse index
-        const maybe = trimmed.split('|', 5)
-        if (maybe.length >= 5) {
-            const idxPart = maybe[3] || ''
-            const idx = Number.parseInt((idxPart.split('/')[0] || ''), 10)
-            const payload = maybe[4] || ''
-            if (!B64URL_RE.test(payload)) {
-                item.status = 'invalid'
-                item.error = Number.isFinite(idx)
-                    ? `Chunk #${idx} contains non-Base64URL characters.`
-                    : 'Invalid chunk payload characters (Base64URL expected).'
-                return
-            }
-        }
-        item.status = 'invalid'
-        item.error = 'Invalid chunk format.'
-        return
-    }
-
-    // total mismatch reset (start a fresh set)
-    if (totalChunks.value && totalChunks.value !== parsed.total) {
-        chunkMap.clear()
-        totalChunks.value = null
-    }
-
-    totalChunks.value = parsed.total
-    if (!chunkMap.has(parsed.index)) {
-        chunkMap.set(parsed.index, parsed.payload)
-    }
-    item.status = 'parsed'
-    item.index = parsed.index
-    item.total = parsed.total
-
-    scheduleAssemble()
-}
-
-function tryAssemble(): void {
-    assembleError.value = null
-    if (!totalChunks.value) return
-    if (chunkMap.size !== totalChunks.value) return
-
-    assembling.value = true
+/* Mirror assembled JSON into the textarea + preview (non-destructive to manual flow) */
+watch(jsonObject, (val) => {
+    if (!val) return
     try {
-        const joined = Array.from({ length: totalChunks.value }, (_, i) => chunkMap.get(i + 1)).join('')
-        const inflated = inflateRaw(b64urlDecodeBytes(joined), { to: 'string' }) as unknown as string
-        rawJson.value = JSON.stringify(JSON.parse(inflated), null, 2)
+        rawJson.value = JSON.stringify(val, null, 2)
         parseAndPreview()
-    } catch (e: any) {
-        assembleError.value = e?.message || String(e)
-    } finally {
-        assembling.value = false
-    }
-}
+    } catch {}
+})
 
-function resetChunks(): void {
-    chunks.splice(0, chunks.length)
-    chunkMap.clear()
-    totalChunks.value = null
-    assembling.value = false
-    assembleError.value = null
-    pngBulkInput.value = ''
-    textBulkInput.value = ''
-    seenLines.clear()
-    if (assembleTimer) clearTimeout(assembleTimer)
-}
+/* ───────────────── Chunk helper UI-only bits ───────────────── */
+const pngBulkInput = ref<string>('') // one data URI per line (UI only)
+const textBulkInput = ref<string>('') // one ER|v1|... line per row
 
 function pasteBulkTexts(): void {
     const lines = textBulkInput.value.split('\n').map(s => s.trim()).filter(Boolean)
-    for (const line of lines) addChunkText(line)
+    addMany(lines)
 }
 
 function pasteBulkPngs(): void {
     const lines = pngBulkInput.value.split('\n').map(s => s.trim()).filter(Boolean)
     for (const uri of lines) {
-        const it: QrChunkItem = { id: nextId(), text: '', png: uri, status: 'pending' }
-        chunks.push(it)
+        // purely for previewing thumbnails in the list; does not affect assembly
+        const it: QrChunkItem = { id: Math.random().toString(36).slice(2), text: '', png: uri, status: 'pending' }
+        chunks.push(it as any)
     }
+}
+
+function resetChunks(): void {
+    resetChunksCore()
+    pngBulkInput.value = ''
+    textBulkInput.value = ''
 }
 
 /* Show progress */
 const progressLabel = computed(() => {
-    if (!totalChunks.value) {
-        return `Collected ${chunkMap.size} chunk(s)`
-    }
-    return `Collected ${chunkMap.size} / ${totalChunks.value} chunk(s)`
+    const have = receivedIndices.value.length
+    const tot = totalChunksComputed.value
+    if (!tot) return `Collected ${have} chunk(s)`
+    return `Collected ${have} / ${tot} chunk(s)`
 })
 
 watch(rawJson, () => {
@@ -278,7 +167,6 @@ watch(desiredChunksUi, (v) => {
 
 onBeforeUnmount(() => {
     if (dcTimer) clearTimeout(dcTimer)
-    if (assembleTimer) clearTimeout(assembleTimer)
 })
 </script>
 
@@ -287,7 +175,7 @@ onBeforeUnmount(() => {
         <header class="flex items-center justify-between">
             <h1 class="text-2xl font-bold">QR Tally — Stand-alone Viewer</h1>
             <div class="flex gap-2 items-center flex-wrap">
-                <!-- NEW: desired chunks control -->
+                <!-- desired chunks control -->
                 <label class="text-sm text-gray-700 flex items-center gap-1">
                     <span>Chunks</span>
                     <input
@@ -308,7 +196,7 @@ onBeforeUnmount(() => {
         <!-- Optional error display for sample loading -->
         <p v-if="sampleError" class="text-sm text-red-600 -mt-4">{{ sampleError }}</p>
 
-        <!-- NEW: capture component -->
+        <!-- Capture component -->
         <section v-if="showScanner" class="border rounded p-4">
             <ErQrCapture
                 @update:chunks="onScannerLines"
@@ -361,11 +249,11 @@ onBeforeUnmount(() => {
                         type="text"
                         class="flex-1 border rounded px-3 py-2 font-mono text-xs"
                         placeholder="Paste one chunk text here…"
-                        @keyup.enter="(e:any) => { const v=e.target.value?.trim(); if(v){ addChunkText(v); e.target.value='' } }"
+                        @keyup.enter="(e:any) => { const v=e.target.value?.trim(); if(v){ addChunkLine(v); e.target.value='' } }"
                     />
                     <Button
                         class="px-3 py-2 rounded bg-emerald-600 text-white"
-                        @click="(e:any) => { const el=e?.target?.previousElementSibling as HTMLInputElement; const v = el?.value?.trim(); if(v){ addChunkText(v); el.value='' } }"
+                        @click="(e:any) => { const el=e?.target?.previousElementSibling as HTMLInputElement; const v = el?.value?.trim(); if(v){ addChunkLine(v); el.value='' } }"
                     >
                         Add chunk
                     </Button>
