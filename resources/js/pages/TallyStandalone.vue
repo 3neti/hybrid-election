@@ -5,42 +5,35 @@ import ElectionReturn from '@/components/ElectionReturn.vue'
 import ErQrCapture from '@/components/ErQrCapture.vue'
 import axios from 'axios'
 import { Button } from '@/components/ui/button'
-import { route as ziggyRoute } from 'ziggy-js' // ✅ bring route() into scope
-import { useChunkAssembler } from '@/composables/useChunkAssembler' // ✅ single ingestion path
+import { route as ziggyRoute } from 'ziggy-js'
+import { useChunkAssembler, type QrChunkItem } from '@/composables/useChunkAssembler'
 
-/* Safely expose a route() function for the template:
-   - Prefer global window.route injected by @routes (Ziggy)
-   - Fallback to ziggy-js route() (if your app config passes Ziggy config globally)
-*/
+// Prefer global Ziggy route() if present, otherwise ziggy-js route()
 const route: any = (typeof (window as any).route === 'function')
     ? (window as any).route
     : ziggyRoute
 
-/* ───────────────── Types ───────────────── */
-interface QrChunkItem {
-    id: string
-    index?: number | null
-    total?: number | null
-    text: string
-    png?: string
-    status: 'pending' | 'parsed' | 'invalid'
-    error?: string | null
-}
-
-/* ───────────────── State: JSON path ───────────────── */
-const rawJson = ref<string>('') // user-pasted or assembled
+/* ───────────────── State: JSON & Preview ───────────────── */
+const rawJson = ref<string>('')               // user-pasted or assembled (pretty-printed)
 const parseError = ref<string | null>(null)
 const er = ref<ElectionReturnData | null>(null)
 
+/**
+ * Preview handler:
+ * - Prefer composable's parsed jsonObject (already validated)
+ * - Fallback to parsing rawJson
+ */
 function parseAndPreview(): void {
     parseError.value = null
     try {
-        const obj = JSON.parse(rawJson.value)
+        const obj: any = jsonObject.value ?? JSON.parse(rawJson.value)
+
         if (!obj?.precinct?.code || !Array.isArray(obj?.tallies)) {
             throw new Error('JSON does not look like an Election Return payload.')
         }
+
         er.value = obj
-        // ensure QR generates once with the current UI value
+        // ensure QR regenerates with current UI value
         debouncedDesiredChunks.value = Math.max(5, Math.min(16, desiredChunksUi.value))
     } catch (e: any) {
         parseError.value = e?.message || String(e)
@@ -48,8 +41,8 @@ function parseAndPreview(): void {
     }
 }
 
-/* ───────────── load sample ER JSON from storage ───────────── */
-const sampleUrl = ref('/storage/sample-er.json') // fallback path when no Ziggy
+/* ───────────── Load sample ER JSON from storage ───────────── */
+const sampleUrl = ref('/storage/sample-er.json') // fallback when no Ziggy route is available
 const loadingSample = ref(false)
 const sampleError = ref<string | null>(null)
 
@@ -63,6 +56,8 @@ async function loadSampleFromStorage(): Promise<void> {
 
         const { data } = await axios.get(url)
         rawJson.value = typeof data === 'string' ? data : JSON.stringify(data, null, 2)
+
+        // After loading, prefer parsing into er immediately
         parseAndPreview()
     } catch (err: any) {
         sampleError.value = err?.response?.data?.message || String(err)
@@ -71,11 +66,11 @@ async function loadSampleFromStorage(): Promise<void> {
     }
 }
 
-/* ───────────── camera-capture integration (single ingestion path) ───────────── */
+/* ───────────── Scanner → Single ingestion path (composable) ───────────── */
 const showScanner = ref(false)
 const capturedLines = ref<string[]>([])
 
-// Use the composable for ALL ingestion & assembly
+// Use composable for ALL chunk ingestion and assembly
 const assembler = useChunkAssembler()
 const {
     chunks,
@@ -86,32 +81,43 @@ const {
     reset: resetChunksCore,
     total: totalChunksComputed,
     receivedIndices,
-    jsonText,
-    jsonObject,
+    jsonText,       // not directly used here, but available if needed
+    jsonObject,     // ✅ prefer this for preview/ER
 } = assembler
 
 function onScannerLines(lines: string[]): void {
     if (!Array.isArray(lines)) return
     capturedLines.value = lines
-    addMany(lines) // ✅ scanner produces lines, composable ingests them
+    addMany(lines) // scanner only produces lines; composable does the parsing/assembly
 }
 
-// We deliberately do not use scanner-side decoded JSON to avoid double logic.
+// We do not use scanner-side decoded JSON to avoid double logic.
 function onScannerResolvedEr(): void {
     showScanner.value = false
 }
 
-/* Mirror assembled JSON into the textarea + preview (non-destructive to manual flow) */
+/* Mirror assembled jsonObject to textarea + view */
+function validateErShape(obj: any) {
+    if (!obj || !obj.precinct || !obj.precinct.code || !Array.isArray(obj.tallies)) {
+        throw new Error('JSON does not look like an Election Return payload.')
+    }
+}
+
 watch(jsonObject, (val) => {
     if (!val) return
     try {
+        validateErShape(val)
         rawJson.value = JSON.stringify(val, null, 2)
-        parseAndPreview()
-    } catch {}
+        parseError.value = null
+        er.value = val as ElectionReturnData
+    } catch (e: any) {
+        parseError.value = e?.message || String(e)
+        er.value = null
+    }
 })
 
 /* ───────────────── Chunk helper UI-only bits ───────────────── */
-const pngBulkInput = ref<string>('') // one data URI per line (UI only)
+const pngBulkInput = ref<string>('') // one data URI per line (for thumbnails only)
 const textBulkInput = ref<string>('') // one ER|v1|... line per row
 
 function pasteBulkTexts(): void {
@@ -122,8 +128,12 @@ function pasteBulkTexts(): void {
 function pasteBulkPngs(): void {
     const lines = pngBulkInput.value.split('\n').map(s => s.trim()).filter(Boolean)
     for (const uri of lines) {
-        // purely for previewing thumbnails in the list; does not affect assembly
-        const it: QrChunkItem = { id: Math.random().toString(36).slice(2), text: '', png: uri, status: 'pending' }
+        // purely for previewing thumbnails; does not affect assembly
+        const it: QrChunkItem = { id: Math.random().toString(36).slice(2), text: '', status: 'pending' }
+        // @ts-ignore – `png` exists in the UI card shape; harmless for display
+        it.png = uri
+        // push into visual list the same way as assembled chunks list is displayed
+        // (this doesn’t touch the internal assembly map)
         chunks.push(it as any)
     }
 }
@@ -134,16 +144,12 @@ function resetChunks(): void {
     textBulkInput.value = ''
 }
 
-/* Show progress */
+/* Progress label */
 const progressLabel = computed(() => {
     const have = receivedIndices.value.length
     const tot = totalChunksComputed.value
     if (!tot) return `Collected ${have} chunk(s)`
     return `Collected ${have} / ${tot} chunk(s)`
-})
-
-watch(rawJson, () => {
-    // parsing is manual via Preview button (and done on assembly), so no auto-op here
 })
 
 /* ───────── desired-chunks control (debounced) ───────── */
@@ -239,7 +245,8 @@ onBeforeUnmount(() => {
                 <div>
                     <h2 class="text-sm font-semibold text-gray-700">QR Chunk Helper</h2>
                     <p class="text-xs text-gray-500">
-                        Enter each QR chunk’s full text (the entire <code>ER|v1|CODE|i/N|&lt;payload&gt;</code> line).
+                        Enter each QR chunk’s full text (the entire
+                        <code>ER|v1|CODE|i/N|&lt;payload&gt;</code> line).
                         When all chunks are present, the JSON box will auto-fill and preview will update.
                     </p>
                 </div>
@@ -324,8 +331,8 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
 
-                        <div v-if="c.png">
-                            <img :src="c.png" alt="QR" class="w-full h-auto rounded" />
+                        <div v-if="(c as any).png">
+                            <img :src="(c as any).png" alt="QR" class="w-full h-auto rounded" />
                         </div>
 
                         <div class="font-mono break-all">{{ c.text || '(no text)' }}</div>

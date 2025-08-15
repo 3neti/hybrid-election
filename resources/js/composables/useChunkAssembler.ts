@@ -12,20 +12,23 @@ export type QrChunkItem = {
 
 type ParsedHeader = { code: string; index: number; total: number; payload: string }
 
-const PAYLOAD_RE = /^[A-Za-z0-9_-]+$/ // strict Base64URL
+// Strict Base64URL payload (no padding chars)
+const PAYLOAD_RE = /^[A-Za-z0-9_-]+$/
 
+/** Base64URL → bytes (Uint8Array) */
 function b64urlDecodeBytes(input: string): Uint8Array {
-    // Base64URL → Base64
+    // Convert Base64URL to Base64
     input = input.replace(/-/g, '+').replace(/_/g, '/')
     const pad = input.length % 4
     if (pad) input += '='.repeat(4 - pad)
-    const binStr = atob(input)
+    const binStr = atob(input) // payload is ASCII-safe; browser atob is OK
     const out = new Uint8Array(binStr.length)
     for (let i = 0; i < binStr.length; i++) out[i] = binStr.charCodeAt(i)
     return out
 }
 
 function parseHeader(line: string): ParsedHeader | null {
+    // Expected: ER|v1|<CODE>|<i>/<N>|<PAYLOAD>
     const parts = line.split('|', 5)
     if (parts.length < 5 || parts[0] !== 'ER' || parts[1] !== 'v1') return null
     const code = parts[2]
@@ -33,14 +36,16 @@ function parseHeader(line: string): ParsedHeader | null {
     const index = parseInt(idxStr, 10)
     const total = parseInt(totalStr, 10)
     const payload = parts[4]
-    if (!index || !total || !payload) return null
+    if (!Number.isFinite(index) || !Number.isFinite(total) || index < 1 || total < 1 || index > total) return null
+    if (!payload) return null
     return { code, index, total, payload }
 }
 
 export function useChunkAssembler() {
-    // visual list (history) + internal assembly buffers
+    // Visual list (for UX) + internal buffers
     const chunks = reactive<QrChunkItem[]>([])
     const byIndex = reactive<Map<number, string>>(new Map())
+
     const total = ref<number | null>(null)
     const code = ref<string | null>(null)
     const version = ref<'v1' | null>(null)
@@ -50,6 +55,7 @@ export function useChunkAssembler() {
 
     const seenLines = reactive<Set<string>>(new Set())
 
+    // Progress / completion
     const receivedIndices = computed(() => {
         const arr = Array.from(byIndex.keys())
         arr.sort((a, b) => a - b)
@@ -63,25 +69,26 @@ export function useChunkAssembler() {
     })
     const isComplete = computed(() => total.value != null && missingIndices.value.length === 0)
 
-    // Result
-    const jsonText = ref<string | null>(null)
+    // Results (prefer object; text for debugging only)
     const jsonObject = ref<any | null>(null)
+    const jsonText = ref<string | null>(null)
 
-    // debounce
-    let t: ReturnType<typeof setTimeout> | undefined
+    // Debounced assembly (avoid races on rapid scans)
+    let timer: ReturnType<typeof setTimeout> | undefined
     function scheduleAssemble() {
-        if (t) clearTimeout(t)
-        t = setTimeout(tryAssemble, 80)
+        if (timer) clearTimeout(timer)
+        timer = setTimeout(tryAssemble, 80)
     }
-    onBeforeUnmount(() => { if (t) clearTimeout(t) })
+    onBeforeUnmount(() => { if (timer) clearTimeout(timer) })
 
     function nextId() { return Math.random().toString(36).slice(2) }
 
+    /** Ingest a single full chunk line: "ER|v1|CODE|i/N|<payload>" */
     function addChunkLine(raw: string) {
         const line = (raw || '').trim()
         if (!line) return
 
-        // ignore exact duplicates early
+        // Skip exact duplicates early (camera can repeat frames)
         if (seenLines.has(line)) return
         seenLines.add(line)
 
@@ -95,14 +102,14 @@ export function useChunkAssembler() {
             return
         }
 
-        // Base64URL strictness
+        // Strict Base64URL payload check
         if (!PAYLOAD_RE.test(parsed.payload)) {
             item.status = 'invalid'
             item.error = `Chunk #${parsed.index} contains non-Base64URL characters.`
             return
         }
 
-        // First line sets these; others must match
+        // First valid line defines these; subsequent lines must match
         code.value ??= parsed.code
         version.value ??= 'v1'
         total.value ??= parsed.total
@@ -123,7 +130,7 @@ export function useChunkAssembler() {
             return
         }
 
-        // Duplicate index handling
+        // Duplicate index policy: ignore exact dup; fail on conflicting dup
         const existing = byIndex.get(parsed.index)
         if (existing && existing !== parsed.payload) {
             item.status = 'invalid'
@@ -139,10 +146,12 @@ export function useChunkAssembler() {
         scheduleAssemble()
     }
 
+    /** Ingest multiple lines (bulk paste or scanner burst) */
     function addMany(lines: string[]) {
         for (const l of lines) addChunkLine(l)
     }
 
+    /** Attempt join+inflate+parse when complete */
     function tryAssemble() {
         assembleError.value = null
         jsonText.value = null
@@ -154,9 +163,15 @@ export function useChunkAssembler() {
         assembling.value = true
         try {
             const joined = Array.from({ length: total.value }, (_, i) => byIndex.get(i + 1) ?? '').join('')
+            // Inflate raw DEFLATE (no gzip header)
             const inflated = inflateRaw(b64urlDecodeBytes(joined), { to: 'string' }) as unknown as string
+
+            // Try parsing right away; prefer structured result downstream
+            const obj = JSON.parse(inflated)
+
+            jsonObject.value = obj
+            // Keep text only for debugging / textarea display
             jsonText.value = inflated
-            jsonObject.value = JSON.parse(inflated)
         } catch (e: any) {
             assembleError.value = e?.message || String(e)
         } finally {
@@ -164,6 +179,7 @@ export function useChunkAssembler() {
         }
     }
 
+    /** Reset to a pristine state */
     function reset() {
         chunks.splice(0, chunks.length)
         byIndex.clear()
@@ -178,7 +194,7 @@ export function useChunkAssembler() {
     }
 
     return {
-        // state
+        // state & meta
         chunks,
         total,
         code,
@@ -188,8 +204,13 @@ export function useChunkAssembler() {
         isComplete,
         assembling,
         assembleError,
-        jsonText,
+
+        // preferred result
         jsonObject,
+
+        // optional debug text result
+        jsonText,
+
         // actions
         addChunkLine,
         addMany,
