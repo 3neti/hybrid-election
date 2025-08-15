@@ -18,8 +18,7 @@ const rawJson = ref<string>('')               // user-pasted or assembled (prett
 const parseError = ref<string | null>(null)
 const er = ref<ElectionReturnData | null>(null)
 
-/**
- * Preview handler:
+/** Preview handler:
  * - Prefer composable's parsed jsonObject (already validated)
  * - Fallback to parsing rawJson
  */
@@ -179,12 +178,11 @@ const qrSizeUi   = ref<number>(640)   // px
 const qrMarginUi = ref<number>(12)    // modules
 const qrEccUi    = ref<ECC>('medium') // ECC level
 
-/* NEW: Preset profile + printed size/grid controls */
-const qrProfileUi = ref<'small-clear' | 'normal' | 'high-capacity'>('normal')
-const qrPrintWidthInUi  = ref<number>(2.5)
-const qrPrintHeightInUi = ref<number>(2.85)
-const qrGridColsUi      = ref<number>(3)
-const qrGridGapInUi     = ref<number>(0.10)
+/* NEW: Preset profile + printed size/grid controls (square print size) */
+const qrProfileUi     = ref<'small-clear' | 'normal' | 'high-capacity'>('normal')
+const qrPrintSizeInUi = ref<number>(2.5)  // single square control (inches)
+const qrGridColsUi    = ref<number>(3)
+const qrGridGapInUi   = ref<number>(0.10)
 
 onBeforeUnmount(() => {
     if (dcTimer) clearTimeout(dcTimer)
@@ -262,29 +260,19 @@ onBeforeUnmount(() => {
                     </select>
                 </label>
 
-                <!-- Printed layout controls -->
+                <!-- Printed layout controls (square size) -->
                 <label class="text-sm text-gray-700 flex items-center gap-1">
-                    <span>Print W (in)</span>
+                    <span>Print Size (in)</span>
                     <input
                         type="number"
                         min="1"
                         step="0.05"
-                        v-model.number="qrPrintWidthInUi"
+                        v-model.number="qrPrintSizeInUi"
                         class="w-24 px-2 py-1 border rounded text-sm"
-                        title="Printed QR card width (inches)"
+                        title="Printed QR square size (inches)"
                     />
                 </label>
-                <label class="text-sm text-gray-700 flex items-center gap-1">
-                    <span>Print H (in)</span>
-                    <input
-                        type="number"
-                        min="1"
-                        step="0.05"
-                        v-model.number="qrPrintHeightInUi"
-                        class="w-24 px-2 py-1 border rounded text-sm"
-                        title="Printed QR card height (inches)"
-                    />
-                </label>
+
                 <label class="text-sm text-gray-700 flex items-center gap-1">
                     <span>Cols</span>
                     <input
@@ -464,6 +452,7 @@ onBeforeUnmount(() => {
         <section v-else class="text-sm text-gray-600">
             Paste the decoded JSON and click <b>Preview</b>, or enter all QR chunk texts (the viewer will auto-assemble into JSON).
         </section>
+
         <section v-if="er" class="border rounded p-4">
             <ElectionReturn
                 :er="er"
@@ -474,8 +463,7 @@ onBeforeUnmount(() => {
                 :size="qrSizeUi"
                 :margin="qrMarginUi"
                 :qr-profile="qrProfileUi"
-                :qr-print-width-in="qrPrintWidthInUi"
-                :qr-print-height-in="qrPrintHeightInUi"
+                :qr-print-size-in="qrPrintSizeInUi"
                 :qr-grid-cols="qrGridColsUi"
                 :qr-grid-gap-in="qrGridGapInUi"
                 :qr-endpoint="route('qr.er.from_json')"

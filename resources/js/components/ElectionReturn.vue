@@ -55,14 +55,19 @@ const props = withDefaults(defineProps<{
     qrEndpoint?: string | null
     printIsolated?: boolean
 
-    /** NEW: preset profile for QR tuning */
+    /** Preset profile for QR tuning */
     qrProfile?: 'small-clear' | 'normal' | 'high-capacity' | null
-    /** NEW: printed dimensions (inches) */
+
+    /** NEW (preferred): printed square size in inches */
+    qrPrintSizeIn?: number
+
+    /** Deprecated: old rectangular props (coerced to square via min(w,h)) */
     qrPrintWidthIn?: number
     qrPrintHeightIn?: number
-    /** NEW: grid columns for QR cards (screen/print) */
+
+    /** Grid columns for QR cards (screen/print) */
     qrGridCols?: number
-    /** NEW: gap between QR cards (inches) */
+    /** Gap between QR cards (inches) */
     qrGridGapIn?: number
 }>(), {
     paper: 'legal',
@@ -77,37 +82,30 @@ const props = withDefaults(defineProps<{
     printIsolated: true,
 
     qrProfile: 'normal',
-    qrPrintWidthIn: 2.5,
-    qrPrintHeightIn: 2.85,
+    qrPrintSizeIn: 2.5,       // single square control
+    qrPrintWidthIn: undefined,
+    qrPrintHeightIn: undefined,
     qrGridCols: 3,
     qrGridGapIn: 0.10
 })
 
 /* ---------------- Profile → defaults ---------------- */
 const profileDefaults = computed(() => {
-    // These are sane starting points; explicit props still override.
     switch (props.qrProfile) {
-        case 'small-clear':
-            return { desiredChunks: 8, ecc: 'quartile' as ECC, size: 384, margin: 16 }
-        case 'high-capacity':
-            // Keep desiredChunks >= 5 to honor your system minimum
-            return { desiredChunks: 5, ecc: 'low' as ECC, size: 640, margin: 8 }
+        case 'small-clear':   return { desiredChunks: 8, ecc: 'quartile' as ECC, size: 384, margin: 16 }
+        case 'high-capacity': return { desiredChunks: 5, ecc: 'low' as ECC,       size: 640, margin: 8 }
         case 'normal':
-        default:
-            return { desiredChunks: 5, ecc: 'medium' as ECC, size: 512, margin: 12 }
+        default:              return { desiredChunks: 5, ecc: 'medium' as ECC,    size: 512, margin: 12 }
     }
 })
 
 /* ---------------- Effective values (profile + explicit) ---------------- */
 const effectiveDesiredChunks = computed<number | null>(() => {
-    const fromProfile = profileDefaults.value.desiredChunks
-    const v = props.desiredChunks ?? fromProfile
-    // Enforce 5..16 range
-    const clamped = Math.max(5, Math.min(16, Number(v)))
-    return clamped
+    const v = props.desiredChunks ?? profileDefaults.value.desiredChunks
+    return Math.max(5, Math.min(16, Number(v)))
 })
-const effectiveEcc = computed<ECC>(() => props.ecc ?? profileDefaults.value.ecc)
-const effectiveSize = computed<number>(() => props.size ?? profileDefaults.value.size)
+const effectiveEcc    = computed<ECC>(() => props.ecc   ?? profileDefaults.value.ecc)
+const effectiveSize   = computed<number>(() => props.size  ?? profileDefaults.value.size)
 const effectiveMargin = computed<number>(() => props.margin ?? profileDefaults.value.margin)
 
 /* ---------------- Local state ---------------- */
@@ -172,7 +170,6 @@ const hasPeople = computed(() => mergedPeople.value.length > 0)
 /* ---------------- QR generation ---------------- */
 function resolveQrUrl(erCode: string): string {
     if (props.qrEndpoint) return props.qrEndpoint
-
     if (typeof (window as any).route === 'function') {
         try { return (window as any).route('qr.er', { code: erCode }) } catch {}
     }
@@ -262,13 +259,10 @@ async function waitForImagesWithin(rootSelector: string, imgSelector: string) {
     const imgs = Array.from(root.querySelectorAll<HTMLImageElement>(imgSelector))
     const notDone = imgs.filter(i => !i.complete || (i.naturalWidth === 0 && i.naturalHeight === 0))
     await Promise.all(
-        notDone.map(
-            i =>
-                new Promise<void>(res => {
-                    i.addEventListener('load', () => res(), { once: true })
-                    i.addEventListener('error', () => res(), { once: true })
-                })
-        )
+        notDone.map(i => new Promise<void>(res => {
+            i.addEventListener('load', () => res(), { once: true })
+            i.addEventListener('error', () => res(), { once: true })
+        }))
     )
 }
 
@@ -286,17 +280,37 @@ async function handlePrint() {
     setTimeout(() => window.print(), 60)
 }
 
-/* ---------------- Style vars for printed size ---------------- */
+/* ---------------- Single print-size (square) with back-compat ---------------- */
+const qrCardSizeIn = computed(() => {
+    const minClamp = 1, maxClamp = 6
+    // Back-compat: if width/height provided, coerce to square (min)
+    const w = props.qrPrintWidthIn
+    const h = props.qrPrintHeightIn
+    if (w != null || h != null) {
+        if (w != null && h != null && w !== h) {
+            console.warn('[ElectionReturn] qrPrintWidthIn/qrPrintHeightIn are deprecated; using min(w,h) to keep square.')
+        }
+        const side = Math.min(
+            w != null ? Number(w) : Number.POSITIVE_INFINITY,
+            h != null ? Number(h) : Number.POSITIVE_INFINITY
+        )
+        const fallback = props.qrPrintSizeIn ?? 2.5
+        const chosen = Number.isFinite(side) ? side : fallback
+        return Math.max(minClamp, Math.min(maxClamp, chosen))
+    }
+    // Preferred single control:
+    const sz = Number(props.qrPrintSizeIn ?? 2.5)
+    return Math.max(minClamp, Math.min(maxClamp, sz))
+})
+
+/* ---------------- Style vars (grid + size) ---------------- */
 const qrStyleVars = computed(() => {
-    const w = Math.max(1, Number(props.qrPrintWidthIn || 0) || 2.5)
-    const h = Math.max(1, Number(props.qrPrintHeightIn || 0) || 2.85)
     const cols = Math.max(1, Math.min(6, Number(props.qrGridCols || 0) || 3))
-    const gap = Math.max(0, Number(props.qrGridGapIn || 0) || 0.10)
+    const gap  = Math.max(0, Number(props.qrGridGapIn || 0) || 0.10)
     return {
-        '--qrw': `${w}in`,
-        '--qrh': `${h}in`,
+        '--qrsize': `${qrCardSizeIn.value}in`,
         '--qrcols': String(cols),
-        '--qrgap': `${gap}in`
+        '--qrgap':  `${gap}in`
     } as Record<string, string>
 })
 
@@ -401,7 +415,7 @@ watch(() => props.qrChunks, v => { if (v?.length) qr.value = v })
                     </table>
                 </section>
 
-                <!-- QR Block at bottom -->
+                <!-- QR Block at bottom (square sizing via CSS vars) -->
                 <section v-if="showQrBlock" class="qr-block">
                     <div class="qr-title">QR Tally</div>
                     <div class="qr-grid">
@@ -465,24 +479,19 @@ watch(() => props.qrChunks, v => { if (v?.length) qr.value = v })
 .cand { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .votes { text-align:right; font-weight:700; }
 
-/* Officials */
-.signers { margin-top:14px; page-break-inside: avoid; }
-.section-title { font-weight:700; margin-bottom:6px; }
-.signers-table { width:100%; border-collapse:collapse; font-size:.95em; }
-.signers-table th, .signers-table td { border-top:1px solid #e5e7eb; padding:6px 8px; text-align:left; }
-
-/* QR block (now using CSS vars for dimensions) */
+/* QR block (square sizing via CSS vars) */
 .qr-block { margin-top: 16px; }
 .qr-title { font-weight:700; margin:2px 0 8px; }
 .qr-grid {
     display: grid;
-    grid-template-columns: repeat(var(--qrcols, 3), var(--qrw, 2.5in));
+    grid-template-columns: repeat(var(--qrcols, 3), var(--qrsize, 2.5in));
     gap: var(--qrgap, 0.10in);
     justify-content: start;
 }
 .qr-card {
-    width: var(--qrw, 2.5in);
-    height: var(--qrh, 2.85in);
+    width: var(--qrsize, 2.5in);
+    /* card height = square image + caption space (~0.35in) */
+    height: calc(var(--qrsize, 2.5in) + 0.35in);
     border: 1px solid #e5e7eb;
     border-radius: 6px;
     display: flex;
