@@ -1,11 +1,20 @@
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onBeforeUnmount } from 'vue'
 import { inflateRaw } from 'pako'
 import ErTallyView, { type ElectionReturnData } from '@/components/ErTallyView.vue'
-import ElectionReturn from '@/components/ElectionReturn.vue';
-import ErQrCapture from '@/components/ErQrCapture.vue' // NEW: scanner
-import axios from 'axios' // NEW: ensure axios is available here
-import { Button } from '@/components/ui/button';
+import ElectionReturn from '@/components/ElectionReturn.vue'
+import ErQrCapture from '@/components/ErQrCapture.vue'
+import axios from 'axios'
+import { Button } from '@/components/ui/button'
+import { route as ziggyRoute } from 'ziggy-js' // ✅ bring route() into scope
+
+/* Safely expose a route() function for the template:
+   - Prefer global window.route injected by @routes (Ziggy)
+   - Fallback to ziggy-js route() (if your app config passes Ziggy config globally)
+*/
+const route: any = (typeof (window as any).route === 'function')
+    ? (window as any).route
+    : ziggyRoute
 
 /* ───────────────── Types ───────────────── */
 interface QrChunkItem {
@@ -17,6 +26,7 @@ interface QrChunkItem {
     status: 'pending' | 'parsed' | 'invalid'
     error?: string | null
 }
+type ParsedChunk = { code: string; index: number; total: number; payload: string }
 
 /* ───────────────── Utilities ───────────────── */
 function b64urlDecodeBytes(input: string): Uint8Array {
@@ -29,26 +39,32 @@ function b64urlDecodeBytes(input: string): Uint8Array {
     return out
 }
 
-function parseChunkLine(line: string) {
+// Strict Base64URL payload validation
+const B64URL_RE = /^[A-Za-z0-9_-]+$/
+
+function parseChunkLine(line: string): ParsedChunk | null {
+    // Format: ER|v1|<CODE>|<index>/<total>|<payload>
     const parts = line.split('|', 5)
-    if (parts.length < 5 || parts[0] !== 'ER' || parts[1] !== 'v1') {
-        return null
-    }
+    if (parts.length < 5 || parts[0] !== 'ER' || parts[1] !== 'v1') return null
+
     const code = parts[2]
     const [idxStr, totalStr] = parts[3].split('/')
     const index = parseInt(idxStr, 10)
     const total = parseInt(totalStr, 10)
     const payload = parts[4]
-    if (!index || !total || !payload) return null
+
+    if (!Number.isFinite(index) || !Number.isFinite(total) || index < 1 || total < 1 || index > total) return null
+    if (!payload || !B64URL_RE.test(payload)) return null
+
     return { code, index, total, payload }
 }
 
 /* ───────────────── State: JSON path ───────────────── */
-const rawJson = ref<string>('')                // user-pasted or auto-filled from chunks
+const rawJson = ref<string>('') // user-pasted or auto-filled from chunks
 const parseError = ref<string | null>(null)
 const er = ref<ElectionReturnData | null>(null)
 
-function parseAndPreview() {
+function parseAndPreview(): void {
     parseError.value = null
     try {
         const obj = JSON.parse(rawJson.value)
@@ -65,21 +81,19 @@ function parseAndPreview() {
 }
 
 /* ───────────── NEW: load sample ER JSON from storage ───────────── */
-const sampleUrl = ref('/storage/sample-er.json')        // kept for fallback; no input field now
+const sampleUrl = ref('/storage/sample-er.json') // fallback path when no Ziggy
 const loadingSample = ref(false)
 const sampleError = ref<string | null>(null)
 
-async function loadSampleFromStorage() {
+async function loadSampleFromStorage(): Promise<void> {
     loadingSample.value = true
     sampleError.value = null
     try {
-        // Prefer named route via Ziggy when present
-        const url = (typeof (window as any).route === 'function')
-            ? (window as any).route('er.sample', { name: 'demo' })
+        const url = (typeof (route) === 'function')
+            ? route('er.sample', { name: 'demo' })
             : sampleUrl.value
 
         const { data } = await axios.get(url)
-        // Accept either raw object or pre-stringified JSON file
         rawJson.value = typeof data === 'string' ? data : JSON.stringify(data, null, 2)
         parseAndPreview()
     } catch (err: any) {
@@ -89,14 +103,28 @@ async function loadSampleFromStorage() {
     }
 }
 
-/* ───────────── NEW: camera-capture integration (minimal) ───────────── */
+/* ───────────── NEW: camera-capture integration (single ingestion path) ───────────── */
 const showScanner = ref(false)
 const capturedLines = ref<string[]>([])
-function onResolvedEr(json: any, meta?: { lines?: string[] }) {
-    rawJson.value = JSON.stringify(json, null, 2)
-    parseAndPreview()
+
+// Keep raw lines you've already ingested (scanner can repeat)
+const seenLines = new Set<string>()
+
+function onScannerLines(lines: string[]): void {
+    if (!Array.isArray(lines)) return
+    capturedLines.value = lines
+    for (const raw of lines) {
+        const line = (raw || '').trim()
+        if (!line) continue
+        if (seenLines.has(line)) continue // de-dup full line
+        addChunkText(line)
+    }
+}
+
+// We deliberately do not use scanner-side decoded JSON to avoid double logic.
+// Just close the scanner if it emits a "resolved" event.
+function onScannerResolvedEr(): void {
     showScanner.value = false
-    capturedLines.value = meta?.lines ?? []
 }
 
 /* ───────────────── State: chunk helper path ───────────────── */
@@ -108,13 +136,29 @@ const totalChunks = ref<number | null>(null)
 const assembling = ref(false)
 const assembleError = ref<string | null>(null)
 
-const pngBulkInput = ref<string>('')      // one data URI per line
-const textBulkInput = ref<string>('')     // one ER|v1|... line per row
+const pngBulkInput = ref<string>('') // one data URI per line
+const textBulkInput = ref<string>('') // one ER|v1|... line per row
 
-function addChunkText(line: string) {
+// Debounce assembling to avoid races during rapid scans
+let assembleTimer: ReturnType<typeof setTimeout> | undefined
+function scheduleAssemble() {
+    if (assembleTimer) clearTimeout(assembleTimer)
+    assembleTimer = setTimeout(() => {
+        tryAssemble()
+    }, 80)
+}
+
+function addChunkText(line: string): void {
+    const trimmed = line.trim()
+    if (!trimmed) return
+
+    // Deduplicate full line
+    if (seenLines.has(trimmed)) return
+    seenLines.add(trimmed)
+
     const item: QrChunkItem = {
         id: nextId(),
-        text: line.trim(),
+        text: trimmed,
         status: 'pending',
         error: null
     }
@@ -122,11 +166,26 @@ function addChunkText(line: string) {
 
     const parsed = parseChunkLine(item.text)
     if (!parsed) {
+        // Give a slightly more helpful error if we can parse index
+        const maybe = trimmed.split('|', 5)
+        if (maybe.length >= 5) {
+            const idxPart = maybe[3] || ''
+            const idx = Number.parseInt((idxPart.split('/')[0] || ''), 10)
+            const payload = maybe[4] || ''
+            if (!B64URL_RE.test(payload)) {
+                item.status = 'invalid'
+                item.error = Number.isFinite(idx)
+                    ? `Chunk #${idx} contains non-Base64URL characters.`
+                    : 'Invalid chunk payload characters (Base64URL expected).'
+                return
+            }
+        }
         item.status = 'invalid'
         item.error = 'Invalid chunk format.'
         return
     }
 
+    // total mismatch reset (start a fresh set)
     if (totalChunks.value && totalChunks.value !== parsed.total) {
         chunkMap.clear()
         totalChunks.value = null
@@ -140,10 +199,10 @@ function addChunkText(line: string) {
     item.index = parsed.index
     item.total = parsed.total
 
-    tryAssemble()
+    scheduleAssemble()
 }
 
-function tryAssemble() {
+function tryAssemble(): void {
     assembleError.value = null
     if (!totalChunks.value) return
     if (chunkMap.size !== totalChunks.value) return
@@ -151,7 +210,7 @@ function tryAssemble() {
     assembling.value = true
     try {
         const joined = Array.from({ length: totalChunks.value }, (_, i) => chunkMap.get(i + 1)).join('')
-        const inflated = inflateRaw(b64urlDecodeBytes(joined), { to: 'string' })
+        const inflated = inflateRaw(b64urlDecodeBytes(joined), { to: 'string' }) as unknown as string
         rawJson.value = JSON.stringify(JSON.parse(inflated), null, 2)
         parseAndPreview()
     } catch (e: any) {
@@ -161,7 +220,7 @@ function tryAssemble() {
     }
 }
 
-function resetChunks() {
+function resetChunks(): void {
     chunks.splice(0, chunks.length)
     chunkMap.clear()
     totalChunks.value = null
@@ -169,14 +228,16 @@ function resetChunks() {
     assembleError.value = null
     pngBulkInput.value = ''
     textBulkInput.value = ''
+    seenLines.clear()
+    if (assembleTimer) clearTimeout(assembleTimer)
 }
 
-function pasteBulkTexts() {
+function pasteBulkTexts(): void {
     const lines = textBulkInput.value.split('\n').map(s => s.trim()).filter(Boolean)
     for (const line of lines) addChunkText(line)
 }
 
-function pasteBulkPngs() {
+function pasteBulkPngs(): void {
     const lines = pngBulkInput.value.split('\n').map(s => s.trim()).filter(Boolean)
     for (const uri of lines) {
         const it: QrChunkItem = { id: nextId(), text: '', png: uri, status: 'pending' }
@@ -196,11 +257,11 @@ watch(rawJson, () => {
     // parsing is manual via Preview button (and done on assembly), so no auto-op here
 })
 
-// ───────── desired-chunks control (debounced) ─────────
+/* ───────── desired-chunks control (debounced) ───────── */
 const desiredChunksUi = ref<number>(5)         // user-facing control
 const debouncedDesiredChunks = ref<number>(5)  // prop passed down
 
-let dcTimer: number | undefined
+let dcTimer: ReturnType<typeof setTimeout> | undefined
 watch(desiredChunksUi, (v) => {
     // clamp 5..16
     const n = Math.max(5, Math.min(16, Number(v) || 5))
@@ -210,9 +271,14 @@ watch(desiredChunksUi, (v) => {
     if (!er.value) return
 
     if (dcTimer) clearTimeout(dcTimer)
-    dcTimer = window.setTimeout(() => {
+    dcTimer = setTimeout(() => {
         debouncedDesiredChunks.value = n
     }, 400) // debounce
+})
+
+onBeforeUnmount(() => {
+    if (dcTimer) clearTimeout(dcTimer)
+    if (assembleTimer) clearTimeout(assembleTimer)
 })
 </script>
 
@@ -245,8 +311,8 @@ watch(desiredChunksUi, (v) => {
         <!-- NEW: capture component -->
         <section v-if="showScanner" class="border rounded p-4">
             <ErQrCapture
-                @resolved-er="onResolvedEr"
-                @update:chunks="(ls:any) => { capturedLines = ls }"
+                @update:chunks="onScannerLines"
+                @resolved-er="onScannerResolvedEr"
                 @cancel="showScanner = false"
             />
         </section>
