@@ -171,6 +171,21 @@ watch(desiredChunksUi, (v) => {
     }, 400) // debounce
 })
 
+/* ───────── QR appearance controls (pass-through to ElectionReturn) ─────────
+   No debounce needed here: ElectionReturn already debounces regen internally.
+*/
+type ECC = 'low' | 'medium' | 'quartile' | 'high'
+const qrSizeUi   = ref<number>(640)   // px
+const qrMarginUi = ref<number>(12)    // modules
+const qrEccUi    = ref<ECC>('medium') // ECC level
+
+/* NEW: Preset profile + printed size/grid controls */
+const qrProfileUi = ref<'small-clear' | 'normal' | 'high-capacity'>('normal')
+const qrPrintWidthInUi  = ref<number>(2.5)
+const qrPrintHeightInUi = ref<number>(2.85)
+const qrGridColsUi      = ref<number>(3)
+const qrGridGapInUi     = ref<number>(0.10)
+
 onBeforeUnmount(() => {
     if (dcTimer) clearTimeout(dcTimer)
 })
@@ -193,6 +208,106 @@ onBeforeUnmount(() => {
                         title="Desired number of QR chunks (5–16)"
                     />
                 </label>
+
+                <!-- QR preset profile -->
+                <label class="text-sm text-gray-700 flex items-center gap-1">
+                    <span>Profile</span>
+                    <select
+                        v-model="qrProfileUi"
+                        class="px-2 py-1 border rounded text-sm"
+                        title="QR data/robustness preset"
+                    >
+                        <option value="small-clear">small-clear</option>
+                        <option value="normal">normal</option>
+                        <option value="high-capacity">high-capacity</option>
+                    </select>
+                </label>
+
+                <!-- QR appearance controls (image generation) -->
+                <label class="text-sm text-gray-700 flex items-center gap-1">
+                    <span>Size</span>
+                    <input
+                        type="number"
+                        min="128"
+                        step="16"
+                        v-model.number="qrSizeUi"
+                        class="w-20 px-2 py-1 border rounded text-sm"
+                        title="PNG size in pixels"
+                    />
+                </label>
+
+                <label class="text-sm text-gray-700 flex items-center gap-1">
+                    <span>Margin</span>
+                    <input
+                        type="number"
+                        min="0"
+                        max="64"
+                        v-model.number="qrMarginUi"
+                        class="w-20 px-2 py-1 border rounded text-sm"
+                        title="Quiet-zone margin (modules)"
+                    />
+                </label>
+
+                <label class="text-sm text-gray-700 flex items-center gap-1">
+                    <span>ECC</span>
+                    <select
+                        v-model="qrEccUi"
+                        class="px-2 py-1 border rounded text-sm"
+                        title="Error correction level"
+                    >
+                        <option value="low">low</option>
+                        <option value="medium">medium</option>
+                        <option value="quartile">quartile</option>
+                        <option value="high">high</option>
+                    </select>
+                </label>
+
+                <!-- Printed layout controls -->
+                <label class="text-sm text-gray-700 flex items-center gap-1">
+                    <span>Print W (in)</span>
+                    <input
+                        type="number"
+                        min="1"
+                        step="0.05"
+                        v-model.number="qrPrintWidthInUi"
+                        class="w-24 px-2 py-1 border rounded text-sm"
+                        title="Printed QR card width (inches)"
+                    />
+                </label>
+                <label class="text-sm text-gray-700 flex items-center gap-1">
+                    <span>Print H (in)</span>
+                    <input
+                        type="number"
+                        min="1"
+                        step="0.05"
+                        v-model.number="qrPrintHeightInUi"
+                        class="w-24 px-2 py-1 border rounded text-sm"
+                        title="Printed QR card height (inches)"
+                    />
+                </label>
+                <label class="text-sm text-gray-700 flex items-center gap-1">
+                    <span>Cols</span>
+                    <input
+                        type="number"
+                        min="1"
+                        max="6"
+                        v-model.number="qrGridColsUi"
+                        class="w-16 px-2 py-1 border rounded text-sm"
+                        title="Number of QR cards per row"
+                    />
+                </label>
+                <label class="text-sm text-gray-700 flex items-center gap-1">
+                    <span>Gap (in)</span>
+                    <input
+                        type="number"
+                        min="0"
+                        step="0.05"
+                        v-model.number="qrGridGapInUi"
+                        class="w-20 px-2 py-1 border rounded text-sm"
+                        title="Gap between QR cards (inches)"
+                    />
+                </label>
+
                 <Button class="px-3 py-2 rounded bg-emerald-600 text-white" @click="showScanner = true">Scan QR Codes</Button>
                 <Button class="px-3 py-2 rounded bg-gray-400" @click="() => { rawJson=''; er=null; parseError=null }">Clear JSON</Button>
                 <Button class="px-3 py-2 rounded bg-gray-400" @click="resetChunks">Reset Chunks</Button>
@@ -353,8 +468,16 @@ onBeforeUnmount(() => {
             <ElectionReturn
                 :er="er"
                 paper="legal"
-                :basePt="10"
+                :base-pt="10"
                 :desired-chunks="debouncedDesiredChunks"
+                :ecc="qrEccUi"
+                :size="qrSizeUi"
+                :margin="qrMarginUi"
+                :qr-profile="qrProfileUi"
+                :qr-print-width-in="qrPrintWidthInUi"
+                :qr-print-height-in="qrPrintHeightInUi"
+                :qr-grid-cols="qrGridColsUi"
+                :qr-grid-gap-in="qrGridGapInUi"
                 :qr-endpoint="route('qr.er.from_json')"
             />
         </section>

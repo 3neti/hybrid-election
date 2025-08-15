@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, watch, ref, computed, nextTick } from 'vue'
 import axios from 'axios'
+import { Button } from '@/components/ui/button'
 
 type ECC = 'low' | 'medium' | 'quartile' | 'high'
 interface CandidateData { code: string; name?: string; alias?: string }
@@ -30,7 +31,14 @@ interface QrResponse {
     version: string
     total: number
     chunks: QrChunk[]
-    params?: { payload?: string; desired_chunks?: number | null; effective_max_chars_per_qr?: number; ecc?: string; size?: number; margin?: number }
+    params?: {
+        payload?: string
+        desired_chunks?: number | null
+        effective_max_chars_per_qr?: number
+        ecc?: string
+        size?: number
+        margin?: number
+    }
 }
 
 const props = withDefaults(defineProps<{
@@ -46,6 +54,16 @@ const props = withDefaults(defineProps<{
     margin?: number
     qrEndpoint?: string | null
     printIsolated?: boolean
+
+    /** NEW: preset profile for QR tuning */
+    qrProfile?: 'small-clear' | 'normal' | 'high-capacity' | null
+    /** NEW: printed dimensions (inches) */
+    qrPrintWidthIn?: number
+    qrPrintHeightIn?: number
+    /** NEW: grid columns for QR cards (screen/print) */
+    qrGridCols?: number
+    /** NEW: gap between QR cards (inches) */
+    qrGridGapIn?: number
 }>(), {
     paper: 'legal',
     basePt: 10,
@@ -56,8 +74,41 @@ const props = withDefaults(defineProps<{
     size: 640,
     margin: 12,
     qrEndpoint: null,
-    printIsolated: true
+    printIsolated: true,
+
+    qrProfile: 'normal',
+    qrPrintWidthIn: 2.5,
+    qrPrintHeightIn: 2.85,
+    qrGridCols: 3,
+    qrGridGapIn: 0.10
 })
+
+/* ---------------- Profile → defaults ---------------- */
+const profileDefaults = computed(() => {
+    // These are sane starting points; explicit props still override.
+    switch (props.qrProfile) {
+        case 'small-clear':
+            return { desiredChunks: 8, ecc: 'quartile' as ECC, size: 384, margin: 16 }
+        case 'high-capacity':
+            // Keep desiredChunks >= 5 to honor your system minimum
+            return { desiredChunks: 5, ecc: 'low' as ECC, size: 640, margin: 8 }
+        case 'normal':
+        default:
+            return { desiredChunks: 5, ecc: 'medium' as ECC, size: 512, margin: 12 }
+    }
+})
+
+/* ---------------- Effective values (profile + explicit) ---------------- */
+const effectiveDesiredChunks = computed<number | null>(() => {
+    const fromProfile = profileDefaults.value.desiredChunks
+    const v = props.desiredChunks ?? fromProfile
+    // Enforce 5..16 range
+    const clamped = Math.max(5, Math.min(16, Number(v)))
+    return clamped
+})
+const effectiveEcc = computed<ECC>(() => props.ecc ?? profileDefaults.value.ecc)
+const effectiveSize = computed<number>(() => props.size ?? profileDefaults.value.size)
+const effectiveMargin = computed<number>(() => props.margin ?? profileDefaults.value.margin)
 
 /* ---------------- Local state ---------------- */
 const qr = ref<QrChunk[]>(props.qrChunks ?? [])
@@ -76,7 +127,7 @@ const showQrBlock = computed(() => totalChunks.value > 0)
 
 const hasPrecinctExtras = computed(() => {
     const p = props.er?.precinct
-    return !!(p?.location_name || p?.latitude || p?.longitude)
+    return !!(p?.location_name || p?.latitude != null || p?.longitude != null)
 })
 
 /* ---------------- Utils ---------------- */
@@ -120,29 +171,12 @@ const hasPeople = computed(() => mergedPeople.value.length > 0)
 
 /* ---------------- QR generation ---------------- */
 function resolveQrUrl(erCode: string): string {
-    if (props.qrEndpoint) {
-        console.log('[resolveQrUrl] Using props.qrEndpoint:', props.qrEndpoint)
-        return props.qrEndpoint
-    }
+    if (props.qrEndpoint) return props.qrEndpoint
 
-    // Prefer a global `route()` if @routes injected it
     if (typeof (window as any).route === 'function') {
-        console.log('[resolveQrUrl] Global route() detected.')
-        try {
-            const url = (window as any).route('qr.er', { code: erCode })
-            console.log('[resolveQrUrl] Successfully resolved via route("qr.er"):', url)
-            return url
-        } catch (err) {
-            console.error('[resolveQrUrl] route("qr.er") threw an error:', err)
-        }
-    } else {
-        console.warn('[resolveQrUrl] No global route() found.')
+        try { return (window as any).route('qr.er', { code: erCode }) } catch {}
     }
-
-    // Last-resort fallback
-    const fallbackUrl = `/api/qr/election-return/${encodeURIComponent(erCode)}`
-    console.log('[resolveQrUrl] Falling back to default API path:', fallbackUrl)
-    return fallbackUrl
+    return `/api/qr/election-return/${encodeURIComponent(erCode)}`
 }
 
 async function generateQr() {
@@ -155,34 +189,30 @@ async function generateQr() {
     qr.value = []
 
     try {
-        // If a qrEndpoint is provided, POST the in-memory ER JSON to it.
         if (props.qrEndpoint) {
-            console.log('[ElectionReturn] POSTing ER JSON to', props.qrEndpoint)
             const { data } = await axios.post<QrResponse>(props.qrEndpoint, {
-                json: props.er,                 // <- the in-memory payload
-                code: props.er.code,            // reuse ER code
-                desired_chunks: props.desiredChunks ?? undefined,
+                json: props.er,
+                code: props.er.code,
+                desired_chunks: effectiveDesiredChunks.value ?? undefined,
                 make_images: 1,
-                ecc: props.ecc,
-                size: props.size,
-                margin: props.margin
+                ecc: effectiveEcc.value,
+                size: effectiveSize.value,
+                margin: effectiveMargin.value
             })
-            qr.value = (data?.chunks ?? []).sort((a,b) => a.index - b.index)
+            qr.value = (data?.chunks ?? []).sort((a, b) => a.index - b.index)
         } else {
-            // Default: GET by code (DB-backed endpoint)
             const url = resolveQrUrl(props.er.code)
-            console.log('[ElectionReturn] GETting QR chunks from', url)
             const { data } = await axios.get<QrResponse>(url, {
                 params: {
                     payload: props.payload,
-                    desired_chunks: props.desiredChunks ?? undefined,
+                    desired_chunks: effectiveDesiredChunks.value ?? undefined,
                     make_images: 1,
-                    ecc: props.ecc,
-                    size: props.size,
-                    margin: props.margin
+                    ecc: effectiveEcc.value,
+                    size: effectiveSize.value,
+                    margin: effectiveMargin.value
                 }
             })
-            qr.value = (data?.chunks ?? []).sort((a,b) => a.index - b.index)
+            qr.value = (data?.chunks ?? []).sort((a, b) => a.index - b.index)
         }
 
         if (!qr.value.length) qrError.value = 'No QR chunks were returned.'
@@ -256,21 +286,57 @@ async function handlePrint() {
     setTimeout(() => window.print(), 60)
 }
 
+/* ---------------- Style vars for printed size ---------------- */
+const qrStyleVars = computed(() => {
+    const w = Math.max(1, Number(props.qrPrintWidthIn || 0) || 2.5)
+    const h = Math.max(1, Number(props.qrPrintHeightIn || 0) || 2.85)
+    const cols = Math.max(1, Math.min(6, Number(props.qrGridCols || 0) || 3))
+    const gap = Math.max(0, Number(props.qrGridGapIn || 0) || 0.10)
+    return {
+        '--qrw': `${w}in`,
+        '--qrh': `${h}in`,
+        '--qrcols': String(cols),
+        '--qrgap': `${gap}in`
+    } as Record<string, string>
+})
+
 /* ---------------- Lifecycle ---------------- */
 onMounted(generateQr)
+
+// Debounce re-generation on effective inputs (profile + explicit)
+let regenTimer: ReturnType<typeof setTimeout> | undefined
+function triggerGenerateQr() {
+    if (regenTimer) clearTimeout(regenTimer)
+    regenTimer = setTimeout(() => { generateQr() }, 250)
+}
+
 watch(
-    () => [props.er?.code, props.payload, props.desiredChunks, props.ecc, props.size, props.margin, props.autoQr, props.qrEndpoint],
-    () => generateQr()
+    () => [
+        props.er?.code,
+        props.payload,
+        effectiveDesiredChunks.value,
+        effectiveEcc.value,
+        effectiveSize.value,
+        effectiveMargin.value,
+        props.autoQr,
+        props.qrEndpoint
+    ],
+    () => triggerGenerateQr()
 )
+
 watch(() => props.qrChunks, v => { if (v?.length) qr.value = v })
 </script>
 
 <template>
-    <div :id="scopeId" :class="['sheet', paper === 'legal' ? 'paper-legal' : 'paper-a4']" :style="{ fontSize: basePt + 'pt' }">
+    <div
+        :id="scopeId"
+        :class="['sheet', paper === 'legal' ? 'paper-legal' : 'paper-a4']"
+        :style="[{ fontSize: basePt + 'pt' }, qrStyleVars]"
+    >
         <!-- Toolbar (screen only) -->
         <div class="toolbar no-print">
             <div class="left">
-                <button class="btn" @click="handlePrint">Print</button>
+                <Button class="px-3 py-2 rounded bg-blue-600 text-white" @click="handlePrint">Print</Button>
             </div>
             <div class="right">
                 <span v-if="qrLoading">Generating QR…</span>
@@ -335,7 +401,7 @@ watch(() => props.qrChunks, v => { if (v?.length) qr.value = v })
                     </table>
                 </section>
 
-                <!-- QR Block at bottom (3 per row, ~2"x2") -->
+                <!-- QR Block at bottom -->
                 <section v-if="showQrBlock" class="qr-block">
                     <div class="qr-title">QR Tally</div>
                     <div class="qr-grid">
@@ -372,7 +438,7 @@ watch(() => props.qrChunks, v => { if (v?.length) qr.value = v })
 .btn.tiny { padding:2px 6px; font-size:11px; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
 
-.layout { padding: 10px; } /* single column layout now */
+.layout { padding: 10px; }
 .content { min-width:0; }
 
 /* Header */
@@ -380,33 +446,23 @@ watch(() => props.qrChunks, v => { if (v?.length) qr.value = v })
 .header .meta { display:grid; grid-auto-rows:minmax(18px,auto); gap:2px; font-size:.95em; }
 .header .coords .map-link { margin-left:6px; text-decoration:underline; color:#2563eb; }
 
-/* Tallies: two balanced columns; keep rows whole */
+/* Tallies: two balanced columns */
 .tallies.two-col {
     columns: 2;
     column-gap: 14px;
-    /* better balance across columns; support varies but harmless */
     column-fill: balance;
 }
 .trow {
     break-inside: avoid;
     display: grid;
-    grid-template-columns: 150px 1fr 56px; /* was 110px 1fr 60px */
+    grid-template-columns: 150px 1fr 56px;
     gap: 6px;
     align-items: center;
     padding: 5px 0;
     border-bottom: 1px solid #f1f5f9;
 }
-.pos {
-    font-weight:600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.cand {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
+.pos { font-weight:600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cand { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .votes { text-align:right; font-weight:700; }
 
 /* Officials */
@@ -415,18 +471,18 @@ watch(() => props.qrChunks, v => { if (v?.length) qr.value = v })
 .signers-table { width:100%; border-collapse:collapse; font-size:.95em; }
 .signers-table th, .signers-table td { border-top:1px solid #e5e7eb; padding:6px 8px; text-align:left; }
 
-/* QR block at bottom */
+/* QR block (now using CSS vars for dimensions) */
 .qr-block { margin-top: 16px; }
 .qr-title { font-weight:700; margin:2px 0 8px; }
 .qr-grid {
     display: grid;
-    grid-template-columns: repeat(3, 2.5in); /* was 2in */
-    gap: 0.10in;                              /* was 0.15in */
+    grid-template-columns: repeat(var(--qrcols, 3), var(--qrw, 2.5in));
+    gap: var(--qrgap, 0.10in);
     justify-content: start;
 }
 .qr-card {
-    width: 2.5in;           /* was 2in */
-    height: 2.85in;         /* a bit taller to fit caption + QR */
+    width: var(--qrw, 2.5in);
+    height: var(--qrh, 2.85in);
     border: 1px solid #e5e7eb;
     border-radius: 6px;
     display: flex;
@@ -438,7 +494,7 @@ watch(() => props.qrChunks, v => { if (v?.length) qr.value = v })
 .qr-caption {
     flex: 0 0 auto;
     text-align: center;
-    font-size: 10px;        /* slightly smaller to free space */
+    font-size: 10px;
     line-height: 1.2;
     padding: 2px 4px;
     color: #4b5563;
@@ -448,7 +504,7 @@ watch(() => props.qrChunks, v => { if (v?.length) qr.value = v })
     flex: 1 1 auto;
     width: 100%;
     height: 100%;
-    object-fit: contain;     /* fill card without cropping */
+    object-fit: contain;
     image-rendering: pixelated;
 }
 .qr-fallback { padding:6px; font-size:12px; }
@@ -466,13 +522,10 @@ watch(() => props.qrChunks, v => { if (v?.length) qr.value = v })
 @media print {
     .no-print, .toolbar { display:none !important; }
     html, body { padding:0 !important; margin:0 !important; height:auto !important; }
-    /* Remove min-heights to avoid huge blank areas after content */
     .paper-legal, .paper-a4 { min-height: auto !important; height: auto !important; }
     .sheet { border:none !important; }
-    /* Tighter page padding for print; prevents stray overflow = extra pages */
     .layout { padding:0.35in !important; }
     .tallies.two-col { column-gap:0.22in !important; }
-    /* Avoid breaking inside logical blocks */
     .trow, .signers, .qr-card { page-break-inside: avoid !important; break-inside: avoid !important; }
 }
 </style>
