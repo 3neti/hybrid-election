@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue'
 import TallyMarks from '@/components/TallyMarks.vue'
+import ErOfficialsSignatures from '@/components/ErOfficialsSignatures.vue'
 
 /** ---------------- Types ---------------- */
 interface CandidateData { code: string; name?: string; alias?: string }
@@ -198,6 +199,10 @@ watch(() => props.er?.last_ballot, () => {
         </header>
 
         <!-- Precinct + Officials (merged with signatures) -->
+<!--        <ErOfficialsSignatures-->
+<!--            :er="er"-->
+<!--            :hide-when-empty="true"-->
+<!--        />-->
         <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <!-- Precinct card -->
             <div v-if="hasPrecinctExtras" class="p-4 border rounded bg-gray-50">
@@ -229,52 +234,11 @@ watch(() => props.er?.last_ballot, () => {
             </div>
 
             <!-- Combined Officials & Signatures card (no “Source” column) -->
-            <div v-if="hasPeople" class="p-4 border rounded bg-gray-50 md:col-span-2">
-                <h3 class="text-sm font-semibold mb-2">Officials & Signatures</h3>
-
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
-                        <thead>
-                        <tr class="text-left text-gray-600 uppercase text-xs">
-                            <th class="py-2 pr-3">Name</th>
-                            <th class="py-2 pr-3">Role</th>
-                            <th class="py-2">Status</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr v-for="p in mergedPeople" :key="p.key" class="border-t">
-                            <td class="py-2 pr-3 font-medium">{{ p.name }}</td>
-                            <td class="py-2 pr-3 text-xs uppercase tracking-wide text-gray-700">
-                                {{ p.role || '—' }}
-                            </td>
-                            <td class="py-2">
-                  <span v-if="p.signed_at" class="inline-block px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                    signed: {{ formatWhen(p.signed_at) }}
-                  </span>
-                                <span v-else class="inline-block px-2 py-0.5 rounded bg-amber-100 text-amber-800">
-                    pending
-                  </span>
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- signature lines for printing (optional, purely visual) -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 print:mt-6">
-                    <div class="border rounded p-3 text-center">
-                        <div class="h-12"></div>
-                        <div class="border-t pt-1 mt-2 text-xs text-gray-600">
-                            Signature over Printed Name
-                        </div>
-                    </div>
-                    <div class="border rounded p-3 text-center">
-                        <div class="h-12"></div>
-                        <div class="border-t pt-1 mt-2 text-xs text-gray-600">
-                            Signature over Printed Name
-                        </div>
-                    </div>
-                </div>
+            <div v-if="hasPeople" class="rounded bg-gray-50 md:col-span-2">
+                <ErOfficialsSignatures
+                    :er="er"
+                    :hide-when-empty="true"
+                />
             </div>
         </section>
 

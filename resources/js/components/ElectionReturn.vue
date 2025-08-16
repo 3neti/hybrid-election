@@ -7,6 +7,7 @@ import { useQrCardLayout } from '@/composables/useQrCardLayout'
 import { useQrProfiles } from '@/composables/useQrProfiles'
 import { useQrApi } from '@/composables/useQrApi'  // ✅ new
 import { useHandlePrint } from '@/composables/usePrintHelpers'
+import ErOfficialsSignatures from '@/components/ErOfficialsSignatures.vue'
 
 type ECC = 'low' | 'medium' | 'quartile' | 'high'
 interface CandidateData { code: string; name?: string; alias?: string }
@@ -138,64 +139,6 @@ const { handlePrint } = useHandlePrint({
     printIsolatedRef: toRef(props, 'printIsolated'), // uses your existing prop
     imgSelector: '.qr-img', // same as before
 })
-// function injectPageRule(paper: 'legal' | 'a4') {
-//     const id = 'er-print-page-size'
-//     let el = document.getElementById(id) as HTMLStyleElement | null
-//     const css = paper === 'legal' ? '@page{size:8.5in 14in; margin:0}' : '@page{size:A4; margin:0}'
-//     if (!el) {
-//         el = document.createElement('style')
-//         el.id = id
-//         el.media = 'print'
-//         document.head.appendChild(el)
-//     }
-//     el.textContent = css
-// }
-//
-// function injectPrintIsolation(id: string) {
-//     if (!props.printIsolated) return
-//     const styleId = `er-print-isolation-${id}`
-//     let el = document.getElementById(styleId) as HTMLStyleElement | null
-//     if (!el) {
-//         el = document.createElement('style')
-//         el.id = styleId
-//         el.media = 'print'
-//         document.head.appendChild(el)
-//     }
-//     el.textContent = `
-// @media print {
-//   body, html { height: auto !important; }
-//   body * { visibility: hidden !important; margin: 0 !important; }
-//   #${id}, #${id} * { visibility: visible !important; }
-//   #${id} { position: absolute !important; left: 0 !important; top: 0 !important; width: auto !important; }
-// }`
-// }
-//
-// async function waitForImagesWithin(rootSelector: string, imgSelector: string) {
-//     const root = document.getElementById(rootSelector)
-//     if (!root) return
-//     const imgs = Array.from(root.querySelectorAll<HTMLImageElement>(imgSelector))
-//     const notDone = imgs.filter(i => !i.complete || (i.naturalWidth === 0 && i.naturalHeight === 0))
-//     await Promise.all(
-//         notDone.map(i => new Promise<void>(res => {
-//             i.addEventListener('load', () => res(), { once: true })
-//             i.addEventListener('error', () => res(), { once: true })
-//         }))
-//     )
-// }
-//
-// async function handlePrint() {
-//     injectPageRule(props.paper!)
-//     injectPrintIsolation(scopeId.value)
-//
-//     if (props.autoQr && !qr.value.length && !qrLoading.value) {
-//         await generateQr()
-//     }
-//
-//     await nextTick()
-//     await waitForImagesWithin(scopeId.value, '.qr-img')
-//
-//     setTimeout(() => window.print(), 60)
-// }
 
 /* ---------------- Style vars (grid + size) ---------------- */
 const { qrStyleVars } = useQrCardLayout(props)
@@ -286,24 +229,13 @@ watch(() => props.qrChunks, v => {
 
                 <!-- Officials & Signatures -->
                 <section v-if="hasPeople" class="signers">
-                    <div class="section-title">Officials & Signatures</div>
-                    <table class="signers-table">
-                        <thead>
-                        <tr><th>Name</th><th>Role</th><th>Status</th></tr>
-                        </thead>
-                        <tbody>
-                        <tr v-for="p in mergedPeople" :key="p.key">
-                            <td class="name">{{ p.name }}</td>
-                            <td class="role">{{ p.role || '—' }}</td>
-                            <td class="status">
-                                <span v-if="p.signed_at" class="pill ok">signed: {{ formatWhen(p.signed_at) }}</span>
-                                <span v-else class="pill warn">pending</span>
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
+                    <ErOfficialsSignatures
+                        :er="er"
+                        title="Officials & Signatures"
+                        :show-signature-lines="true"
+                        class="md:col-span-2"
+                    />
                 </section>
-
                 <!-- QR Block at bottom (square sizing via CSS vars) -->
                 <section v-if="showQrBlock" class="qr-block">
                     <div class="qr-title">QR Tally</div>
