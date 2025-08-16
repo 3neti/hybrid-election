@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { onMounted, watch, ref, computed, nextTick, toRef } from 'vue'
+import { onMounted, watch, ref, computed, toRef } from 'vue'
 import { usePrecinctPeople } from '@/composables/usePrecinctPeople'
 import { Button } from '@/components/ui/button'
-import { formatWhen, mapsHref, copyTextChunk } from '@/composables/useBasicUtils'
+import { mapsHref, copyTextChunk } from '@/composables/useBasicUtils'
 import { useQrCardLayout } from '@/composables/useQrCardLayout'
 import { useQrProfiles } from '@/composables/useQrProfiles'
 import { useQrApi } from '@/composables/useQrApi'  // ✅ new
@@ -101,7 +101,7 @@ const hasPrecinctExtras = computed(() => {
 })
 
 /* People (inspectors + signatures) */
-const { mergedPeople, hasPeople } = usePrecinctPeople(toRef(props, 'er'))
+const { hasPeople } = usePrecinctPeople(toRef(props, 'er'))
 
 /* ---------------- QR API (composable) ----------------
    We bind template directly to the composable’s refs. */

@@ -2,6 +2,7 @@
 import { computed, ref, watch, onMounted } from 'vue'
 import TallyMarks from '@/components/TallyMarks.vue'
 import ErOfficialsSignatures from '@/components/ErOfficialsSignatures.vue'
+import ErPrecinctCard from '@/components/ErPrecinctCard.vue'
 
 /** ---------------- Types ---------------- */
 interface CandidateData { code: string; name?: string; alias?: string }
@@ -199,38 +200,10 @@ watch(() => props.er?.last_ballot, () => {
         </header>
 
         <!-- Precinct + Officials (merged with signatures) -->
-<!--        <ErOfficialsSignatures-->
-<!--            :er="er"-->
-<!--            :hide-when-empty="true"-->
-<!--        />-->
         <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <!-- Precinct card -->
             <div v-if="hasPrecinctExtras" class="p-4 border rounded bg-gray-50">
-                <h3 class="text-sm font-semibold mb-2">Precinct</h3>
-                <dl class="text-sm space-y-1">
-                    <div v-if="er.precinct.location_name" class="flex gap-2">
-                        <dt class="text-gray-600 w-28">Location</dt>
-                        <dd class="font-medium">{{ er.precinct.location_name }}</dd>
-                    </div>
-                    <div v-if="er.precinct.latitude != null || er.precinct.longitude != null" class="flex gap-2">
-                        <dt class="text-gray-600 w-28">Coordinates</dt>
-                        <dd class="font-mono">
-                            <template v-if="er.precinct.latitude != null">{{ er.precinct.latitude }}</template>
-                            <template v-if="er.precinct.latitude != null && er.precinct.longitude != null">, </template>
-                            <template v-if="er.precinct.longitude != null">{{ er.precinct.longitude }}</template>
-                            <a
-                                v-if="mapsHref(er.precinct.latitude, er.precinct.longitude)"
-                                :href="mapsHref(er.precinct.latitude, er.precinct.longitude)!"
-                                target="_blank"
-                                rel="noopener"
-                                class="ml-2 underline text-blue-700"
-                                title="Open in Google Maps"
-                            >
-                                Map
-                            </a>
-                        </dd>
-                    </div>
-                </dl>
+                <ErPrecinctCard :er="er" class="mb-3" />
             </div>
 
             <!-- Combined Officials & Signatures card (no “Source” column) -->
