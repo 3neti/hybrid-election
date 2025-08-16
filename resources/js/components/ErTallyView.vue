@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue'
-import TallyMarks from '@/components/TallyMarks.vue'
 import ErOfficialsSignatures from '@/components/ErOfficialsSignatures.vue'
 import ErPrecinctCard from '@/components/ErPrecinctCard.vue'
+import ErTalliesTable from '@/components/ErTalliesTable.vue'
+import ErQrChunks from '@/components/ErQrChunks.vue'
 
 /** ---------------- Types ---------------- */
 interface CandidateData { code: string; name?: string; alias?: string }
@@ -216,44 +217,12 @@ watch(() => props.er?.last_ballot, () => {
         </section>
 
         <!-- Tallies Table -->
-        <section>
-            <table class="table-auto w-full border text-sm">
-                <thead class="bg-gray-200 text-left uppercase text-xs">
-                <tr>
-                    <th class="px-3 py-2">Position</th>
-                    <th class="px-3 py-2">Candidate</th>
-                    <th class="px-3 py-2 text-center">Votes</th>
-                    <th class="px-3 py-2">Tally</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr
-                    v-for="(tally, index) in er?.tallies"
-                    :key="index"
-                    class="border-t transition-colors duration-700 relative"
-                    :class="{
-              'bg-red-50': highlights.has(`${tally.position_code}::${tally.candidate_code}`),
-              'flash-ring': flashing.has(`${tally.position_code}::${tally.candidate_code}`)
-            }"
-                >
-                    <td class="px-3 py-2 font-mono">{{ tally.position_code }}</td>
-                    <td
-                        class="px-3 py-2 transition-colors duration-700"
-                        :class="{ 'text-red-600 font-bold': highlights.has(`${tally.position_code}::${tally.candidate_code}`) }"
-                    >
-                        {{ tally.candidate_name }}
-                    </td>
-                    <td class="px-3 py-2 text-center font-semibold">{{ tally.count }}</td>
-                    <td class="px-3 py-2">
-                        <TallyMarks
-                            :count="tally.count"
-                            :highlight-color="highlights.has(`${tally.position_code}::${tally.candidate_code}`) ? 'red' : undefined"
-                        />
-                    </td>
-                </tr>
-                </tbody>
-            </table>
-        </section>
+        <ErTalliesTable
+            :tallies="er?.tallies ?? []"
+            :highlight-keys="highlights"
+            :flash-keys="flashing"
+            highlight-color="red"
+        />
 
         <!-- Optional QR thumbnails (if caller passes qrChunks) -->
         <section v-if="totalChunks" class="space-y-2">
@@ -264,25 +233,11 @@ watch(() => props.er?.last_ballot, () => {
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div v-for="c in qrChunks" :key="c.index" class="p-3 border rounded">
-                    <div class="text-xs mb-2 font-mono">Chunk {{ c.index }} / {{ totalChunks }}</div>
-
-                    <img v-if="c.png" :src="c.png" alt="QR chunk" class="w-full h-auto" />
-
-                    <div v-else class="text-xs text-amber-700 bg-amber-50 border border-amber-200 p-2 rounded">
-                        <div class="font-semibold mb-1">PNG not available for this chunk.</div>
-                        <div v-if="c.png_error" class="mb-2 break-words">Reason: {{ c.png_error }}</div>
-                        <button
-                            class="px-2 py-1 text-xs rounded bg-gray-800 text-white hover:bg-black"
-                            @click="copyTextChunk(c.text)"
-                            title="Copy full chunk text"
-                        >
-                            Copy chunk text
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <ErQrChunks
+                v-if="qrChunks && qrChunks.length"
+                :chunks="qrChunks"
+                title="QR Tally"
+            />
         </section>
     </div>
 </template>

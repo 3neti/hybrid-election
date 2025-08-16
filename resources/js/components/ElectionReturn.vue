@@ -8,6 +8,7 @@ import { useQrProfiles } from '@/composables/useQrProfiles'
 import { useQrApi } from '@/composables/useQrApi'  // ✅ new
 import { useHandlePrint } from '@/composables/usePrintHelpers'
 import ErOfficialsSignatures from '@/components/ErOfficialsSignatures.vue'
+import ErQrChunks from '@/components/ErQrChunks.vue'
 
 type ECC = 'low' | 'medium' | 'quartile' | 'high'
 interface CandidateData { code: string; name?: string; alias?: string }
@@ -237,29 +238,34 @@ watch(() => props.qrChunks, v => {
                     />
                 </section>
                 <!-- QR Block at bottom (square sizing via CSS vars) -->
-                <section v-if="showQrBlock" class="qr-block">
-                    <div class="qr-title">QR Tally</div>
-                    <div class="qr-grid">
-                        <div v-for="c in qr" :key="c.index" class="qr-card" :class="{ 'qr-has-error': !c.png }">
-                            <div class="qr-caption mono">Chunk {{ c.index }} / {{ totalChunks }}</div>
+                <ErQrChunks
+                    v-if="showQrBlock"
+                    :chunks="qr"
+                    title="QR Tally"
+                />
+<!--                <section v-if="showQrBlock" class="qr-block">-->
+<!--                    <div class="qr-title">QR Tally</div>-->
+<!--                    <div class="qr-grid">-->
+<!--                        <div v-for="c in qr" :key="c.index" class="qr-card" :class="{ 'qr-has-error': !c.png }">-->
+<!--                            <div class="qr-caption mono">Chunk {{ c.index }} / {{ totalChunks }}</div>-->
 
-                            <template v-if="c.png">
-                                <img :src="c.png" class="qr-img" alt="QR chunk" />
-                            </template>
+<!--                            <template v-if="c.png">-->
+<!--                                <img :src="c.png" class="qr-img" alt="QR chunk" />-->
+<!--                            </template>-->
 
-                            <template v-else>
-                                <div class="qr-fallback">
-                                    <div class="warn">PNG not available.</div>
-                                    <div v-if="c.png_error" class="err mono">{{ c.png_error }}</div>
-                                    <button class="btn tiny no-print" @click="copyTextChunk(c.text)">Copy text</button>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                    <div v-if="anyPngError" class="qr-note">
-                        Some PNGs could not be generated; you can still copy chunk text.
-                    </div>
-                </section>
+<!--                            <template v-else>-->
+<!--                                <div class="qr-fallback">-->
+<!--                                    <div class="warn">PNG not available.</div>-->
+<!--                                    <div v-if="c.png_error" class="err mono">{{ c.png_error }}</div>-->
+<!--                                    <button class="btn tiny no-print" @click="copyTextChunk(c.text)">Copy text</button>-->
+<!--                                </div>-->
+<!--                            </template>-->
+<!--                        </div>-->
+<!--                    </div>-->
+<!--                    <div v-if="anyPngError" class="qr-note">-->
+<!--                        Some PNGs could not be generated; you can still copy chunk text.-->
+<!--                    </div>-->
+<!--                </section>-->
             </main>
         </div>
     </div>
