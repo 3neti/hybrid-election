@@ -1,43 +1,54 @@
 <script setup lang="ts">
-import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted } from 'vue'
 import ErTallyView from '@/components/ErTallyView.vue'
-import type { ElectionReturnData } from '@/types/election'
 import ElectionReturn from '@/components/ElectionReturn.vue'
 import ErQrCapture from '@/components/ErQrCapture.vue'
 import axios from 'axios'
 import { Button } from '@/components/ui/button'
 import { route as ziggyRoute } from 'ziggy-js'
 import { useChunkAssembler, type QrChunkItem } from '@/composables/useChunkAssembler'
+import { useElectionReturn } from '@/composables/useElectionReturn'
 
 // Prefer global Ziggy route() if present, otherwise ziggy-js route()
 const route: any = (typeof (window as any).route === 'function')
     ? (window as any).route
     : ziggyRoute
 
-/* ───────────────── State: JSON & Preview ───────────────── */
-const rawJson = ref<string>('')               // user-pasted or assembled (pretty-printed)
-const parseError = ref<string | null>(null)
-const er = ref<ElectionReturnData | null>(null)
+/* ───────────────── Central ER source (composable) ───────────────── */
+const {
+    er,                 // Ref<ElectionReturnData | null>
+    loading: erLoading,
+    error: erError,
+    loadFromBackend,    // () => Promise<void>
+    setFromJson,        // (json: unknown | string) => void
+    reset: resetEr,
+    ready,              // ✅ boolean: true when er is populated
+    sourceMode,         // ✅ 'backend' | 'external'
+} = useElectionReturn({
+    // routeName: 'precinct-tally',
+    // endpoint: '/api/precinct-tally',
+    immediate: false,    // keep explicit; you control when to fetch
+})
 
-/** Preview handler:
- * - Prefer composable's parsed jsonObject (already validated)
- * - Fallback to parsing rawJson
+/* ───────────────── State: JSON & Preview ───────────────── */
+const rawJson = ref<string>('')        // user-pasted or assembled (pretty-printed)
+const parseError = ref<string | null>(null)
+const showedJsonOnce = ref(false)
+
+/** Preview handler
+ *  - Prefer composable validation via setFromJson()
+ *  - Keep debouncedChunks in sync on success
  */
 function parseAndPreview(): void {
     parseError.value = null
     try {
-        const obj: any = jsonObject.value ?? JSON.parse(rawJson.value)
-
-        if (!obj?.precinct?.code || !Array.isArray(obj?.tallies)) {
-            throw new Error('JSON does not look like an Election Return payload.')
-        }
-
-        er.value = obj
-        // ensure QR regenerates with current UI value
+        const obj = rawJson.value ? JSON.parse(rawJson.value) : null
+        if (!obj) throw new Error('No JSON to preview.')
+        setFromJson(obj)
+        // ensure QR regenerates with current UI value in ElectionReturn consumer
         debouncedDesiredChunks.value = Math.max(5, Math.min(16, desiredChunksUi.value))
     } catch (e: any) {
         parseError.value = e?.message || String(e)
-        er.value = null
     }
 }
 
@@ -57,8 +68,11 @@ async function loadSampleFromStorage(): Promise<void> {
         const { data } = await axios.get(url)
         rawJson.value = typeof data === 'string' ? data : JSON.stringify(data, null, 2)
 
-        // After loading, prefer parsing into er immediately
-        parseAndPreview()
+        // Prefer going through the composable for validation/state
+        setFromJson(typeof data === 'string' ? JSON.parse(data) : data)
+        parseError.value = null
+        // keep desired-chunks in sync
+        debouncedDesiredChunks.value = Math.max(5, Math.min(16, desiredChunksUi.value))
     } catch (err: any) {
         sampleError.value = err?.response?.data?.message || String(err)
     } finally {
@@ -88,31 +102,27 @@ const {
 function onScannerLines(lines: string[]): void {
     if (!Array.isArray(lines)) return
     capturedLines.value = lines
-    addMany(lines) // scanner only produces lines; composable does the parsing/assembly
+    addMany(lines) // scanner only produces lines; composable handles parsing/assembly
 }
 
-// We do not use scanner-side decoded JSON to avoid double logic.
 function onScannerResolvedEr(): void {
     showScanner.value = false
 }
 
-/* Mirror assembled jsonObject to textarea + view */
-function validateErShape(obj: any) {
-    if (!obj || !obj.precinct || !obj.precinct.code || !Array.isArray(obj.tallies)) {
-        throw new Error('JSON does not look like an Election Return payload.')
-    }
+/* Mirror assembled jsonObject to textarea + ER state */
+function validateForPretty(obj: any) {
+    // We still pretty-print here (the setFromJson already validates)
+    rawJson.value = JSON.stringify(obj, null, 2)
+    parseError.value = null
 }
 
 watch(jsonObject, (val) => {
     if (!val) return
     try {
-        validateErShape(val)
-        rawJson.value = JSON.stringify(val, null, 2)
-        parseError.value = null
-        er.value = val as ElectionReturnData
+        setFromJson(val)       // central state
+        validateForPretty(val) // keep textarea in sync for the user
     } catch (e: any) {
         parseError.value = e?.message || String(e)
-        er.value = null
     }
 })
 
@@ -133,7 +143,6 @@ function pasteBulkPngs(): void {
         // @ts-ignore – `png` exists in the UI card shape; harmless for display
         it.png = uri
         // push into visual list the same way as assembled chunks list is displayed
-        // (this doesn’t touch the internal assembly map)
         chunks.push(it as any)
     }
 }
@@ -162,7 +171,7 @@ watch(desiredChunksUi, (v) => {
     const n = Math.max(5, Math.min(16, Number(v) || 5))
     if (n !== v) desiredChunksUi.value = n
 
-    // only trigger regeneration when we actually have an ER loaded
+    // only trigger ElectionReturn regen when we actually have an ER loaded
     if (!er.value) return
 
     if (dcTimer) clearTimeout(dcTimer)
@@ -171,22 +180,36 @@ watch(desiredChunksUi, (v) => {
     }, 400) // debounce
 })
 
-/* ───────── QR appearance controls (pass-through to ElectionReturn) ─────────
-   No debounce needed here: ElectionReturn already debounces regen internally.
-*/
+/* ───────── QR appearance controls (pass-through to ElectionReturn) ───────── */
 type ECC = 'low' | 'medium' | 'quartile' | 'high'
 const qrSizeUi   = ref<number>(640)   // px
 const qrMarginUi = ref<number>(12)    // modules
 const qrEccUi    = ref<ECC>('medium') // ECC level
-
-/* NEW: Preset profile + printed size/grid controls (square print size) */
-const qrProfileUi     = ref<'small-clear' | 'normal' | 'high-capacity'>('normal')
-const qrPrintSizeInUi = ref<number>(2.5)  // single square control (inches)
+const qrProfileUi = ref<'small-clear' | 'normal' | 'high-capacity'>('normal')
+const qrPrintSizeInUi = ref<number>(2.5)
 const qrGridColsUi    = ref<number>(3)
 const qrGridGapInUi   = ref<number>(0.10)
 
+function showLoadedJsonOnce() {
+    try {
+        if (!er.value) throw new Error('No ER loaded yet.')
+        rawJson.value = JSON.stringify(er.value, null, 2)
+        parseError.value = null
+    } catch (e: any) {
+        parseError.value = e?.message || String(e)
+    }
+}
+
 onBeforeUnmount(() => {
     if (dcTimer) clearTimeout(dcTimer)
+})
+
+watch([ready, sourceMode], async ([isReady, mode]) => {
+    if (!showedJsonOnce.value && isReady && mode === 'backend') {
+        showedJsonOnce.value = true
+        await nextTick()
+        showLoadedJsonOnce()
+    }
 })
 </script>
 
@@ -199,10 +222,7 @@ onBeforeUnmount(() => {
                 <label class="text-sm text-gray-700 flex items-center gap-1">
                     <span>Chunks</span>
                     <input
-                        type="number"
-                        min="5"
-                        max="16"
-                        v-model.number="desiredChunksUi"
+                        type="number" min="5" max="16" v-model.number="desiredChunksUi"
                         class="w-16 px-2 py-1 border rounded text-sm"
                         title="Desired number of QR chunks (5–16)"
                     />
@@ -211,49 +231,31 @@ onBeforeUnmount(() => {
                 <!-- QR preset profile -->
                 <label class="text-sm text-gray-700 flex items-center gap-1">
                     <span>Profile</span>
-                    <select
-                        v-model="qrProfileUi"
-                        class="px-2 py-1 border rounded text-sm"
-                        title="QR data/robustness preset"
-                    >
+                    <select v-model="qrProfileUi" class="px-2 py-1 border rounded text-sm" title="QR data/robustness preset">
                         <option value="small-clear">small-clear</option>
                         <option value="normal">normal</option>
                         <option value="high-capacity">high-capacity</option>
                     </select>
                 </label>
 
-                <!-- QR appearance controls (image generation) -->
+                <!-- QR image controls -->
                 <label class="text-sm text-gray-700 flex items-center gap-1">
                     <span>Size</span>
                     <input
-                        type="number"
-                        min="128"
-                        step="16"
-                        v-model.number="qrSizeUi"
-                        class="w-20 px-2 py-1 border rounded text-sm"
-                        title="PNG size in pixels"
+                        type="number" min="128" step="16" v-model.number="qrSizeUi"
+                        class="w-20 px-2 py-1 border rounded text-sm" title="PNG size in pixels"
                     />
                 </label>
-
                 <label class="text-sm text-gray-700 flex items-center gap-1">
                     <span>Margin</span>
                     <input
-                        type="number"
-                        min="0"
-                        max="64"
-                        v-model.number="qrMarginUi"
-                        class="w-20 px-2 py-1 border rounded text-sm"
-                        title="Quiet-zone margin (modules)"
+                        type="number" min="0" max="64" v-model.number="qrMarginUi"
+                        class="w-20 px-2 py-1 border rounded text-sm" title="Quiet-zone margin (modules)"
                     />
                 </label>
-
                 <label class="text-sm text-gray-700 flex items-center gap-1">
                     <span>ECC</span>
-                    <select
-                        v-model="qrEccUi"
-                        class="px-2 py-1 border rounded text-sm"
-                        title="Error correction level"
-                    >
+                    <select v-model="qrEccUi" class="px-2 py-1 border rounded text-sm" title="Error correction level">
                         <option value="low">low</option>
                         <option value="medium">medium</option>
                         <option value="quartile">quartile</option>
@@ -261,58 +263,56 @@ onBeforeUnmount(() => {
                     </select>
                 </label>
 
-                <!-- Printed layout controls (square size) -->
+                <!-- Printed layout controls -->
                 <label class="text-sm text-gray-700 flex items-center gap-1">
-                    <span>Print Size (in)</span>
+                    <span>Card (in)</span>
                     <input
-                        type="number"
-                        min="1"
-                        step="0.05"
-                        v-model.number="qrPrintSizeInUi"
-                        class="w-24 px-2 py-1 border rounded text-sm"
-                        title="Printed QR square size (inches)"
+                        type="number" min="1" step="0.05" v-model.number="qrPrintSizeInUi"
+                        class="w-24 px-2 py-1 border rounded text-sm" title="Printed square QR card size (inches)"
                     />
                 </label>
-
                 <label class="text-sm text-gray-700 flex items-center gap-1">
                     <span>Cols</span>
                     <input
-                        type="number"
-                        min="1"
-                        max="6"
-                        v-model.number="qrGridColsUi"
-                        class="w-16 px-2 py-1 border rounded text-sm"
-                        title="Number of QR cards per row"
+                        type="number" min="1" max="6" v-model.number="qrGridColsUi"
+                        class="w-16 px-2 py-1 border rounded text-sm" title="Number of QR cards per row"
                     />
                 </label>
                 <label class="text-sm text-gray-700 flex items-center gap-1">
                     <span>Gap (in)</span>
                     <input
-                        type="number"
-                        min="0"
-                        step="0.05"
-                        v-model.number="qrGridGapInUi"
-                        class="w-20 px-2 py-1 border rounded text-sm"
-                        title="Gap between QR cards (inches)"
+                        type="number" min="0" step="0.05" v-model.number="qrGridGapInUi"
+                        class="w-20 px-2 py-1 border rounded text-sm" title="Gap between QR cards (inches)"
                     />
                 </label>
 
+                <!-- Scanner & helpers -->
                 <Button class="px-3 py-2 rounded bg-emerald-600 text-white" @click="showScanner = true">Scan QR Codes</Button>
-                <Button class="px-3 py-2 rounded bg-gray-400" @click="() => { rawJson=''; er=null; parseError=null }">Clear JSON</Button>
+                <Button class="px-3 py-2 rounded bg-indigo-600 text-white" :disabled="loadingSample" @click="loadSampleFromStorage">
+                    {{ loadingSample ? 'Loading…' : 'Load sample' }}
+                </Button>
+                <Button class="px-3 py-2 rounded bg-gray-400" @click="() => { rawJson=''; parseError=null; resetEr(); }">Clear JSON</Button>
                 <Button class="px-3 py-2 rounded bg-gray-400" @click="resetChunks">Reset Chunks</Button>
+
+                <!-- Optional: DB fetch (uses the new composable) -->
+                <Button class="px-3 py-2 rounded bg-slate-700 text-white" :disabled="erLoading" @click="loadFromBackend">
+                    {{ erLoading ? 'Loading…' : 'Load from DB' }}
+                </Button>
+
+<!--                <Button class="px-3 py-2 rounded bg-slate-600 text-white" :disabled="!er" @click="showLoadedJsonOnce">-->
+<!--                    Show loaded JSON-->
+<!--                </Button>-->
             </div>
         </header>
 
+        <!-- Global error from composable -->
+        <p v-if="erError" class="text-sm text-red-600 -mt-4">{{ erError }}</p>
         <!-- Optional error display for sample loading -->
-        <p v-if="sampleError" class="text-sm text-red-600 -mt-4">{{ sampleError }}</p>
+        <p v-if="sampleError" class="text-sm text-red-600 -mt-2">{{ sampleError }}</p>
 
         <!-- Capture component -->
         <section v-if="showScanner" class="border rounded p-4">
-            <ErQrCapture
-                @update:chunks="onScannerLines"
-                @resolved-er="onScannerResolvedEr"
-                @cancel="showScanner = false"
-            />
+            <ErQrCapture @update:chunks="onScannerLines" @resolved-er="onScannerResolvedEr" @cancel="showScanner = false" />
         </section>
 
         <!-- Row: JSON path (left) + Chunk helper (right) -->
@@ -327,16 +327,10 @@ onBeforeUnmount(() => {
                     placeholder='Paste the decoded JSON here (after QR chunk assembly OR from backend)…'
                 ></textarea>
 
-                <!-- Preview + Load sample aligned side-by-side -->
+                <!-- Preview + Load sample -->
                 <div class="flex gap-2">
-                    <Button class="px-3 py-2 rounded bg-blue-600 text-white" @click="parseAndPreview">
-                        Preview
-                    </Button>
-                    <Button
-                        class="px-3 py-2 rounded bg-indigo-600 text-white"
-                        :disabled="loadingSample"
-                        @click="loadSampleFromStorage"
-                    >
+                    <Button class="px-3 py-2 rounded bg-blue-600 text-white" @click="parseAndPreview">Preview</Button>
+                    <Button class="px-3 py-2 rounded bg-indigo-600 text-white" :disabled="loadingSample" @click="loadSampleFromStorage">
                         {{ loadingSample ? 'Loading…' : 'Load sample' }}
                     </Button>
                 </div>
@@ -349,17 +343,14 @@ onBeforeUnmount(() => {
                 <div>
                     <h2 class="text-sm font-semibold text-gray-700">QR Chunk Helper</h2>
                     <p class="text-xs text-gray-500">
-                        Enter each QR chunk’s full text (the entire
-                        <code>ER|v1|CODE|i/N|&lt;payload&gt;</code> line).
-                        When all chunks are present, the JSON box will auto-fill and preview will update.
+                        Enter each QR chunk’s full text (<code>ER|v1|CODE|i/N|&lt;payload&gt;</code>). When all chunks are present,
+                        the JSON box will auto-fill and preview will update.
                     </p>
                 </div>
 
                 <div class="flex items-start gap-2">
                     <input
-                        type="text"
-                        class="flex-1 border rounded px-3 py-2 font-mono text-xs"
-                        placeholder="Paste one chunk text here…"
+                        type="text" class="flex-1 border rounded px-3 py-2 font-mono text-xs" placeholder="Paste one chunk text here…"
                         @keyup.enter="(e:any) => { const v=e.target.value?.trim(); if(v){ addChunkLine(v); e.target.value='' } }"
                     />
                     <Button
@@ -382,8 +373,7 @@ onBeforeUnmount(() => {
                     <div class="mt-3 space-y-2">
                         <label class="block text-xs font-semibold text-gray-600">One chunk text per line</label>
                         <textarea
-                            v-model="textBulkInput"
-                            rows="5"
+                            v-model="textBulkInput" rows="5"
                             class="w-full border rounded p-2 font-mono text-xs"
                             placeholder="ER|v1|...|1/N|<payload>\nER|v1|...|2/N|<payload>\n…"
                         ></textarea>
@@ -394,8 +384,7 @@ onBeforeUnmount(() => {
 
                         <label class="block text-xs font-semibold text-gray-600 mt-4">One PNG Data URI per line (optional)</label>
                         <textarea
-                            v-model="pngBulkInput"
-                            rows="4"
+                            v-model="pngBulkInput" rows="4"
                             class="w-full border rounded p-2 font-mono text-xs"
                             placeholder="data:image/png;base64,iVBORw0KGgoAAA...\n..."
                         ></textarea>
@@ -413,8 +402,7 @@ onBeforeUnmount(() => {
                 <!-- Current chunk list -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div
-                        v-for="c in chunks"
-                        :key="c.id"
+                        v-for="c in chunks" :key="c.id"
                         class="p-2 border rounded text-xs space-y-2"
                         :class="{
               'border-emerald-300 bg-emerald-50': c.status==='parsed',
@@ -450,8 +438,10 @@ onBeforeUnmount(() => {
         <section v-if="er" class="border rounded p-4">
             <ErTallyView :er="er" />
         </section>
+
         <section v-else class="text-sm text-gray-600">
-            Paste the decoded JSON and click <b>Preview</b>, or enter all QR chunk texts (the viewer will auto-assemble into JSON).
+            Paste the decoded JSON and click <b>Preview</b>, or enter all QR chunk texts
+            (the viewer will auto-assemble into JSON), or click <b>Load from DB</b>.
         </section>
 
         <section v-if="er" class="border rounded p-4">
