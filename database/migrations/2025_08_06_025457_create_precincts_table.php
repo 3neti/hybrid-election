@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('precincts', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('code')->unique(); // e.g., CURRIMAO-001
-            $table->string('location_name'); // e.g., Currimao Central School
+            $table->string('location_name'); // e.g., Currimao Central School, TODO: change to polling_place
             $table->decimal('latitude', 10, 6)->nullable();
             $table->decimal('longitude', 10, 6)->nullable();
             $table->json('electoral_inspectors')->nullable();

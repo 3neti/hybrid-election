@@ -2,15 +2,15 @@
 
 namespace App\Models;
 
-use App\Data\BallotData;
+use App\Traits\{HasAdditionalPrecinctAttributes, HasMeta};
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Data\{BallotData, PrecinctData};
 use Illuminate\Database\Eloquent\Model;
 use Spatie\LaravelData\DataCollection;
 use App\Data\ElectoralInspectorData;
 use App\Services\VoteTallyService;
 use Spatie\LaravelData\WithData;
-use App\Data\PrecinctData;
 
 /**
  * Class Precinct
@@ -32,13 +32,23 @@ use App\Data\PrecinctData;
  *                                                       The ballots submitted in this precinct.
  * @property-read \Spatie\LaravelData\DataCollection|\App\Data\VoteCountData[] $tallies
  *                                                       Computed tallies of votes per candidate per position.
+ * @property int $watchers_count
+ * @property int $precincts_count
+ * @property int $registered_voters_count
+ * @property int $actual_voters_count
+ * @property int $ballots_in_box_count
+ * @property int $unused_ballots_count
+ * @property int $spoiled_ballots_count
+ * @property int $void_ballots_count
  */
 class Precinct extends Model
 {
     /** @use HasFactory<\Database\Factories\PrecinctFactory> */
+    use HasAdditionalPrecinctAttributes;
     use HasFactory;
     use HasUuids;
     use WithData;
+    use HasMeta;
 
     /**
      * The associated data transfer class.
