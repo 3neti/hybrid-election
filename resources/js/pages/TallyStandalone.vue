@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
-import ErTallyView, { type ElectionReturnData } from '@/components/ErTallyView.vue'
+import ErTallyView from '@/components/ErTallyView.vue'
+import type { ElectionReturnData } from '@/types/election'
 import ElectionReturn from '@/components/ElectionReturn.vue'
 import ErQrCapture from '@/components/ErQrCapture.vue'
 import axios from 'axios'

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, watch, ref, computed, toRef } from 'vue'
+import type { ElectionReturnData } from '@/types/election'
 import { usePrecinctPeople } from '@/composables/usePrecinctPeople'
 import { Button } from '@/components/ui/button'
 import { useQrCardLayout } from '@/composables/useQrCardLayout'
@@ -11,26 +12,6 @@ import ErQrChunks from '@/components/ErQrChunks.vue'
 import ErPrecinctCard from '@/components/ErPrecinctCard.vue'
 
 type ECC = 'low' | 'medium' | 'quartile' | 'high'
-interface CandidateData { code: string; name?: string; alias?: string }
-interface VoteData { position_code?: string; position?: { code: string }; candidate_codes?: CandidateData[]; candidates?: CandidateData[] }
-interface BallotData { id: string; code: string; votes: VoteData[] }
-interface TallyData { position_code: string; candidate_code: string; candidate_name: string; count: number }
-export interface ElectionReturnData {
-    id: string
-    code: string
-    precinct: {
-        id: string
-        code: string
-        location_name?: string | null
-        latitude?: number | null
-        longitude?: number | null
-        electoral_inspectors?: Array<{ id: string; name: string; role?: string | null }>
-    }
-    tallies: TallyData[]
-    ballots?: BallotData[]
-    last_ballot?: BallotData
-    signatures?: Array<{ id?: string; name?: string; role?: string | null; signed_at?: string | null }>
-}
 
 interface QrChunk { index: number; text: string; png?: string; png_error?: string }
 

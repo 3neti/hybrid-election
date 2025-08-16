@@ -1,14 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import TallyMarks from '@/components/TallyMarks.vue'
-
-/** Types kept local so the component is decoupled from callers */
-interface TallyData {
-    position_code: string
-    candidate_code: string
-    candidate_name: string
-    count: number
-}
+import type { TallyData } from '@/types/election'
 
 /** Props */
 const props = withDefaults(defineProps<{

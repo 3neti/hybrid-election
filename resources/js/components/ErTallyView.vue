@@ -1,46 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue'
+import type { ElectionReturnData } from '@/types/election'
 import ErOfficialsSignatures from '@/components/ErOfficialsSignatures.vue'
 import ErPrecinctCard from '@/components/ErPrecinctCard.vue'
 import ErTalliesTable from '@/components/ErTalliesTable.vue'
 import ErQrChunks from '@/components/ErQrChunks.vue'
-
-/** ---------------- Types ---------------- */
-interface CandidateData { code: string; name?: string; alias?: string }
-interface VoteData {
-    position_code?: string
-    position?: { code: string }
-    candidate_codes?: CandidateData[]
-    candidates?: CandidateData[]
-}
-interface BallotData { id: string; code: string; votes: VoteData[] }
-interface TallyData { position_code: string; candidate_code: string; candidate_name: string; count: number }
-export interface ElectionReturnData {
-    id: string
-    code: string
-    precinct: {
-        id: string
-        code: string
-        location_name?: string | null
-        latitude?: number | null
-        longitude?: number | null
-        electoral_inspectors?: Array<{
-            id: string
-            name: string
-            role?: string | null
-        }>
-    }
-    tallies: TallyData[]
-    ballots?: BallotData[]
-    last_ballot?: BallotData
-    /** optional, lightweight metadata only (no blobs) */
-    signatures?: Array<{
-        id?: string
-        name?: string
-        role?: string | null
-        signed_at?: string | null
-    }>
-}
 
 interface QrChunkLike {
     index: number
@@ -65,9 +29,9 @@ const highlights = ref<Set<string>>(new Set())
 const flashing = ref<Set<string>>(new Set())
 
 /** ---------------- Helpers ---------------- */
-function keyOf(pos: string, cand: string) {
-    return `${pos}::${cand}`
-}
+// function keyOf(pos: string, cand: string) {
+//     return `${pos}::${cand}`
+// }
 
 function computeHighlights(er: ElectionReturnData | null): Set<string> {
     const set = new Set<string>()

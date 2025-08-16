@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { mapsHref } from '@/composables/useBasicUtils'
-
-export interface ElectionReturnData { /* …same as before… */ }
+import type { ElectionReturnData } from '@/types/election'
 
 const props = defineProps<{
     er: ElectionReturnData

@@ -2,38 +2,7 @@
 import { toRef, computed } from 'vue'
 import { usePrecinctPeople } from '@/composables/usePrecinctPeople'
 import { formatWhen } from '@/composables/useBasicUtils'
-
-/** ---------------- Types ---------------- */
-interface ElectionReturnData {
-    id: string
-    code: string
-    precinct: {
-        id: string
-        code: string
-        location_name?: string | null
-        latitude?: number | null
-        longitude?: number | null
-        electoral_inspectors?: Array<{
-            id: string
-            name: string
-            role?: string | null
-        }>
-    }
-    tallies: Array<unknown>
-    signatures?: Array<{
-        id?: string
-        name?: string
-        role?: string | null
-        signed_at?: string | null
-    }>
-}
-
-type MergedSigner = {
-    key: string
-    name: string
-    role?: string | null
-    signed_at?: string | null
-}
+import type { ElectionReturnData } from '@/types/election'
 
 /** ---------------- Props ---------------- */
 const props = withDefaults(defineProps<{
