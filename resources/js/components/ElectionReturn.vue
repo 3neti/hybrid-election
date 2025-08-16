@@ -2,13 +2,13 @@
 import { onMounted, watch, ref, computed, toRef } from 'vue'
 import { usePrecinctPeople } from '@/composables/usePrecinctPeople'
 import { Button } from '@/components/ui/button'
-import { mapsHref, copyTextChunk } from '@/composables/useBasicUtils'
 import { useQrCardLayout } from '@/composables/useQrCardLayout'
 import { useQrProfiles } from '@/composables/useQrProfiles'
 import { useQrApi } from '@/composables/useQrApi'  // ✅ new
 import { useHandlePrint } from '@/composables/usePrintHelpers'
 import ErOfficialsSignatures from '@/components/ErOfficialsSignatures.vue'
 import ErQrChunks from '@/components/ErQrChunks.vue'
+import ErPrecinctCard from '@/components/ErPrecinctCard.vue'
 
 type ECC = 'low' | 'medium' | 'quartile' | 'high'
 interface CandidateData { code: string; name?: string; alias?: string }
@@ -94,12 +94,6 @@ const {
 const scopeId = ref(
     `er-print-${(props.er?.code || 'ER').replace(/[^A-Za-z0-9_-]/g, '')}-${Math.random().toString(36).slice(2, 7)}`
 )
-
-/* ---------------- Derived ---------------- */
-const hasPrecinctExtras = computed(() => {
-    const p = props.er?.precinct
-    return !!(p?.location_name || p?.latitude != null || p?.longitude != null)
-})
 
 /* People (inspectors + signatures) */
 const { hasPeople } = usePrecinctPeople(toRef(props, 'er'))
@@ -193,31 +187,12 @@ watch(() => props.qrChunks, v => {
 
         <div class="layout">
             <main class="content">
-                <!-- Header -->
-                <header class="header">
+                <!-- Title + Precinct card -->
+                <div class="mb-2">
                     <div class="title">Election Return — Precinct {{ er.precinct.code }}</div>
-                    <div class="meta">
-                        <div><b>ER Code:</b> <span class="mono">{{ er.code }}</span></div>
-                        <div v-if="er.precinct.location_name"><b>Location:</b> {{ er.precinct.location_name }}</div>
-                        <div v-if="hasPrecinctExtras" class="coords">
-                            <b>Coords:</b>
-                            <span class="mono">
-                <template v-if="er.precinct.latitude != null">{{ er.precinct.latitude }}</template>
-                <template v-if="er.precinct.latitude != null && er.precinct.longitude != null">, </template>
-                <template v-if="er.precinct.longitude != null">{{ er.precinct.longitude }}</template>
-              </span>
-                            <a
-                                v-if="mapsHref(er.precinct.latitude, er.precinct.longitude)"
-                                :href="mapsHref(er.precinct.latitude, er.precinct.longitude)!"
-                                target="_blank"
-                                rel="noopener"
-                                class="map-link no-print"
-                            >
-                                Map
-                            </a>
-                        </div>
-                    </div>
-                </header>
+                    <div class="text-sm mt-1"><b>ER Code:</b> <span class="mono">{{ er.code }}</span></div>
+                </div>
+                <ErPrecinctCard :er="er" class="mb-3" />
 
                 <!-- Tallies: 2 columns (Position • Candidate • Votes) -->
                 <section class="tallies two-col">
@@ -243,29 +218,6 @@ watch(() => props.qrChunks, v => {
                     :chunks="qr"
                     title="QR Tally"
                 />
-<!--                <section v-if="showQrBlock" class="qr-block">-->
-<!--                    <div class="qr-title">QR Tally</div>-->
-<!--                    <div class="qr-grid">-->
-<!--                        <div v-for="c in qr" :key="c.index" class="qr-card" :class="{ 'qr-has-error': !c.png }">-->
-<!--                            <div class="qr-caption mono">Chunk {{ c.index }} / {{ totalChunks }}</div>-->
-
-<!--                            <template v-if="c.png">-->
-<!--                                <img :src="c.png" class="qr-img" alt="QR chunk" />-->
-<!--                            </template>-->
-
-<!--                            <template v-else>-->
-<!--                                <div class="qr-fallback">-->
-<!--                                    <div class="warn">PNG not available.</div>-->
-<!--                                    <div v-if="c.png_error" class="err mono">{{ c.png_error }}</div>-->
-<!--                                    <button class="btn tiny no-print" @click="copyTextChunk(c.text)">Copy text</button>-->
-<!--                                </div>-->
-<!--                            </template>-->
-<!--                        </div>-->
-<!--                    </div>-->
-<!--                    <div v-if="anyPngError" class="qr-note">-->
-<!--                        Some PNGs could not be generated; you can still copy chunk text.-->
-<!--                    </div>-->
-<!--                </section>-->
             </main>
         </div>
     </div>
