@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import { onMounted, watch, ref, computed, nextTick } from 'vue'
-import axios from 'axios'
+import { onMounted, watch, ref, computed, nextTick, toRef } from 'vue'
+import { usePrecinctPeople } from '@/composables/usePrecinctPeople'
 import { Button } from '@/components/ui/button'
+import { formatWhen, mapsHref, copyTextChunk } from '@/composables/useBasicUtils'
+import { useQrCardLayout } from '@/composables/useQrCardLayout'
+import { useQrProfiles } from '@/composables/useQrProfiles'
+import { useQrApi } from '@/composables/useQrApi'  // ✅ new
+import { useHandlePrint } from '@/composables/usePrintHelpers'
 
 type ECC = 'low' | 'medium' | 'quartile' | 'high'
 interface CandidateData { code: string; name?: string; alias?: string }
@@ -26,20 +31,6 @@ export interface ElectionReturnData {
 }
 
 interface QrChunk { index: number; text: string; png?: string; png_error?: string }
-interface QrResponse {
-    code: string
-    version: string
-    total: number
-    chunks: QrChunk[]
-    params?: {
-        payload?: string
-        desired_chunks?: number | null
-        effective_max_chars_per_qr?: number
-        ecc?: string
-        size?: number
-        margin?: number
-    }
-}
 
 const props = withDefaults(defineProps<{
     er: ElectionReturnData
@@ -90,240 +81,134 @@ const props = withDefaults(defineProps<{
 })
 
 /* ---------------- Profile → defaults ---------------- */
-const profileDefaults = computed(() => {
-    switch (props.qrProfile) {
-        case 'small-clear':   return { desiredChunks: 8, ecc: 'quartile' as ECC, size: 384, margin: 16 }
-        case 'high-capacity': return { desiredChunks: 5, ecc: 'low' as ECC,       size: 640, margin: 8 }
-        case 'normal':
-        default:              return { desiredChunks: 5, ecc: 'medium' as ECC,    size: 512, margin: 12 }
-    }
-})
+const {
+    effectiveDesiredChunks,
+    effectiveEcc,
+    effectiveSize,
+    effectiveMargin,
+} = useQrProfiles(props)
 
-/* ---------------- Effective values (profile + explicit) ---------------- */
-const effectiveDesiredChunks = computed<number | null>(() => {
-    const v = props.desiredChunks ?? profileDefaults.value.desiredChunks
-    return Math.max(5, Math.min(16, Number(v)))
-})
-const effectiveEcc    = computed<ECC>(() => props.ecc   ?? profileDefaults.value.ecc)
-const effectiveSize   = computed<number>(() => props.size  ?? profileDefaults.value.size)
-const effectiveMargin = computed<number>(() => props.margin ?? profileDefaults.value.margin)
-
-/* ---------------- Local state ---------------- */
-const qr = ref<QrChunk[]>(props.qrChunks ?? [])
-const qrLoading = ref(false)
-const qrError = ref<string | null>(null)
-
-/* Unique scope id for print isolation */
+/* ---------------- Local state for UI-only bits ---------------- */
 const scopeId = ref(
     `er-print-${(props.er?.code || 'ER').replace(/[^A-Za-z0-9_-]/g, '')}-${Math.random().toString(36).slice(2, 7)}`
 )
 
 /* ---------------- Derived ---------------- */
-const totalChunks = computed(() => qr.value.length)
-const anyPngError = computed(() => qr.value.some(c => c.png_error))
-const showQrBlock = computed(() => totalChunks.value > 0)
-
 const hasPrecinctExtras = computed(() => {
     const p = props.er?.precinct
     return !!(p?.location_name || p?.latitude != null || p?.longitude != null)
 })
 
-/* ---------------- Utils ---------------- */
-function formatWhen(s?: string | null) {
-    if (!s) return ''
-    try { return new Date(s).toLocaleString() } catch { return s }
-}
-function mapsHref(lat?: number | null, lon?: number | null) {
-    if (lat == null || lon == null) return null
-    return `https://maps.google.com/?q=${lat},${lon}`
-}
-function copyTextChunk(txt?: string) {
-    if (!txt) return
-    navigator.clipboard?.writeText(txt).catch(() => {})
-}
+/* People (inspectors + signatures) */
+const { mergedPeople, hasPeople } = usePrecinctPeople(toRef(props, 'er'))
 
-/* Merge inspectors + signatures by (name, role) */
-type MergedSigner = { key: string; name: string; role?: string | null; signed_at?: string | null }
-const mergedPeople = computed<MergedSigner[]>(() => {
-    const map = new Map<string, MergedSigner>()
-    const insp = props.er?.precinct?.electoral_inspectors ?? []
-    for (const i of insp) {
-        const key = `${(i.name || '').trim().toLowerCase()}|${(i.role || '').trim().toLowerCase()}`
-        map.set(key, { key, name: i.name, role: i.role ?? null, signed_at: undefined })
-    }
-    const sigs = props.er?.signatures ?? []
-    for (const s of sigs) {
-        const key = `${(s.name || '').trim().toLowerCase()}|${(s.role || '').trim().toLowerCase()}`
-        const prev = map.get(key)
-        if (prev) prev.signed_at = prev.signed_at ?? s.signed_at
-        else map.set(key, { key, name: s.name || '—', role: s.role ?? null, signed_at: s.signed_at })
-    }
-    return Array.from(map.values()).sort((a, b) => {
-        const ra = (a.role || '').toLowerCase(), rb = (b.role || '').toLowerCase()
-        if (ra !== rb) return ra < rb ? -1 : 1
-        const na = a.name.toLowerCase(), nb = b.name.toLowerCase()
-        return na < nb ? -1 : na > nb ? 1 : 0
-    })
+/* ---------------- QR API (composable) ----------------
+   We bind template directly to the composable’s refs. */
+const {
+    qr,               // Ref<QrChunk[]>
+    qrLoading,        // Ref<boolean>
+    qrError,          // Ref<string|null>
+    generateQr,       // () => Promise<void>
+    triggerGenerateQr // () => void  (debounced inside composable)
+} = useQrApi({
+    erJsonRef: computed(() => props.er),
+    erCodeRef: computed(() => props.er?.code),
+    autoQrRef: computed(() => props.autoQr),
+    qrChunksPropRef: computed(() => props.qrChunks),
+    payloadRef: computed(() => props.payload as ('minimal' | 'full') | undefined),
+    desiredChunksRef: effectiveDesiredChunks,
+    eccRef: effectiveEcc,
+    sizeRef: effectiveSize,
+    marginRef: effectiveMargin,
+    endpointRef: computed(() => props.qrEndpoint),
+    debounceMs: 250,
 })
-const hasPeople = computed(() => mergedPeople.value.length > 0)
 
-/* ---------------- QR generation ---------------- */
-function resolveQrUrl(erCode: string): string {
-    if (props.qrEndpoint) return props.qrEndpoint
-    if (typeof (window as any).route === 'function') {
-        try { return (window as any).route('qr.er', { code: erCode }) } catch {}
-    }
-    return `/api/qr/election-return/${encodeURIComponent(erCode)}`
-}
+/* ---------------- Totals / guards for template ---------------- */
+const totalChunks = computed(() => qr.value.length)
+const anyPngError = computed(() => qr.value.some(c => c.png_error))
+const showQrBlock = computed(() => totalChunks.value > 0)
 
-async function generateQr() {
-    if (!props.autoQr) return
-    if (props.qrChunks?.length) { qr.value = props.qrChunks; return }
-    if (!props.er?.code) return
-
-    qrLoading.value = true
-    qrError.value = null
-    qr.value = []
-
-    try {
-        if (props.qrEndpoint) {
-            const { data } = await axios.post<QrResponse>(props.qrEndpoint, {
-                json: props.er,
-                code: props.er.code,
-                desired_chunks: effectiveDesiredChunks.value ?? undefined,
-                make_images: 1,
-                ecc: effectiveEcc.value,
-                size: effectiveSize.value,
-                margin: effectiveMargin.value
-            })
-            qr.value = (data?.chunks ?? []).sort((a, b) => a.index - b.index)
-        } else {
-            const url = resolveQrUrl(props.er.code)
-            const { data } = await axios.get<QrResponse>(url, {
-                params: {
-                    payload: props.payload,
-                    desired_chunks: effectiveDesiredChunks.value ?? undefined,
-                    make_images: 1,
-                    ecc: effectiveEcc.value,
-                    size: effectiveSize.value,
-                    margin: effectiveMargin.value
-                }
-            })
-            qr.value = (data?.chunks ?? []).sort((a, b) => a.index - b.index)
-        }
-
-        if (!qr.value.length) qrError.value = 'No QR chunks were returned.'
-    } catch (e: any) {
-        qrError.value = e?.response?.data?.message || String(e)
-    } finally {
-        qrLoading.value = false
-    }
-}
-
-/* ---------------- Print helpers ---------------- */
-function injectPageRule(paper: 'legal' | 'a4') {
-    const id = 'er-print-page-size'
-    let el = document.getElementById(id) as HTMLStyleElement | null
-    const css = paper === 'legal' ? '@page{size:8.5in 14in; margin:0}' : '@page{size:A4; margin:0}'
-    if (!el) {
-        el = document.createElement('style')
-        el.id = id
-        el.media = 'print'
-        document.head.appendChild(el)
-    }
-    el.textContent = css
-}
-
-function injectPrintIsolation(id: string) {
-    if (!props.printIsolated) return
-    const styleId = `er-print-isolation-${id}`
-    let el = document.getElementById(styleId) as HTMLStyleElement | null
-    if (!el) {
-        el = document.createElement('style')
-        el.id = styleId
-        el.media = 'print'
-        document.head.appendChild(el)
-    }
-    el.textContent = `
-@media print {
-  body, html { height: auto !important; }
-  body * { visibility: hidden !important; margin: 0 !important; }
-  #${id}, #${id} * { visibility: visible !important; }
-  #${id} { position: absolute !important; left: 0 !important; top: 0 !important; width: auto !important; }
-}`
-}
-
-async function waitForImagesWithin(rootSelector: string, imgSelector: string) {
-    const root = document.getElementById(rootSelector)
-    if (!root) return
-    const imgs = Array.from(root.querySelectorAll<HTMLImageElement>(imgSelector))
-    const notDone = imgs.filter(i => !i.complete || (i.naturalWidth === 0 && i.naturalHeight === 0))
-    await Promise.all(
-        notDone.map(i => new Promise<void>(res => {
-            i.addEventListener('load', () => res(), { once: true })
-            i.addEventListener('error', () => res(), { once: true })
-        }))
-    )
-}
-
-async function handlePrint() {
-    injectPageRule(props.paper!)
-    injectPrintIsolation(scopeId.value)
-
-    if (props.autoQr && !qr.value.length && !qrLoading.value) {
-        await generateQr()
-    }
-
-    await nextTick()
-    await waitForImagesWithin(scopeId.value, '.qr-img')
-
-    setTimeout(() => window.print(), 60)
-}
-
-/* ---------------- Single print-size (square) with back-compat ---------------- */
-const qrCardSizeIn = computed(() => {
-    const minClamp = 1, maxClamp = 6
-    // Back-compat: if width/height provided, coerce to square (min)
-    const w = props.qrPrintWidthIn
-    const h = props.qrPrintHeightIn
-    if (w != null || h != null) {
-        if (w != null && h != null && w !== h) {
-            console.warn('[ElectionReturn] qrPrintWidthIn/qrPrintHeightIn are deprecated; using min(w,h) to keep square.')
-        }
-        const side = Math.min(
-            w != null ? Number(w) : Number.POSITIVE_INFINITY,
-            h != null ? Number(h) : Number.POSITIVE_INFINITY
-        )
-        const fallback = props.qrPrintSizeIn ?? 2.5
-        const chosen = Number.isFinite(side) ? side : fallback
-        return Math.max(minClamp, Math.min(maxClamp, chosen))
-    }
-    // Preferred single control:
-    const sz = Number(props.qrPrintSizeIn ?? 2.5)
-    return Math.max(minClamp, Math.min(maxClamp, sz))
+/* ---------------- Print helpers (unchanged) ---------------- */
+const { handlePrint } = useHandlePrint({
+    paperRef: toRef(props, 'paper'),
+    scopeIdRef: scopeId,
+    autoQrRef: toRef(props, 'autoQr'),
+    generateQr,
+    printIsolatedRef: toRef(props, 'printIsolated'), // uses your existing prop
+    imgSelector: '.qr-img', // same as before
 })
+// function injectPageRule(paper: 'legal' | 'a4') {
+//     const id = 'er-print-page-size'
+//     let el = document.getElementById(id) as HTMLStyleElement | null
+//     const css = paper === 'legal' ? '@page{size:8.5in 14in; margin:0}' : '@page{size:A4; margin:0}'
+//     if (!el) {
+//         el = document.createElement('style')
+//         el.id = id
+//         el.media = 'print'
+//         document.head.appendChild(el)
+//     }
+//     el.textContent = css
+// }
+//
+// function injectPrintIsolation(id: string) {
+//     if (!props.printIsolated) return
+//     const styleId = `er-print-isolation-${id}`
+//     let el = document.getElementById(styleId) as HTMLStyleElement | null
+//     if (!el) {
+//         el = document.createElement('style')
+//         el.id = styleId
+//         el.media = 'print'
+//         document.head.appendChild(el)
+//     }
+//     el.textContent = `
+// @media print {
+//   body, html { height: auto !important; }
+//   body * { visibility: hidden !important; margin: 0 !important; }
+//   #${id}, #${id} * { visibility: visible !important; }
+//   #${id} { position: absolute !important; left: 0 !important; top: 0 !important; width: auto !important; }
+// }`
+// }
+//
+// async function waitForImagesWithin(rootSelector: string, imgSelector: string) {
+//     const root = document.getElementById(rootSelector)
+//     if (!root) return
+//     const imgs = Array.from(root.querySelectorAll<HTMLImageElement>(imgSelector))
+//     const notDone = imgs.filter(i => !i.complete || (i.naturalWidth === 0 && i.naturalHeight === 0))
+//     await Promise.all(
+//         notDone.map(i => new Promise<void>(res => {
+//             i.addEventListener('load', () => res(), { once: true })
+//             i.addEventListener('error', () => res(), { once: true })
+//         }))
+//     )
+// }
+//
+// async function handlePrint() {
+//     injectPageRule(props.paper!)
+//     injectPrintIsolation(scopeId.value)
+//
+//     if (props.autoQr && !qr.value.length && !qrLoading.value) {
+//         await generateQr()
+//     }
+//
+//     await nextTick()
+//     await waitForImagesWithin(scopeId.value, '.qr-img')
+//
+//     setTimeout(() => window.print(), 60)
+// }
 
 /* ---------------- Style vars (grid + size) ---------------- */
-const qrStyleVars = computed(() => {
-    const cols = Math.max(1, Math.min(6, Number(props.qrGridCols || 0) || 3))
-    const gap  = Math.max(0, Number(props.qrGridGapIn || 0) || 0.10)
-    return {
-        '--qrsize': `${qrCardSizeIn.value}in`,
-        '--qrcols': String(cols),
-        '--qrgap':  `${gap}in`
-    } as Record<string, string>
+const { qrStyleVars } = useQrCardLayout(props)
+
+/* ---------------- Lifecycle & reactive re-fetch ---------------- */
+onMounted(() => {
+    // Ensure initial fetch happens even if composable watchers are conservative.
+    if (props.autoQr && !props.qrChunks?.length) {
+        generateQr()
+    }
 })
 
-/* ---------------- Lifecycle ---------------- */
-onMounted(generateQr)
-
-// Debounce re-generation on effective inputs (profile + explicit)
-let regenTimer: ReturnType<typeof setTimeout> | undefined
-function triggerGenerateQr() {
-    if (regenTimer) clearTimeout(regenTimer)
-    regenTimer = setTimeout(() => { generateQr() }, 250)
-}
-
+// When any effective QR params or endpoint change, debounced re-fetch.
 watch(
     () => [
         props.er?.code,
@@ -338,7 +223,11 @@ watch(
     () => triggerGenerateQr()
 )
 
-watch(() => props.qrChunks, v => { if (v?.length) qr.value = v })
+// If parent hands us qrChunks later, reflect immediately (composable also handles this,
+// but keeping this watch keeps parity with your known-good behavior).
+watch(() => props.qrChunks, v => {
+    if (v?.length) qr.value = v
+})
 </script>
 
 <template>
