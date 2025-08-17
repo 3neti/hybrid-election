@@ -32,9 +32,7 @@ trait HasAdditionalPrecinctAttributes
     // Watchers
     public function setWatchersCountAttribute(?int $value): self
     {
-        if ($value !== null) {
-            $this->getAttribute('meta')->set(self::WATCHERS_COUNT_FIELD, $value);
-        }
+        $this->getAttribute('meta')->set(self::WATCHERS_COUNT_FIELD, $value);
 
         return $this;
     }
@@ -47,9 +45,7 @@ trait HasAdditionalPrecinctAttributes
     // Precincts
     public function setPrecinctsCountAttribute(?int $value): self
     {
-        if ($value !== null) {
-            $this->getAttribute('meta')->set(self::PRECINCTS_COUNT_FIELD, $value);
-        }
+        $this->getAttribute('meta')->set(self::PRECINCTS_COUNT_FIELD, $value);
 
         return $this;
     }
@@ -62,9 +58,7 @@ trait HasAdditionalPrecinctAttributes
     // Registered voters
     public function setRegisteredVotersCountAttribute(?int $value): self
     {
-        if ($value !== null) {
-            $this->getAttribute('meta')->set(self::REGISTERED_VOTERS_COUNT_FIELD, $value);
-        }
+        $this->getAttribute('meta')->set(self::REGISTERED_VOTERS_COUNT_FIELD, $value);
 
         return $this;
     }
@@ -77,9 +71,7 @@ trait HasAdditionalPrecinctAttributes
     // Actual voters
     public function setActualVotersCountAttribute(?int $value): self
     {
-        if ($value !== null) {
-            $this->getAttribute('meta')->set(self::ACTUAL_VOTERS_COUNT_FIELD, $value);
-        }
+        $this->getAttribute('meta')->set(self::ACTUAL_VOTERS_COUNT_FIELD, $value);
 
         return $this;
     }
@@ -92,9 +84,7 @@ trait HasAdditionalPrecinctAttributes
     // Ballots in Box
     public function setBallotsInBoxCountAttribute(?int $value): self
     {
-        if ($value !== null) {
-            $this->getAttribute('meta')->set(self::BALLOTS_IN_BOX_COUNT_FIELD, $value);
-        }
+        $this->getAttribute('meta')->set(self::BALLOTS_IN_BOX_COUNT_FIELD, $value);
 
         return $this;
     }
@@ -107,9 +97,7 @@ trait HasAdditionalPrecinctAttributes
     // Unused Ballots
     public function setUnusedBallotsCountAttribute(?int $value): self
     {
-        if ($value !== null) {
-            $this->getAttribute('meta')->set(self::UNUSED_BALLOTS_COUNT_FIELD, $value);
-        }
+        $this->getAttribute('meta')->set(self::UNUSED_BALLOTS_COUNT_FIELD, $value);
 
         return $this;
     }
@@ -122,9 +110,7 @@ trait HasAdditionalPrecinctAttributes
     // Spoiled Ballots
     public function setSpoiledBallotsCountAttribute(?int $value): self
     {
-        if ($value !== null) {
-            $this->getAttribute('meta')->set(self::SPOILED_BALLOTS_COUNT_FIELD, $value);
-        }
+        $this->getAttribute('meta')->set(self::SPOILED_BALLOTS_COUNT_FIELD, $value);
 
         return $this;
     }
@@ -137,10 +123,7 @@ trait HasAdditionalPrecinctAttributes
     // Void Ballots
     public function setVoidBallotsCountAttribute(?int $value): self
     {
-        if ($value !== null) {
-            $this->getAttribute('meta')->set(self::VOID_BALLOTS_COUNT_FIELD, $value);
-        }
-
+        $this->getAttribute('meta')->set(self::VOID_BALLOTS_COUNT_FIELD, $value);
         return $this;
     }
 

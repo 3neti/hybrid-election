@@ -58,6 +58,14 @@ it('creates a BallotData object from nested array', function () {
             'latitude' => 17.993217,
             'longitude' => 120.488902,
             'electoral_inspectors' => [],
+            'watchers_count' => 2,
+            'precincts_count' => 10,
+            'registered_voters_count' => 250,
+            'actual_voters_count' => 200,
+            'ballots_in_box_count' => 198,
+            'unused_ballots_count' => 52,
+            'spoiled_ballots_count' => 3,
+            'void_ballots_count' => 1,
         ],
     ]);
 
@@ -78,5 +86,35 @@ it('creates a BallotData object from nested array', function () {
         ->and($firstVote->candidates->first()->alias)->toBe('BBM');
 
     expect($ballot->precinct)->toBeInstanceOf(PrecinctData::class)
-        ->and($ballot->precinct->code)->toBe('CURRIMAO-001');
+        ->and($ballot->precinct->code)->toBe('CURRIMAO-001')
+        ->and($ballot->precinct->watchers_count)->toBe(2)
+        ->and($ballot->precinct->precincts_count)->toBe(10)
+        ->and($ballot->precinct->registered_voters_count)->toBe(250)
+        ->and($ballot->precinct->actual_voters_count)->toBe(200)
+        ->and($ballot->precinct->ballots_in_box_count)->toBe(198)
+        ->and($ballot->precinct->unused_ballots_count)->toBe(52)
+        ->and($ballot->precinct->spoiled_ballots_count)->toBe(3)
+        ->and($ballot->precinct->void_ballots_count)->toBe(1);
 });
+
+it('maps precinct meta fields as null when omitted', function () {
+    $precinct = PrecinctData::from([
+        'id' => 'precinct-uuid-888',
+        'code' => 'CURRIMAO-002',
+        'location_name' => 'Another School',
+        'latitude' => null,
+        'longitude' => null,
+        'electoral_inspectors' => [],
+        // intentionally no meta fields here
+    ]);
+
+    expect($precinct)->toBeInstanceOf(PrecinctData::class)
+        ->and($precinct->watchers_count)->toBeNull()
+        ->and($precinct->precincts_count)->toBeNull()
+        ->and($precinct->registered_voters_count)->toBeNull()
+        ->and($precinct->actual_voters_count)->toBeNull()
+        ->and($precinct->ballots_in_box_count)->toBeNull()
+        ->and($precinct->unused_ballots_count)->toBeNull()
+        ->and($precinct->spoiled_ballots_count)->toBeNull()
+        ->and($precinct->void_ballots_count)->toBeNull();
+})->skip();

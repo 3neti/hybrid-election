@@ -36,6 +36,14 @@ it('hydrates ElectionReturnData from JSON and exports to array', function () {
 //                    'signed_at' => null,
                 ],
             ],
+            'watchers_count' => 2,
+            'precincts_count' => 10,
+            'registered_voters_count' => 250,
+            'actual_voters_count' => 200,
+            'ballots_in_box_count' => 198,
+            'unused_ballots_count' => 52,
+            'spoiled_ballots_count' => 3,
+            'void_ballots_count' => 1,
         ],
         'tallies' => [
             [
@@ -140,5 +148,22 @@ it('hydrates ElectionReturnData from JSON and exports to array', function () {
         'ballots',
         'created_at',
         'updated_at',
-    ]);
+    ])
+        ->and($array['precinct'])->toHaveKeys([
+            'id',
+            'code',
+            'location_name',
+            'latitude',
+            'longitude',
+            'electoral_inspectors',
+            'watchers_count',
+            'precincts_count',
+            'registered_voters_count',
+            'actual_voters_count',
+            'ballots_in_box_count',
+            'unused_ballots_count',
+            'spoiled_ballots_count',
+            'void_ballots_count',
+        ]);
+
 });

@@ -57,3 +57,15 @@ Route::post('/qr/decode', DecodeQrChunks::class)->name('qr.decode');
 use App\Actions\GetSampleERjson;
 
 Route::get('/sample-er', GetSampleERjson::class)->name('er.sample');
+
+// routes/web.php or routes/api.php (prefer api.php if used by SPA)
+use App\Actions\InputPrecinctStatistics;
+
+Route::patch('/precincts/{precinct}/statistics', InputPrecinctStatistics::class)
+    ->name('precinct.statistics.update');
+
+
+use App\Actions\InputPrecinctDetails;
+
+Route::post('/precincts/{precinct}/details', InputPrecinctDetails::class)
+    ->name('precinct.details.input');
