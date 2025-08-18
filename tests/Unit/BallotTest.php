@@ -1,9 +1,9 @@
 <?php
 
-use App\Models\{Ballot, Precinct};
-use App\Data\{BallotData, VoteData};
-use Spatie\LaravelData\DataCollection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\LaravelData\DataCollection;
+use App\Data\{BallotData, VoteData};
+use App\Models\{Ballot, Precinct};
 
 uses(RefreshDatabase::class);
 

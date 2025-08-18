@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Support\Facades\File;
+use Symfony\Component\Yaml\Yaml;
 use Pest\Expectation;
 
 /*
@@ -57,3 +59,22 @@ expect()->extend('toEqualNormalized', function ($expected, string $message = '')
 
     return expect($actualNorm)->toEqual($expectedNorm, $message);
 });
+
+/**
+ * Test-only helpers to write minimal config files
+ */
+function writeElectionJson(string $dir, array $data): string
+{
+    if (!is_dir($dir)) mkdir($dir, 0777, true);
+    $path = $dir . '/election.json';
+    File::put($path, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    return $path;
+}
+
+function writePrecinctYaml(string $dir, array $data): string
+{
+    if (!is_dir($dir)) mkdir($dir, 0777, true);
+    $path = $dir . '/precinct.yaml';
+    File::put($path, Yaml::dump($data, 4, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK));
+    return $path;
+}

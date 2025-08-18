@@ -39,9 +39,14 @@ use App\Actions\SignElectionReturn;
 
 Route::post('/election-returns/{electionReturn}/sign', SignElectionReturn::class);
 
+use App\Http\Middleware\EnsureSystemInitialized;
 use App\Actions\SubmitBallot;
 
-Route::post('/ballots', SubmitBallot::class)->name('ballots.submit');
+//Route::post('/ballots', SubmitBallot::class)->name('ballots.submit');
+Route::middleware([EnsureSystemInitialized::class, 'throttle:ingest'])->group(function () {
+    Route::post('/ballots', SubmitBallot::class)->name('ballots.submit');
+    // later: Route::post('/sign-er', SignElectionReturn::class)->name('er.sign');
+});
 
 use App\Actions\GenerateQrForJson;
 
@@ -72,4 +77,7 @@ Route::post('/precincts/{precinct}/details', InputPrecinctDetails::class)
 
 use App\Actions\InitializeSystem;
 
-Route::post('/initialize-system', InitializeSystem::class)->name('system.initialize');
+//Route::post('/initialize-system', InitializeSystem::class)->name('system.initialize');
+// If you expose init via API (optional):
+Route::middleware(['throttle:init'])->post('/initialize-system', InitializeSystem::class)
+    ->name('system.initialize');

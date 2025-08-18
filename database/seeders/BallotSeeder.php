@@ -2,12 +2,11 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
-use App\Models\{Candidate, Position, Precinct};
 use App\Data\{VoteData, CandidateData, PositionData};
-use App\Actions\SubmitBallot;
+use App\Models\{Candidate, Position, Precinct};
 use Spatie\LaravelData\DataCollection;
+use Illuminate\Database\Seeder;
+use App\Actions\SubmitBallot;
 
 class BallotSeeder extends Seeder
 {
@@ -60,7 +59,6 @@ class BallotSeeder extends Seeder
 
             // Store the ballot using the SubmitBallot action
             SubmitBallot::run(
-                precinctId: $precinct->id,
                 code: sprintf('BAL-%03d', $i),
                 votes: new DataCollection(VoteData::class, $votes),
             );

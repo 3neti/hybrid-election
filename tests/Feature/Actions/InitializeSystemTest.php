@@ -28,22 +28,22 @@ afterEach(function () {
     }
 });
 
-/**
- * Helpers to write ad-hoc config files for each test
- */
-function writeElectionJson(string $dir, array $data): string
-{
-    $path = $dir . '/election.json';
-    File::put($path, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-    return $path;
-}
-
-function writePrecinctYaml(string $dir, array $data): string
-{
-    $path = $dir . '/precinct.yaml';
-    File::put($path, Yaml::dump($data, 4, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK));
-    return $path;
-}
+///**
+// * Helpers to write ad-hoc config files for each test
+// */
+//function writeElectionJson(string $dir, array $data): string
+//{
+//    $path = $dir . '/election.json';
+//    File::put($path, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+//    return $path;
+//}
+//
+//function writePrecinctYaml(string $dir, array $data): string
+//{
+//    $path = $dir . '/precinct.yaml';
+//    File::put($path, Yaml::dump($data, 4, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK));
+//    return $path;
+//}
 
 it('initializes system from provided election.json and precinct.yaml', function () {
     // Minimal but valid payloads (kept small for speed)

@@ -2,7 +2,6 @@
 
 use App\Data\{BallotData, CandidateData, PositionData, VoteData};
 use App\Models\{Ballot, Candidate, Position, Precinct};
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use function Pest\Laravel\assertDatabaseHas;
 use Spatie\LaravelData\DataCollection;
 use Illuminate\Support\Facades\Event;
@@ -35,7 +34,6 @@ it('submits a ballot successfully and returns BallotData', function () {
     $ballotCode = 'BAL-TEST-001';
 
     $data = SubmitBallot::run(
-        precinctId: $this->precinct->id,
         code: $ballotCode,
         votes: $votes,
     );
@@ -49,16 +47,6 @@ it('submits a ballot successfully and returns BallotData', function () {
         'precinct_id' => $this->precinct->id,
     ]);
 });
-
-it('throws exception when precinct is not found', function () {
-    $fakePrecinctId = Str::uuid()->toString();
-
-    SubmitBallot::run(
-        precinctId: $fakePrecinctId,
-        code: 'BAL-INVALID',
-        votes: new DataCollection(VoteData::class, [])
-    );
-})->throws(ModelNotFoundException::class);
 
 it('stores vote content accurately in database', function () {
     $votes = new DataCollection(
@@ -75,7 +63,6 @@ it('stores vote content accurately in database', function () {
     $ballotCode = 'BAL-CHECK-VOTES';
 
     SubmitBallot::run(
-        precinctId: $this->precinct->id,
         code: $ballotCode,
         votes: $votes
     );
@@ -114,7 +101,6 @@ it('supports submitting multiple candidates for a position', function () {
     $ballotCode = 'BAL-MULTI-CAND';
 
     $data = SubmitBallot::run(
-        precinctId: $this->precinct->id,
         code: $ballotCode,
         votes: $votes
     );
@@ -140,7 +126,6 @@ it('dispatches BallotSubmitted event on successful ballot submission', function 
     $ballotCode = 'BAL-WITH-EVENT';
 
     $data = SubmitBallot::run(
-        precinctId: $this->precinct->id,
         code: $ballotCode,
         votes: $votes,
     );
