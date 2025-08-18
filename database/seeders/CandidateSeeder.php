@@ -9,136 +9,407 @@ use App\Models\Position;
 
 class CandidateSeeder extends Seeder
 {
+    /** Group by position_code for clarity */
+    public const CANDIDATES = [
+        'PRESIDENT' => [
+            ['code' => 'LD_001', 'name' => 'Leonardo DiCaprio', 'alias' => 'LD'],
+            ['code' => 'SJ_002', 'name' => 'Scarlett Johansson', 'alias' => 'SJ'],
+            ['code' => 'DW_003', 'name' => 'Denzel Washington', 'alias' => 'DW'],
+            ['code' => 'MS_004', 'name' => 'Meryl Streep', 'alias' => 'MS'],
+            ['code' => 'BP_005', 'name' => 'Brad Pitt', 'alias' => 'BP'],
+            ['code' => 'AJ_006', 'name' => 'Angelina Jolie', 'alias' => 'AJ'],
+        ],
+        'VICE-PRESIDENT' => [
+            ['code' => 'TH_001', 'name' => 'Tom Hanks', 'alias' => 'TH'],
+            ['code' => 'VD_002', 'name' => 'Viola Davis', 'alias' => 'VD'],
+            ['code' => 'CH_003', 'name' => 'Chris Hemsworth', 'alias' => 'CH'],
+            ['code' => 'NP_004', 'name' => 'Natalie Portman', 'alias' => 'NP'],
+            ['code' => 'RDJ_005', 'name' => 'Robert Downey Jr.', 'alias' => 'RDJ'],
+            ['code' => 'AH_006', 'name' => 'Anne Hathaway', 'alias' => 'AH'],
+        ],
+        'SENATOR' => [
+            ['code' => 'JD_001', 'name' => 'Johnny Depp', 'alias' => 'JD'],
+            ['code' => 'ES_002', 'name' => 'Emma Stone', 'alias' => 'ES'],
+            ['code' => 'MF_003', 'name' => 'Morgan Freeman', 'alias' => 'MF'],
+            ['code' => 'JL_004', 'name' => 'Jennifer Lawrence', 'alias' => 'JL'],
+            ['code' => 'CB_005', 'name' => 'Christian Bale', 'alias' => 'CB'],
+            ['code' => 'SB_006', 'name' => 'Sandra Bullock', 'alias' => 'SB'],
+            ['code' => 'WS_007', 'name' => 'Will Smith', 'alias' => 'WS'],
+            ['code' => 'JR_008', 'name' => 'Julia Roberts', 'alias' => 'JR'],
+            ['code' => 'MD_009', 'name' => 'Matt Damon', 'alias' => 'MD'],
+            ['code' => 'CT_010', 'name' => 'Charlize Theron', 'alias' => 'CT'],
+            ['code' => 'KR_011', 'name' => 'Keanu Reeves', 'alias' => 'KR'],
+            ['code' => 'NK_012', 'name' => 'Nicole Kidman', 'alias' => 'NK'],
+            ['code' => 'HJ_013', 'name' => 'Hugh Jackman', 'alias' => 'HJ'],
+            ['code' => 'ZS_014', 'name' => 'Zoe Saldana', 'alias' => 'ZS'],
+            ['code' => 'BC_015', 'name' => 'Benedict Cumberbatch', 'alias' => 'BC'],
+            ['code' => 'GG_016', 'name' => 'Gal Gadot', 'alias' => 'GG'],
+            ['code' => 'JG_017', 'name' => 'Jake Gyllenhaal', 'alias' => 'JG'],
+            ['code' => 'AA_018', 'name' => 'Amy Adams', 'alias' => 'AA'],
+            ['code' => 'DC_019', 'name' => 'Daniel Craig', 'alias' => 'DC'],
+            ['code' => 'KW_020', 'name' => 'Kate Winslet', 'alias' => 'KW'],
+            ['code' => 'MR_021', 'name' => 'Mark Ruffalo', 'alias' => 'MR'],
+            ['code' => 'EB_022', 'name' => 'Emily Blunt', 'alias' => 'EB'],
+            ['code' => 'CE_023', 'name' => 'Chris Evans', 'alias' => 'CE'],
+            ['code' => 'RM_024', 'name' => 'Rachel McAdams', 'alias' => 'RM'],
+            ['code' => 'CB_025', 'name' => 'Chadwick Boseman', 'alias' => 'CB'],
+            ['code' => 'TS_026', 'name' => 'Tilda Swinton', 'alias' => 'TS'],
+            ['code' => 'JM_027', 'name' => 'Jason Momoa', 'alias' => 'JM'],
+            ['code' => 'OS_028', 'name' => 'Octavia Spencer', 'alias' => 'OS'],
+            ['code' => 'RG_029', 'name' => 'Ryan Gosling', 'alias' => 'RG'],
+            ['code' => 'SH_030', 'name' => 'Salma Hayek', 'alias' => 'SH'],
+            ['code' => 'JR_031', 'name' => 'Jeremy Renner', 'alias' => 'JR'],
+            ['code' => 'Z_032', 'name' => 'Zendaya', 'alias' => 'Z'],
+            ['code' => 'JB_033', 'name' => 'Javier Bardem', 'alias' => 'JB'],
+            ['code' => 'MY_034', 'name' => 'Michelle Yeoh', 'alias' => 'MY'],
+            ['code' => 'MA_035', 'name' => 'Mahershala Ali', 'alias' => 'MA'],
+            ['code' => 'EG_036', 'name' => 'Eva Green', 'alias' => 'EG'],
+            ['code' => 'TC_037', 'name' => 'Timothee Chalamet', 'alias' => 'TC'],
+            ['code' => 'FP_038', 'name' => 'Florence Pugh', 'alias' => 'FP'],
+            ['code' => 'PP_039', 'name' => 'Pedro Pascal', 'alias' => 'PP'],
+            ['code' => 'RM_040', 'name' => 'Rami Malek', 'alias' => 'RM'],
+            ['code' => 'ATJ_041', 'name' => 'Anya Taylor-Joy', 'alias' => 'ATJ'],
+            ['code' => 'IE_042', 'name' => 'Idris Elba', 'alias' => 'IE'],
+            ['code' => 'PD_043', 'name' => 'Paul Dano', 'alias' => 'PD'],
+            ['code' => 'A_044', 'name' => 'Awkwafina', 'alias' => 'A'],
+            ['code' => 'JC_045', 'name' => 'Jessica Chastain', 'alias' => 'JC'],
+            ['code' => 'AG_046', 'name' => 'Andrew Garfield', 'alias' => 'AG'],
+            ['code' => 'TH_047', 'name' => 'Tom Holland', 'alias' => 'TH'],
+            ['code' => 'LN_048', 'name' => 'Lupita Nyong\'o', 'alias' => 'LN'],
+            ['code' => 'BC_049', 'name' => 'Bryan Cranston', 'alias' => 'BC'],
+            ['code' => 'HM_050', 'name' => 'Helen Mirren', 'alias' => 'HM'],
+        ],
+        'GOVERNOR-ILN' => [
+            ['code' => 'EN_001', 'name' => 'Edward Norton', 'alias' => 'EN'],
+            ['code' => 'JB_002', 'name' => 'Jeff Bridges', 'alias' => 'JB'],
+            ['code' => 'RP_003', 'name' => 'Rosamund Pike', 'alias' => 'RP'],
+        ],
+        'VICE-GOVERNOR-ILN' => [
+            ['code' => 'NW_001', 'name' => 'Naomi Watts', 'alias' => 'NW'],
+            ['code' => 'MF_002', 'name' => 'Michael Fassbender', 'alias' => 'MF'],
+            ['code' => 'DK_003', 'name' => 'Daniel Kaluuya', 'alias' => 'DK'],
+            ['code' => 'JH_004', 'name' => 'Jennifer Hudson', 'alias' => 'JH'],
+        ],
+        'BOARD-MEMBER-ILN' => [
+            ['code' => 'RW_001', 'name' => 'Reese Witherspoon', 'alias' => 'RW'],
+            ['code' => 'HB_002', 'name' => 'Halle Berry', 'alias' => 'HB'],
+            ['code' => 'RW_003', 'name' => 'Robin Wright', 'alias' => 'RW'],
+            ['code' => 'DP_004', 'name' => 'Dev Patel', 'alias' => 'DP'],
+            ['code' => 'BDT_005', 'name' => 'Benicio Del Toro', 'alias' => 'BDT'],
+            ['code' => 'DJ_006', 'name' => 'Dakota Johnson', 'alias' => 'DJ'],
+            ['code' => 'AD_007', 'name' => 'Adam Driver', 'alias' => 'AD'],
+            ['code' => 'GR_008', 'name' => 'Gina Rodriguez', 'alias' => 'GR'],
+        ],
+        'REPRESENTATIVE-ILN-1' => [
+            ['code' => 'JF_001', 'name' => 'Jodie Foster', 'alias' => 'JF'],
+            ['code' => 'RW_002', 'name' => 'Rachel Weisz', 'alias' => 'RW'],
+            ['code' => 'CF_003', 'name' => 'Colin Firth', 'alias' => 'CF'],
+            ['code' => 'DC_004', 'name' => 'Don Cheadle', 'alias' => 'DC'],
+        ],
+        'MAYOR-ILN-CURRIMAO' => [
+            ['code' => 'BC_001', 'name' => 'Billy Crudup', 'alias' => 'BC'],
+            ['code' => 'LJ_002', 'name' => 'Lily James', 'alias' => 'LJ'],
+            ['code' => 'EW_003', 'name' => 'Emily Watson', 'alias' => 'EW'],
+        ],
+        'VICE-MAYOR-ILN-CURRIMAO' => [
+            ['code' => 'JKS_001', 'name' => 'J.K. Simmons', 'alias' => 'JKS'],
+            ['code' => 'JL_002', 'name' => 'Jared Leto', 'alias' => 'JL'],
+            ['code' => 'JF_003', 'name' => 'Jamie Foxx', 'alias' => 'JF'],
+        ],
+        'COUNCILOR-ILN-CURRIMAO' => [
+            ['code' => 'ER_001', 'name' => 'Eddie Redmayne', 'alias' => 'ER'],
+            ['code' => 'SG_002', 'name' => 'Stephen Graham', 'alias' => 'SG'],
+            ['code' => 'SR_003', 'name' => 'Saoirse Ronan', 'alias' => 'SR'],
+            ['code' => 'MC_004', 'name' => 'Marion Cotillard', 'alias' => 'MC'],
+            ['code' => 'MS_005', 'name' => 'Michael Shannon', 'alias' => 'MS'],
+            ['code' => 'CE_006', 'name' => 'Chiwetel Ejiofor', 'alias' => 'CE'],
+            ['code' => 'GMR_007', 'name' => 'Gugu Mbatha-Raw', 'alias' => 'GMR'],
+            ['code' => 'DO_008', 'name' => 'David Oyelowo', 'alias' => 'DO'],
+        ],
+        'REPRESENTATIVE-PARTY-LIST' => [
+            ['code' => 'THE_GODFATHER_001', 'name' => 'The Godfather', 'alias' => 'the_godfather'],
+            ['code' => 'TITANIC_002', 'name' => 'Titanic', 'alias' => 'titanic'],
+            ['code' => 'THE_DARK_KNIGHT_003', 'name' => 'The Dark Knight', 'alias' => 'the_dark_knight'],
+            ['code' => 'FORREST_GUMP_004', 'name' => 'Forrest Gump', 'alias' => 'forrest_gump'],
+            ['code' => 'PULP_FICTION_005', 'name' => 'Pulp Fiction', 'alias' => 'pulp_fiction'],
+            ['code' => 'INCEPTION_006', 'name' => 'Inception', 'alias' => 'inception'],
+            ['code' => 'FIGHT_CLUB_007', 'name' => 'Fight Club', 'alias' => 'fight_club'],
+            ['code' => 'THE_MATRIX_008', 'name' => 'The Matrix', 'alias' => 'the_matrix'],
+            ['code' => 'THE_SHAWSHANK_REDEMPTION_009', 'name' => 'The Shawshank Redemption', 'alias' => 'the_shawshank_redemption'],
+            ['code' => 'GLADIATOR_010', 'name' => 'Gladiator', 'alias' => 'gladiator'],
+            ['code' => 'AVATAR_011', 'name' => 'Avatar', 'alias' => 'avatar'],
+            ['code' => 'LA_LA_LAND_012', 'name' => 'La La Land', 'alias' => 'la_la_land'],
+            ['code' => 'THE_SOCIAL_NETWORK_013', 'name' => 'The Social Network', 'alias' => 'the_social_network'],
+            ['code' => 'INTERSTELLAR_014', 'name' => 'Interstellar', 'alias' => 'interstellar'],
+            ['code' => 'MAD_MAX_FURY_ROAD_015', 'name' => 'Mad Max: Fury Road', 'alias' => 'mad_max_fury_road'],
+            ['code' => 'THE_AVENGERS_016', 'name' => 'The Avengers', 'alias' => 'the_avengers'],
+            ['code' => 'JOKER_017', 'name' => 'Joker', 'alias' => 'joker'],
+            ['code' => 'FROZEN_018', 'name' => 'Frozen', 'alias' => 'frozen'],
+            ['code' => 'THE_LORD_OF_THE_RINGS_019', 'name' => 'The Lord of the Rings', 'alias' => 'the_lord_of_the_rings'],
+            ['code' => 'BLACK_PANTHER_020', 'name' => 'Black Panther', 'alias' => 'black_panther'],
+            ['code' => 'PARASITE_021', 'name' => 'Parasite', 'alias' => 'parasite'],
+            ['code' => 'THE_REVENANT_022', 'name' => 'The Revenant', 'alias' => 'the_revenant'],
+            ['code' => 'DUNE_023', 'name' => 'Dune', 'alias' => 'dune'],
+            ['code' => 'TOP_GUN_MAVERICK_024', 'name' => 'Top Gun: Maverick', 'alias' => 'top_gun_maverick'],
+            ['code' => 'EVERYTHING_EVERYWHERE_ALL_AT_ONCE_025', 'name' => 'Everything Everywhere All At Once', 'alias' => 'everything_everywhere_all_at_once'],
+            ['code' => 'NO_TIME_TO_DIE_026', 'name' => 'No Time to Die', 'alias' => 'no_time_to_die'],
+            ['code' => 'KNIVES_OUT_027', 'name' => 'Knives Out', 'alias' => 'knives_out'],
+            ['code' => 'COCO_028', 'name' => 'Coco', 'alias' => 'coco'],
+            ['code' => 'THE_GRAND_BUDAPEST_HOTEL_029', 'name' => 'The Grand Budapest Hotel', 'alias' => 'the_grand_budapest_hotel'],
+            ['code' => 'GET_OUT_030', 'name' => 'Get Out', 'alias' => 'get_out'],
+            ['code' => 'BOHEMIAN_RHAPSODY_031', 'name' => 'Bohemian Rhapsody', 'alias' => 'bohemian_rhapsody'],
+            ['code' => 'OPPENHEIMER_032', 'name' => 'Oppenheimer', 'alias' => 'oppenheimer'],
+            ['code' => 'BARBIE_033', 'name' => 'Barbie', 'alias' => 'barbie'],
+            ['code' => 'MISSION_IMPOSSIBLE_034', 'name' => 'Mission: Impossible', 'alias' => 'mission_impossible'],
+            ['code' => 'A_STAR_IS_BORN_035', 'name' => 'A Star Is Born', 'alias' => 'a_star_is_born'],
+            ['code' => 'THE_WHALE_036', 'name' => 'The Whale', 'alias' => 'the_whale'],
+            ['code' => 'SPIDER_MAN_NO_WAY_HOME_037', 'name' => 'Spider-Man: No Way Home', 'alias' => 'spider_man_no_way_home'],
+            ['code' => 'GUARDIANS_OF_THE_GALAXY_038', 'name' => 'Guardians of the Galaxy', 'alias' => 'guardians_of_the_galaxy'],
+            ['code' => '1917_039', 'name' => '1917', 'alias' => '1917'],
+            ['code' => 'TENET_040', 'name' => 'Tenet', 'alias' => 'tenet'],
+            ['code' => 'HER_041', 'name' => 'Her', 'alias' => 'her'],
+            ['code' => 'WHIPLASH_042', 'name' => 'Whiplash', 'alias' => 'whiplash'],
+            ['code' => 'THE_IRISHMAN_043', 'name' => 'The Irishman', 'alias' => 'the_irishman'],
+            ['code' => 'THE_MARTIAN_044', 'name' => 'The Martian', 'alias' => 'the_martian'],
+            ['code' => 'THE_BIG_SHORT_045', 'name' => 'The Big Short', 'alias' => 'the_big_short'],
+            ['code' => 'CODA_046', 'name' => 'Coda', 'alias' => 'coda'],
+            ['code' => 'SOUL_047', 'name' => 'Soul', 'alias' => 'soul'],
+            ['code' => 'TOY_STORY_048', 'name' => 'Toy Story', 'alias' => 'toy_story'],
+            ['code' => 'INSIDE_OUT_049', 'name' => 'Inside Out', 'alias' => 'inside_out'],
+            ['code' => 'ENCANTO_050', 'name' => 'Encanto', 'alias' => 'encanto'],
+            ['code' => 'UP_051', 'name' => 'Up', 'alias' => 'up'],
+            ['code' => 'THE_LION_KING_052', 'name' => 'The Lion King', 'alias' => 'the_lion_king'],
+            ['code' => 'FINDING_NEMO_053', 'name' => 'Finding Nemo', 'alias' => 'finding_nemo'],
+            ['code' => 'WALL_E_054', 'name' => 'Wall-E', 'alias' => 'wall_e'],
+            ['code' => 'MOANA_055', 'name' => 'Moana', 'alias' => 'moana'],
+            ['code' => 'THE_INCREDIBLES_056', 'name' => 'The Incredibles', 'alias' => 'the_incredibles'],
+            ['code' => 'FROZEN_II_057', 'name' => 'Frozen II', 'alias' => 'frozen_ii'],
+            ['code' => 'AVENGERS_ENDGAME_058', 'name' => 'Avengers: Endgame', 'alias' => 'avengers_endgame'],
+            ['code' => 'DOCTOR_STRANGE_059', 'name' => 'Doctor Strange', 'alias' => 'doctor_strange'],
+            ['code' => 'IRON_MAN_060', 'name' => 'Iron Man', 'alias' => 'iron_man'],
+            ['code' => 'CAPTAIN_AMERICA_CIVIL_WAR_061', 'name' => 'Captain America: Civil War', 'alias' => 'captain_america_civil_war'],
+            ['code' => 'THOR_RAGNAROK_062', 'name' => 'Thor: Ragnarok', 'alias' => 'thor_ragnarok'],
+            ['code' => 'ANT_MAN_063', 'name' => 'Ant-Man', 'alias' => 'ant_man'],
+            ['code' => 'THE_PRESTIGE_064', 'name' => 'The Prestige', 'alias' => 'the_prestige'],
+            ['code' => 'THE_DEPARTED_065', 'name' => 'The Departed', 'alias' => 'the_departed'],
+            ['code' => 'THE_CURIOUS_CASE_OF_BENJAMIN_BUTTON_066', 'name' => 'The Curious Case of Benjamin Button', 'alias' => 'the_curious_case_of_benjamin_button'],
+            ['code' => 'CAST_AWAY_067', 'name' => 'Cast Away', 'alias' => 'cast_away'],
+            ['code' => 'CATCH_ME_IF_YOU_CAN_068', 'name' => 'Catch Me If You Can', 'alias' => 'catch_me_if_you_can'],
+            ['code' => 'THE_TRUMAN_SHOW_069', 'name' => 'The Truman Show', 'alias' => 'the_truman_show'],
+            ['code' => 'THE_IMITATION_GAME_070', 'name' => 'The Imitation Game', 'alias' => 'the_imitation_game'],
+            ['code' => 'THE_THEORY_OF_EVERYTHING_071', 'name' => 'The Theory of Everything', 'alias' => 'the_theory_of_everything'],
+            ['code' => 'THE_KING_S_SPEECH_072', 'name' => 'The King\'s Speech', 'alias' => 'the_king_s_speech'],
+            ['code' => 'THE_BLIND_SIDE_073', 'name' => 'The Blind Side', 'alias' => 'the_blind_side'],
+            ['code' => 'LINCOLN_074', 'name' => 'Lincoln', 'alias' => 'lincoln'],
+            ['code' => 'LES_MISERABLES_075', 'name' => 'Les Miserables', 'alias' => 'les_miserables'],
+            ['code' => 'BIRDMAN_076', 'name' => 'Birdman', 'alias' => 'birdman'],
+            ['code' => 'THE_SHAPE_OF_WATER_077', 'name' => 'The Shape of Water', 'alias' => 'the_shape_of_water'],
+            ['code' => 'AMERICAN_BEAUTY_078', 'name' => 'American Beauty', 'alias' => 'american_beauty'],
+            ['code' => 'AMERICAN_HISTORY_X_079', 'name' => 'American History X', 'alias' => 'american_history_x'],
+            ['code' => 'A_BEAUTIFUL_MIND_080', 'name' => 'A Beautiful Mind', 'alias' => 'a_beautiful_mind'],
+            ['code' => 'THE_GREEN_MILE_081', 'name' => 'The Green Mile', 'alias' => 'the_green_mile'],
+            ['code' => 'SHUTTER_ISLAND_082', 'name' => 'Shutter Island', 'alias' => 'shutter_island'],
+            ['code' => 'THE_PIANIST_083', 'name' => 'The Pianist', 'alias' => 'the_pianist'],
+            ['code' => 'REQUIEM_FOR_A_DREAM_084', 'name' => 'Requiem for a Dream', 'alias' => 'requiem_for_a_dream'],
+            ['code' => 'THE_BIG_LEBOWSKI_085', 'name' => 'The Big Lebowski', 'alias' => 'the_big_lebowski'],
+            ['code' => 'NO_COUNTRY_FOR_OLD_MEN_086', 'name' => 'No Country for Old Men', 'alias' => 'no_country_for_old_men'],
+            ['code' => 'THERE_WILL_BE_BLOOD_087', 'name' => 'There Will Be Blood', 'alias' => 'there_will_be_blood'],
+            ['code' => 'ARGO_088', 'name' => 'Argo', 'alias' => 'argo'],
+            ['code' => 'ZERO_DARK_THIRTY_089', 'name' => 'Zero Dark Thirty', 'alias' => 'zero_dark_thirty'],
+            ['code' => 'HACKSAW_RIDGE_090', 'name' => 'Hacksaw Ridge', 'alias' => 'hacksaw_ridge'],
+            ['code' => 'THE_HURT_LOCKER_091', 'name' => 'The Hurt Locker', 'alias' => 'the_hurt_locker'],
+            ['code' => 'THE_FIGHTER_092', 'name' => 'The Fighter', 'alias' => 'the_fighter'],
+            ['code' => 'MONEYBALL_093', 'name' => 'Moneyball', 'alias' => 'moneyball'],
+            ['code' => 'STEVE_JOBS_094', 'name' => 'Steve Jobs', 'alias' => 'steve_jobs'],
+            ['code' => '127_HOURS_095', 'name' => '127 Hours', 'alias' => '127_hours'],
+            ['code' => 'SLUMDOG_MILLIONAIRE_096', 'name' => 'Slumdog Millionaire', 'alias' => 'slumdog_millionaire'],
+            ['code' => 'DON_T_LOOK_UP_097', 'name' => 'Don\'t Look Up', 'alias' => 'don_t_look_up'],
+            ['code' => 'THE_BANSHEES_OF_INISHERIN_098', 'name' => 'The Banshees of Inisherin', 'alias' => 'the_banshees_of_inisherin'],
+            ['code' => 'THE_MENU_099', 'name' => 'The Menu', 'alias' => 'the_menu'],
+            ['code' => 'TAR_100', 'name' => 'Tar', 'alias' => 'tar'],
+            ['code' => 'ARRIVAL_101', 'name' => 'Arrival', 'alias' => 'arrival'],
+            ['code' => 'EX_MACHINA_102', 'name' => 'Ex Machina', 'alias' => 'ex_machina'],
+            ['code' => 'LOOPER_103', 'name' => 'Looper', 'alias' => 'looper'],
+            ['code' => 'THE_HATEFUL_EIGHT_104', 'name' => 'The Hateful Eight', 'alias' => 'the_hateful_eight'],
+            ['code' => 'DJANGO_UNCHAINED_105', 'name' => 'Django Unchained', 'alias' => 'django_unchained'],
+            ['code' => 'INGLOURIOUS_BASTERDS_106', 'name' => 'Inglourious Basterds', 'alias' => 'inglourious_basterds'],
+            ['code' => 'ONCE_UPON_A_TIME_IN_HOLLYWOOD_107', 'name' => 'Once Upon a Time in Hollywood', 'alias' => 'once_upon_a_time_in_hollywood'],
+            ['code' => 'KILL_BILL_108', 'name' => 'Kill Bill', 'alias' => 'kill_bill'],
+            ['code' => 'RESERVOIR_DOGS_109', 'name' => 'Reservoir Dogs', 'alias' => 'reservoir_dogs'],
+            ['code' => 'THE_NOTEBOOK_110', 'name' => 'The Notebook', 'alias' => 'the_notebook'],
+            ['code' => 'THE_FAULT_IN_OUR_STARS_111', 'name' => 'The Fault in Our Stars', 'alias' => 'the_fault_in_our_stars'],
+            ['code' => 'ME_BEFORE_YOU_112', 'name' => 'Me Before You', 'alias' => 'me_before_you'],
+            ['code' => 'THE_VOW_113', 'name' => 'The Vow', 'alias' => 'the_vow'],
+            ['code' => 'THE_PROPOSAL_114', 'name' => 'The Proposal', 'alias' => 'the_proposal'],
+            ['code' => 'CRAZY_RICH_ASIANS_115', 'name' => 'Crazy Rich Asians', 'alias' => 'crazy_rich_asians'],
+            ['code' => '500_DAYS_OF_SUMMER_116', 'name' => '500 Days of Summer', 'alias' => '500_days_of_summer'],
+            ['code' => 'SILVER_LININGS_PLAYBOOK_117', 'name' => 'Silver Linings Playbook', 'alias' => 'silver_linings_playbook'],
+            ['code' => 'BROOKLYN_118', 'name' => 'Brooklyn', 'alias' => 'brooklyn'],
+            ['code' => 'LITTLE_WOMEN_119', 'name' => 'Little Women', 'alias' => 'little_women'],
+            ['code' => 'MARRIAGE_STORY_120', 'name' => 'Marriage Story', 'alias' => 'marriage_story'],
+            ['code' => 'LADY_BIRD_121', 'name' => 'Lady Bird', 'alias' => 'lady_bird'],
+            ['code' => 'ROOM_122', 'name' => 'Room', 'alias' => 'room'],
+            ['code' => 'NOMADLAND_123', 'name' => 'Nomadland', 'alias' => 'nomadland'],
+            ['code' => 'MINARI_124', 'name' => 'Minari', 'alias' => 'minari'],
+            ['code' => 'THE_FAREWELL_125', 'name' => 'The Farewell', 'alias' => 'the_farewell'],
+            ['code' => 'SPOTLIGHT_126', 'name' => 'Spotlight', 'alias' => 'spotlight'],
+            ['code' => 'THE_POST_127', 'name' => 'The Post', 'alias' => 'the_post'],
+            ['code' => 'DARKEST_HOUR_128', 'name' => 'Darkest Hour', 'alias' => 'darkest_hour'],
+            ['code' => 'THE_TWO_POPES_129', 'name' => 'The Two Popes', 'alias' => 'the_two_popes'],
+            ['code' => 'THE_MIDNIGHT_SKY_130', 'name' => 'The Midnight Sky', 'alias' => 'the_midnight_sky'],
+            ['code' => 'DON_T_WORRY_DARLING_131', 'name' => 'Don\'t Worry Darling', 'alias' => 'don_t_worry_darling'],
+            ['code' => 'BULLET_TRAIN_132', 'name' => 'Bullet Train', 'alias' => 'bullet_train'],
+            ['code' => 'KNOCK_AT_THE_CABIN_133', 'name' => 'Knock at the Cabin', 'alias' => 'knock_at_the_cabin'],
+            ['code' => 'GLASS_ONION_134', 'name' => 'Glass Onion', 'alias' => 'glass_onion'],
+            ['code' => 'THE_BATMAN_135', 'name' => 'The Batman', 'alias' => 'the_batman'],
+            ['code' => 'THE_FLASH_136', 'name' => 'The Flash', 'alias' => 'the_flash'],
+            ['code' => 'SHAZAM_137', 'name' => 'Shazam!', 'alias' => 'shazam'],
+            ['code' => 'AQUAMAN_138', 'name' => 'Aquaman', 'alias' => 'aquaman'],
+            ['code' => 'WONDER_WOMAN_139', 'name' => 'Wonder Woman', 'alias' => 'wonder_woman'],
+            ['code' => 'MAN_OF_STEEL_140', 'name' => 'Man of Steel', 'alias' => 'man_of_steel'],
+            ['code' => 'THE_SUICIDE_SQUAD_141', 'name' => 'The Suicide Squad', 'alias' => 'the_suicide_squad'],
+            ['code' => 'BIRDS_OF_PREY_142', 'name' => 'Birds of Prey', 'alias' => 'birds_of_prey'],
+            ['code' => 'JUSTICE_LEAGUE_143', 'name' => 'Justice League', 'alias' => 'justice_league'],
+            ['code' => 'THE_LEGO_MOVIE_144', 'name' => 'The Lego Movie', 'alias' => 'the_lego_movie'],
+            ['code' => 'ZOOTOPIA_145', 'name' => 'Zootopia', 'alias' => 'zootopia'],
+            ['code' => 'TANGLED_146', 'name' => 'Tangled', 'alias' => 'tangled'],
+            ['code' => 'RAYA_AND_THE_LAST_DRAGON_147', 'name' => 'Raya and the Last Dragon', 'alias' => 'raya_and_the_last_dragon'],
+            ['code' => 'LUCA_148', 'name' => 'Luca', 'alias' => 'luca'],
+            ['code' => 'TURNING_RED_149', 'name' => 'Turning Red', 'alias' => 'turning_red'],
+            ['code' => 'BRAVE_150', 'name' => 'Brave', 'alias' => 'brave'],
+        ],
+    ];
+
     public function run(): void
     {
-        $actorNames = collect([
-            // International actors/actresses...
-            'Leonardo DiCaprio', 'Scarlett Johansson', 'Denzel Washington', 'Meryl Streep',
-            'Brad Pitt', 'Angelina Jolie', 'Tom Hanks', 'Viola Davis', 'Chris Hemsworth',
-            'Natalie Portman', 'Robert Downey Jr.', 'Anne Hathaway', 'Johnny Depp',
-            'Emma Stone', 'Morgan Freeman', 'Jennifer Lawrence', 'Christian Bale',
-            'Sandra Bullock', 'Will Smith', 'Julia Roberts', 'Matt Damon', 'Charlize Theron',
-            'Keanu Reeves', 'Nicole Kidman', 'Hugh Jackman', 'Zoe Saldana', 'Benedict Cumberbatch',
-            'Gal Gadot', 'Jake Gyllenhaal', 'Amy Adams', 'Daniel Craig', 'Kate Winslet',
-            'Mark Ruffalo', 'Emily Blunt', 'Chris Evans', 'Rachel McAdams', 'Chadwick Boseman',
-            'Tilda Swinton', 'Jason Momoa', 'Octavia Spencer', 'Ryan Gosling', 'Salma Hayek',
-            'Jeremy Renner', 'Zendaya', 'Javier Bardem', 'Michelle Yeoh', 'Mahershala Ali',
-            'Eva Green', 'Timothée Chalamet', 'Florence Pugh', 'Pedro Pascal', 'Rami Malek',
-            'Anya Taylor-Joy', 'Idris Elba', 'Paul Dano', 'Awkwafina', 'Jessica Chastain',
-            'Andrew Garfield', 'Tom Holland', 'Lupita Nyong’o', 'Bryan Cranston', 'Helen Mirren',
-            'Edward Norton', 'Jeff Bridges', 'Rosamund Pike', 'Naomi Watts', 'Michael Fassbender',
-            'Daniel Kaluuya', 'Jennifer Hudson', 'Reese Witherspoon', 'Halle Berry', 'Robin Wright',
-            'Dev Patel', 'Benicio Del Toro', 'Dakota Johnson', 'Adam Driver', 'Gina Rodriguez',
-            'Jodie Foster', 'Rachel Weisz', 'Colin Firth', 'Don Cheadle', 'Billy Crudup',
-            'Lily James', 'Emily Watson', 'J.K. Simmons', 'Jared Leto', 'Jamie Foxx',
-            'Eddie Redmayne', 'Stephen Graham', 'Saoirse Ronan', 'Marion Cotillard', 'Michael Shannon',
-            'Chiwetel Ejiofor', 'Gugu Mbatha-Raw', 'David Oyelowo', 'John Boyega', 'Tom Hardy',
-            'Josh Brolin', 'Oscar Isaac', 'Ben Mendelsohn', 'Tessa Thompson', 'Daniel Radcliffe',
-
-            // 🇵🇭 Filipino actors and actresses
-            'Coco Martin', 'Vice Ganda', 'Daniel Padilla', 'Kathryn Bernardo', 'Liza Soberano',
-            'Enrique Gil', 'Alden Richards', 'Maine Mendoza', 'Piolo Pascual', 'Bea Alonzo',
-            'John Lloyd Cruz', 'Sarah Geronimo', 'James Reid', 'Nadine Lustre', 'Anne Curtis',
-            'Luis Manzano', 'Angel Locsin', 'Kim Chiu', 'Gerald Anderson', 'Jennylyn Mercado',
-            'Dennis Trillo', 'Carla Abellana', 'Andrea Brillantes', 'Seth Fedelin', 'Barbie Forteza',
-            'Jak Roberto', 'Glaiza de Castro', 'Yassi Pressman', 'Ruru Madrid', 'Sanya Lopez',
-            'Kylie Padilla', 'Aljur Abrenica', 'Joshua Garcia', 'Julia Barretto', 'Donny Pangilinan',
-            'Belle Mariano', 'Jake Cuenca', 'Xian Lim', 'Maja Salvador', 'Janella Salvador',
-            'Lovi Poe', 'Paulo Avelino', 'JM de Guzman', 'Jodi Sta. Maria', 'Richard Gutierrez',
-            'Rayver Cruz', 'Maxene Magalona', 'Gretchen Barretto', 'Maricel Soriano', 'Vilma Santos',
-            'Nora Aunor', 'Sharon Cuneta', 'Judy Ann Santos', 'Kris Aquino', 'Ai-Ai delas Alas',
-            'Bayani Agbayani', 'Joey de Leon', 'Vic Sotto', 'Tito Sotto', 'Ogie Alcasid',
-            'Regine Velasquez', 'Zsa Zsa Padilla', 'Lea Salonga', 'Gary Valenciano', 'Martin Nievera',
-            'Jaya', 'KZ Tandingan', 'Moira Dela Torre', 'Morissette Amon', 'Jed Madela',
-            'Jhong Hilario', 'Vhong Navarro', 'Billy Crawford', 'Iñigo Pascual', 'Kisses Delavin',
-            'Heaven Peralejo', 'Bianca Umali', 'Kyline Alcantara', 'Elisse Joson', 'McCoy de Leon',
-            'Arjo Atayde', 'Jane de Leon', 'Ella Cruz', 'Mark Anthony Fernandez', 'Lotlot de Leon',
-            'Sunshine Cruz', 'Sheryl Cruz', 'Buboy Villar', 'Hero Angeles', 'Joross Gamboa',
-            'Marvin Agustin', 'Rica Peralejo', 'Antoinette Taus', 'Tonton Gutierrez', 'Jestoni Alarcon',
-            'Kiko Estrada', 'Alessandra de Rossi', 'Empoy Marquez', 'Pepe Herrera', 'Alex Gonzaga',
-        ])->shuffle();
-
-        $movieTitles = collect([
-            'The Godfather', 'Titanic', 'The Dark Knight', 'Forrest Gump', 'Pulp Fiction',
-            'Inception', 'Fight Club', 'The Matrix', 'The Shawshank Redemption', 'Gladiator',
-            'Avatar', 'La La Land', 'The Social Network', 'Interstellar', 'Mad Max: Fury Road',
-            'The Avengers', 'Joker', 'Frozen', 'The Lord of the Rings', 'Black Panther',
-            'Parasite', 'The Revenant', 'Dune', 'Top Gun: Maverick', 'Everything Everywhere All At Once',
-            'No Time to Die', 'Knives Out', 'Coco', 'The Grand Budapest Hotel', 'Get Out',
-            'Bohemian Rhapsody', 'Oppenheimer', 'Barbie', 'Mission: Impossible', 'A Star Is Born',
-            'The Whale', 'Spider-Man: No Way Home', 'Guardians of the Galaxy', '1917', 'Tenet',
-            'Her', 'Whiplash', 'The Irishman', 'The Martian', 'The Big Short', 'Coda', 'Soul',
-            'Toy Story', 'Inside Out', 'Encanto', 'Up', 'The Lion King', 'Finding Nemo', 'Wall-E',
-            'Moana', 'The Incredibles', 'Frozen II', 'Avengers: Endgame', 'Doctor Strange',
-            'Iron Man', 'Captain America: Civil War', 'Thor: Ragnarok', 'Ant-Man', 'The Prestige',
-            'The Departed', 'The Curious Case of Benjamin Button', 'Cast Away', 'Catch Me If You Can',
-            'The Truman Show', 'The Imitation Game', 'The Theory of Everything', 'The King’s Speech',
-            'The Blind Side', 'Lincoln', 'Les Misérables', 'Birdman', 'The Shape of Water',
-            'American Beauty', 'American History X', 'A Beautiful Mind', 'The Green Mile',
-            'Shutter Island', 'The Pianist', 'Requiem for a Dream', 'The Big Lebowski',
-            'No Country for Old Men', 'There Will Be Blood', 'Argo', 'Zero Dark Thirty',
-            'Hacksaw Ridge', 'The Hurt Locker', 'The Fighter', 'Moneyball', 'Steve Jobs',
-            '127 Hours', 'Slumdog Millionaire', 'Don’t Look Up', 'The Banshees of Inisherin',
-            'The Menu', 'Tár', 'Arrival', 'Ex Machina', 'Looper', 'The Hateful Eight',
-            'Django Unchained', 'Inglourious Basterds', 'Once Upon a Time in Hollywood',
-            'Kill Bill', 'Reservoir Dogs', 'The Notebook', 'The Fault in Our Stars',
-            'Me Before You', 'The Vow', 'The Proposal', 'Crazy Rich Asians',
-            '500 Days of Summer', 'Silver Linings Playbook', 'Brooklyn', 'Little Women',
-            'Marriage Story', 'Lady Bird', 'Room', 'Nomadland', 'Minari', 'The Farewell',
-            'Spotlight', 'The Post', 'Darkest Hour', 'The Two Popes', 'The Midnight Sky',
-            'Don’t Worry Darling', 'Bullet Train', 'Knock at the Cabin', 'Glass Onion',
-            'The Batman', 'The Flash', 'Shazam!', 'Aquaman', 'Wonder Woman',
-            'Man of Steel', 'The Suicide Squad', 'Birds of Prey', 'Justice League',
-            'The Lego Movie', 'Zootopia', 'Tangled', 'Raya and the Last Dragon',
-            'Luca', 'Turning Red', 'Brave', 'Cars', 'Monsters, Inc.', 'Ratatouille',
-            'The Good Dinosaur', 'Onward', 'Lightyear', 'Sing', 'Despicable Me'
-        ])->shuffle();
-
-        $candidates = [];
-
-        Position::all()->each(function ($position) use (&$candidates, &$actorNames, &$movieTitles) {
-            $count = match ($position->code) {
-                'SENATOR' => 60,
-                'REPRESENTATIVE-PH-PARTY-LIST' => 150,
-                default => rand(6, 10),
-            };
-
-            for ($i = 0; $i < $count; $i++) {
-                if ($position->code === 'REPRESENTATIVE-PH-PARTY-LIST') {
-                    $title = $movieTitles->shift() ?? 'Party ' . Str::random(5);
-                    $alias = Str::slug($title, '_');
-                    $candidates[] = [
-                        'code'          => Str::uuid()->toString(),
-                        'name'          => $title,
-                        'alias'         => $alias,
-                        'position_code' => $position->code,
-                    ];
-                } else {
-                    $name = $actorNames->isNotEmpty()
-                        ? $actorNames->shift()
-                        : 'Candidate ' . Str::random(5);
-
-                    $alias = Str::of($name)
-                        ->explode(' ')
-                        ->map(fn($word) => Str::substr($word, 0, 1))
-                        ->join('');
-
-                    $candidates[] = [
-                        'code'          => strtoupper($alias) . '_' . Str::random(2),
-                        'name'          => $name,
-                        'alias'         => $alias,
-                        'position_code' => $position->code,
-                    ];
-                }
+        foreach (self::CANDIDATES as $positionCode => $list) {
+            foreach ($list as $c) {
+                \App\Models\Candidate::query()->updateOrCreate(
+                    ['code' => $c['code']],
+                    $c + ['position_code' => $positionCode],
+                );
             }
-        });
-
-        // Persist without using factories/Faker.
-        foreach ($candidates as $c) {
-            Candidate::updateOrCreate(
-                ['code' => $c['code']], // unique key to avoid duplicates on reseed
-                $c
-            );
         }
+//        $actorNames = collect([
+//            // International actors/actresses...
+//            'Leonardo DiCaprio', 'Scarlett Johansson', 'Denzel Washington', 'Meryl Streep',
+//            'Brad Pitt', 'Angelina Jolie', 'Tom Hanks', 'Viola Davis', 'Chris Hemsworth',
+//            'Natalie Portman', 'Robert Downey Jr.', 'Anne Hathaway', 'Johnny Depp',
+//            'Emma Stone', 'Morgan Freeman', 'Jennifer Lawrence', 'Christian Bale',
+//            'Sandra Bullock', 'Will Smith', 'Julia Roberts', 'Matt Damon', 'Charlize Theron',
+//            'Keanu Reeves', 'Nicole Kidman', 'Hugh Jackman', 'Zoe Saldana', 'Benedict Cumberbatch',
+//            'Gal Gadot', 'Jake Gyllenhaal', 'Amy Adams', 'Daniel Craig', 'Kate Winslet',
+//            'Mark Ruffalo', 'Emily Blunt', 'Chris Evans', 'Rachel McAdams', 'Chadwick Boseman',
+//            'Tilda Swinton', 'Jason Momoa', 'Octavia Spencer', 'Ryan Gosling', 'Salma Hayek',
+//            'Jeremy Renner', 'Zendaya', 'Javier Bardem', 'Michelle Yeoh', 'Mahershala Ali',
+//            'Eva Green', 'Timothée Chalamet', 'Florence Pugh', 'Pedro Pascal', 'Rami Malek',
+//            'Anya Taylor-Joy', 'Idris Elba', 'Paul Dano', 'Awkwafina', 'Jessica Chastain',
+//            'Andrew Garfield', 'Tom Holland', 'Lupita Nyong’o', 'Bryan Cranston', 'Helen Mirren',
+//            'Edward Norton', 'Jeff Bridges', 'Rosamund Pike', 'Naomi Watts', 'Michael Fassbender',
+//            'Daniel Kaluuya', 'Jennifer Hudson', 'Reese Witherspoon', 'Halle Berry', 'Robin Wright',
+//            'Dev Patel', 'Benicio Del Toro', 'Dakota Johnson', 'Adam Driver', 'Gina Rodriguez',
+//            'Jodie Foster', 'Rachel Weisz', 'Colin Firth', 'Don Cheadle', 'Billy Crudup',
+//            'Lily James', 'Emily Watson', 'J.K. Simmons', 'Jared Leto', 'Jamie Foxx',
+//            'Eddie Redmayne', 'Stephen Graham', 'Saoirse Ronan', 'Marion Cotillard', 'Michael Shannon',
+//            'Chiwetel Ejiofor', 'Gugu Mbatha-Raw', 'David Oyelowo', 'John Boyega', 'Tom Hardy',
+//            'Josh Brolin', 'Oscar Isaac', 'Ben Mendelsohn', 'Tessa Thompson', 'Daniel Radcliffe',
+//
+//            // 🇵🇭 Filipino actors and actresses
+//            'Coco Martin', 'Vice Ganda', 'Daniel Padilla', 'Kathryn Bernardo', 'Liza Soberano',
+//            'Enrique Gil', 'Alden Richards', 'Maine Mendoza', 'Piolo Pascual', 'Bea Alonzo',
+//            'John Lloyd Cruz', 'Sarah Geronimo', 'James Reid', 'Nadine Lustre', 'Anne Curtis',
+//            'Luis Manzano', 'Angel Locsin', 'Kim Chiu', 'Gerald Anderson', 'Jennylyn Mercado',
+//            'Dennis Trillo', 'Carla Abellana', 'Andrea Brillantes', 'Seth Fedelin', 'Barbie Forteza',
+//            'Jak Roberto', 'Glaiza de Castro', 'Yassi Pressman', 'Ruru Madrid', 'Sanya Lopez',
+//            'Kylie Padilla', 'Aljur Abrenica', 'Joshua Garcia', 'Julia Barretto', 'Donny Pangilinan',
+//            'Belle Mariano', 'Jake Cuenca', 'Xian Lim', 'Maja Salvador', 'Janella Salvador',
+//            'Lovi Poe', 'Paulo Avelino', 'JM de Guzman', 'Jodi Sta. Maria', 'Richard Gutierrez',
+//            'Rayver Cruz', 'Maxene Magalona', 'Gretchen Barretto', 'Maricel Soriano', 'Vilma Santos',
+//            'Nora Aunor', 'Sharon Cuneta', 'Judy Ann Santos', 'Kris Aquino', 'Ai-Ai delas Alas',
+//            'Bayani Agbayani', 'Joey de Leon', 'Vic Sotto', 'Tito Sotto', 'Ogie Alcasid',
+//            'Regine Velasquez', 'Zsa Zsa Padilla', 'Lea Salonga', 'Gary Valenciano', 'Martin Nievera',
+//            'Jaya', 'KZ Tandingan', 'Moira Dela Torre', 'Morissette Amon', 'Jed Madela',
+//            'Jhong Hilario', 'Vhong Navarro', 'Billy Crawford', 'Iñigo Pascual', 'Kisses Delavin',
+//            'Heaven Peralejo', 'Bianca Umali', 'Kyline Alcantara', 'Elisse Joson', 'McCoy de Leon',
+//            'Arjo Atayde', 'Jane de Leon', 'Ella Cruz', 'Mark Anthony Fernandez', 'Lotlot de Leon',
+//            'Sunshine Cruz', 'Sheryl Cruz', 'Buboy Villar', 'Hero Angeles', 'Joross Gamboa',
+//            'Marvin Agustin', 'Rica Peralejo', 'Antoinette Taus', 'Tonton Gutierrez', 'Jestoni Alarcon',
+//            'Kiko Estrada', 'Alessandra de Rossi', 'Empoy Marquez', 'Pepe Herrera', 'Alex Gonzaga',
+//        ])->shuffle();
+//
+//        $movieTitles = collect([
+//            'The Godfather', 'Titanic', 'The Dark Knight', 'Forrest Gump', 'Pulp Fiction',
+//            'Inception', 'Fight Club', 'The Matrix', 'The Shawshank Redemption', 'Gladiator',
+//            'Avatar', 'La La Land', 'The Social Network', 'Interstellar', 'Mad Max: Fury Road',
+//            'The Avengers', 'Joker', 'Frozen', 'The Lord of the Rings', 'Black Panther',
+//            'Parasite', 'The Revenant', 'Dune', 'Top Gun: Maverick', 'Everything Everywhere All At Once',
+//            'No Time to Die', 'Knives Out', 'Coco', 'The Grand Budapest Hotel', 'Get Out',
+//            'Bohemian Rhapsody', 'Oppenheimer', 'Barbie', 'Mission: Impossible', 'A Star Is Born',
+//            'The Whale', 'Spider-Man: No Way Home', 'Guardians of the Galaxy', '1917', 'Tenet',
+//            'Her', 'Whiplash', 'The Irishman', 'The Martian', 'The Big Short', 'Coda', 'Soul',
+//            'Toy Story', 'Inside Out', 'Encanto', 'Up', 'The Lion King', 'Finding Nemo', 'Wall-E',
+//            'Moana', 'The Incredibles', 'Frozen II', 'Avengers: Endgame', 'Doctor Strange',
+//            'Iron Man', 'Captain America: Civil War', 'Thor: Ragnarok', 'Ant-Man', 'The Prestige',
+//            'The Departed', 'The Curious Case of Benjamin Button', 'Cast Away', 'Catch Me If You Can',
+//            'The Truman Show', 'The Imitation Game', 'The Theory of Everything', 'The King’s Speech',
+//            'The Blind Side', 'Lincoln', 'Les Misérables', 'Birdman', 'The Shape of Water',
+//            'American Beauty', 'American History X', 'A Beautiful Mind', 'The Green Mile',
+//            'Shutter Island', 'The Pianist', 'Requiem for a Dream', 'The Big Lebowski',
+//            'No Country for Old Men', 'There Will Be Blood', 'Argo', 'Zero Dark Thirty',
+//            'Hacksaw Ridge', 'The Hurt Locker', 'The Fighter', 'Moneyball', 'Steve Jobs',
+//            '127 Hours', 'Slumdog Millionaire', 'Don’t Look Up', 'The Banshees of Inisherin',
+//            'The Menu', 'Tár', 'Arrival', 'Ex Machina', 'Looper', 'The Hateful Eight',
+//            'Django Unchained', 'Inglourious Basterds', 'Once Upon a Time in Hollywood',
+//            'Kill Bill', 'Reservoir Dogs', 'The Notebook', 'The Fault in Our Stars',
+//            'Me Before You', 'The Vow', 'The Proposal', 'Crazy Rich Asians',
+//            '500 Days of Summer', 'Silver Linings Playbook', 'Brooklyn', 'Little Women',
+//            'Marriage Story', 'Lady Bird', 'Room', 'Nomadland', 'Minari', 'The Farewell',
+//            'Spotlight', 'The Post', 'Darkest Hour', 'The Two Popes', 'The Midnight Sky',
+//            'Don’t Worry Darling', 'Bullet Train', 'Knock at the Cabin', 'Glass Onion',
+//            'The Batman', 'The Flash', 'Shazam!', 'Aquaman', 'Wonder Woman',
+//            'Man of Steel', 'The Suicide Squad', 'Birds of Prey', 'Justice League',
+//            'The Lego Movie', 'Zootopia', 'Tangled', 'Raya and the Last Dragon',
+//            'Luca', 'Turning Red', 'Brave', 'Cars', 'Monsters, Inc.', 'Ratatouille',
+//            'The Good Dinosaur', 'Onward', 'Lightyear', 'Sing', 'Despicable Me'
+//        ])->shuffle();
+//
+//        $candidates = [];
+//
+//        Position::all()->each(function ($position) use (&$candidates, &$actorNames, &$movieTitles) {
+//            $count = match ($position->code) {
+//                'SENATOR' => 60,
+//                'REPRESENTATIVE-PH-PARTY-LIST' => 150,
+//                default => rand(6, 10),
+//            };
+//
+//            for ($i = 0; $i < $count; $i++) {
+//                if ($position->code === 'REPRESENTATIVE-PH-PARTY-LIST') {
+//                    $title = $movieTitles->shift() ?? 'Party ' . Str::random(5);
+//                    $alias = Str::slug($title, '_');
+//                    $candidates[] = [
+//                        'code'          => Str::uuid()->toString(),
+//                        'name'          => $title,
+//                        'alias'         => $alias,
+//                        'position_code' => $position->code,
+//                    ];
+//                } else {
+//                    $name = $actorNames->isNotEmpty()
+//                        ? $actorNames->shift()
+//                        : 'Candidate ' . Str::random(5);
+//
+//                    $alias = Str::of($name)
+//                        ->explode(' ')
+//                        ->map(fn($word) => Str::substr($word, 0, 1))
+//                        ->join('');
+//
+//                    $candidates[] = [
+//                        'code'          => strtoupper($alias) . '_' . Str::random(2),
+//                        'name'          => $name,
+//                        'alias'         => $alias,
+//                        'position_code' => $position->code,
+//                    ];
+//                }
+//            }
+//        });
     }
 }

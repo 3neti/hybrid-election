@@ -9,40 +9,43 @@ use App\Enums\ElectoralInspectorRole;
 
 class PrecinctSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
-    public function run(): void
-    {
-        // Build the inspectors payload (plain arrays so it works in prod w/o factories)
-        $inspectors = [
+    public const PRECINCT = [
+        'code' => 'CURRIMAO-001',
+        'location_name'  => 'Currimao National High School',
+        'latitude'       => 17.993217,
+        'longitude'      => 120.488902,
+        'electoral_inspectors' => [
             [
-                'id'   => (string) Str::uuid(),
+                'id'   => 'uuid-juan',
                 'name' => 'Juan dela Cruz',
-                'role' => ElectoralInspectorRole::CHAIRPERSON, // stored as enum value
+                'role' => ElectoralInspectorRole::CHAIRPERSON,
             ],
             [
-                'id'   => (string) Str::uuid(),
+                'id'   => 'uuid-maria',
                 'name' => 'Maria Santos',
                 'role' => ElectoralInspectorRole::MEMBER,
             ],
             [
-                'id'   => (string) Str::uuid(),
+                'id'   => 'uuid-pedro',
                 'name' => 'Pedro Reyes',
                 'role' => ElectoralInspectorRole::MEMBER,
             ],
-        ];
+        ],
+    ];
 
-        // Create or update the known precinct by unique code
+    public function run(): void
+    {
+        $precinct = PrecinctSeeder::PRECINCT;
+
         Precinct::updateOrCreate(
-            ['code' => 'CURRIMAO-001'],
+            ['code' => $precinct['code']],
             [
                 // keep a stable UUID if a row already exists; otherwise set a new one
-                'id'             => (string) Str::uuid(),
-                'location_name'  => 'Currimao Central School',
-                'latitude'       => 17.993217,
-                'longitude'      => 120.488902,
-                'electoral_inspectors' => $inspectors, // assumes JSON/array cast on the model
+                'id'                   => (string) Str::uuid(),
+                'location_name'        => $precinct['location_name'],
+                'latitude'             => $precinct['latitude'],
+                'longitude'            => $precinct['longitude'],
+                'electoral_inspectors' => $precinct['electoral_inspectors'],
             ]
         );
     }

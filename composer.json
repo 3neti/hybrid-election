@@ -21,6 +21,7 @@
         "tightenco/ziggy": "^2.4"
     },
     "require-dev": {
+        "ext-zlib": "*",
         "fakerphp/faker": "^1.23",
         "laravel/pail": "^1.2.2",
         "laravel/pint": "^1.18",
@@ -29,7 +30,7 @@
         "nunomaduro/collision": "^8.6",
         "pestphp/pest": "^3.8",
         "pestphp/pest-plugin-laravel": "^3.2",
-        "ext-zlib": "*"
+        "symfony/yaml": "^7.3"
     },
     "autoload": {
         "psr-4": {

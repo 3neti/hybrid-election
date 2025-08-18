@@ -69,3 +69,7 @@ use App\Actions\InputPrecinctDetails;
 
 Route::post('/precincts/{precinct}/details', InputPrecinctDetails::class)
     ->name('precinct.details.input');
+
+use App\Actions\InitializeSystem;
+
+Route::post('/initialize-system', InitializeSystem::class)->name('system.initialize');
