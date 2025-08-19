@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use App\Models\{Precinct, Position, Candidate};
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use function Pest\Laravel\postJson;
@@ -21,6 +22,24 @@ beforeEach(function () {
             'position_code' => $this->position->code,
         ]);
 });
+
+/**
+ * Minimal, valid ballot payload builder.
+ * Only PRESIDENT is used for speed.
+ */
+function sb_payload(string $code, string $positionCode, string $candidateCode): array {
+    return [
+        'code'  => $code,
+        'votes' => [
+            [
+                'position'   => ['code' => $positionCode],
+                'candidates' => [
+                    ['code' => $candidateCode],
+                ],
+            ],
+        ],
+    ];
+}
 
 it('submits a ballot successfully via API', function () {
     $response = postJson(route('ballots.submit'), [
@@ -187,4 +206,110 @@ it('fails with 422 when using unknown position/candidate codes', function () {
         'votes.0.position.code',
         'votes.0.candidates.0.code',
     ]);
+});
+
+
+it('returns 200 and the same ballot on exact resubmission (same code + same votes)', function () {
+    // Keep the test fast & deterministic
+    $this->withoutMiddleware(ThrottleRequests::class);
+
+    // First request should create (201)
+    $first = postJson('/api/ballots', sb_payload($this->precinct->code, $this->position->code, $this->candidates[0]->code), ['Accept' => 'application/json'])
+        ->assertStatus(201)
+        ->assertJsonStructure(['id', 'code', 'votes', 'precinct']);
+
+    $firstId   = $first->json('id');
+    $firstCode = $first->json('code');
+
+    // Second request with the *same* payload should return 200 and the *same* ballot id
+    $second = postJson('/api/ballots', sb_payload($this->precinct->code, $this->position->code, $this->candidates[0]->code), ['Accept' => 'application/json'])
+        ->assertStatus(200)
+        ->assertJsonStructure(['id', 'code', 'votes', 'precinct']);
+
+    expect($second->json('id'))->toBe($firstId);
+    expect($second->json('code'))->toBe($firstCode);
+});
+
+it('returns 409 when a ballot code is reused with a different vote hash', function () {
+    $this->withoutMiddleware(ThrottleRequests::class);
+
+    // Create the original ballot
+    postJson('/api/ballots', sb_payload($this->precinct->code, $this->position->code, $this->candidates[0]->code), ['Accept' => 'application/json'])
+        ->assertStatus(201);
+
+    // Reuse the same code but change the candidate → should be a conflict (409)
+   postJson('/api/ballots', sb_payload($this->precinct->code, $this->position->code, $this->candidates[1]->code), ['Accept' => 'application/json'])
+        ->assertStatus(409)
+        ->assertJsonStructure([
+            'message',
+//            'code',
+//            'existing' => ['id', 'code', 'votes', 'precinct'],
+        ])
+    ;
+});
+
+it('treats different vote ordering as the same ballot (idempotent)', function () {
+    $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+
+    // Build a two-candidate vote for the same position
+    $a = sb_payload($this->precinct->code, $this->position->code, $this->candidates[0]->code);
+    // add second candidate
+    $a['votes'][0]['candidates'][] = ['code' => $this->candidates[1]->code];
+
+    // Submit #1 → create
+    postJson('/api/ballots', $a, ['Accept' => 'application/json'])
+        ->assertStatus(201);
+
+    // Reorder candidates (hash should normalize/ignore order)
+    $b = $a;
+    $b['votes'][0]['candidates'] = array_reverse($b['votes'][0]['candidates']);
+
+    // Submit #2 with same code → 200 (same ballot)
+    postJson('/api/ballots', $b, ['Accept' => 'application/json'])
+        ->assertStatus(200);
+});
+
+it('ignores duplicate candidate entries in the vote hash', function () {
+    $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+
+    $base = sb_payload($this->precinct->code, $this->position->code, $this->candidates[0]->code);
+
+    // Create
+    postJson('/api/ballots', $base, ['Accept' => 'application/json'])
+        ->assertStatus(201);
+
+    // Same code but with duplicated candidate item (hash should de-dupe)
+    $dupe = $base;
+    $dupe['votes'][0]['candidates'][] = ['code' => $this->candidates[0]->code];
+
+    postJson('/api/ballots', $dupe, ['Accept' => 'application/json'])
+        ->assertStatus(200);
+});
+
+it('does not consider non-semantic fields in the hash (e.g., candidate name)', function () {
+    $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+
+    $base = sb_payload($this->precinct->code, $this->position->code, $this->candidates[0]->code);
+
+    postJson('/api/ballots', $base, ['Accept' => 'application/json'])
+        ->assertStatus(201);
+
+    // Same code, same candidate codes, but with extra non-semantic fields
+    $noisy = $base;
+    $noisy['votes'][0]['position']['name'] = 'Some Fancy Title';
+    $noisy['votes'][0]['candidates'][0]['name'] = 'Does Not Matter';
+
+    postJson('/api/ballots', $noisy, ['Accept' => 'application/json'])
+        ->assertStatus(200);
+});
+
+it('409 conflict includes a helpful message', function () {
+    $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+
+    postJson('/api/ballots', sb_payload($this->precinct->code, $this->position->code, $this->candidates[0]->code), ['Accept' => 'application/json'])
+        ->assertStatus(201);
+
+    postJson('/api/ballots', sb_payload($this->precinct->code, $this->position->code, $this->candidates[1]->code), ['Accept' => 'application/json'])
+        ->assertStatus(409)
+        ->assertJsonStructure(['message']);
 });

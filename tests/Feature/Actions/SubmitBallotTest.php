@@ -131,7 +131,7 @@ it('dispatches BallotSubmitted event on successful ballot submission', function 
     );
 
     Event::assertDispatched(BallotSubmitted::class, function ($event) use ($data, $ballotCode) {
-        return $event->ballot->id === $data->id
+        return (string) $event->ballot->id === $data->id
             && $event->ballot->code === $ballotCode;
     });
 });

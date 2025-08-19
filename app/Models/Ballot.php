@@ -45,8 +45,13 @@ class Ballot extends Model
      * @var array<string>
      */
     protected $fillable = [
+        'id', //deprecated
         'code',
         'votes',
+        'precinct_id', //deprecated
+        'payload_hash',
+        'source_ip',
+        'user_agent',
     ];
 
     /**
