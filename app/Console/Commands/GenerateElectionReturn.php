@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 use App\Models\Precinct;
 
+/** @deprecated */
 class GenerateElectionReturn extends Command
 {
     /**
