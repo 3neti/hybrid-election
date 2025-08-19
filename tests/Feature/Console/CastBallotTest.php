@@ -7,19 +7,19 @@ use Symfony\Component\Yaml\Yaml;
 
 uses(RefreshDatabase::class);
 
-/** Helpers to write minimal config files */
-function cb_writeElectionJson(string $dir, array $data): string {
-    if (!is_dir($dir)) mkdir($dir, 0777, true);
-    $path = $dir . '/election.json';
-    File::put($path, json_encode($data, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES));
-    return $path;
-}
-function cb_writePrecinctYaml(string $dir, array $data): string {
-    if (!is_dir($dir)) mkdir($dir, 0777, true);
-    $path = $dir . '/precinct.yaml';
-    File::put($path, Yaml::dump($data, 4, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK));
-    return $path;
-}
+///** Helpers to write minimal config files */
+//function cb_writeElectionJson(string $dir, array $data): string {
+//    if (!is_dir($dir)) mkdir($dir, 0777, true);
+//    $path = $dir . '/election.json';
+//    File::put($path, json_encode($data, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES));
+//    return $path;
+//}
+//function cb_writePrecinctYaml(string $dir, array $data): string {
+//    if (!is_dir($dir)) mkdir($dir, 0777, true);
+//    $path = $dir . '/precinct.yaml';
+//    File::put($path, Yaml::dump($data, 4, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK));
+//    return $path;
+//}
 
 beforeEach(function () {
     // Just in case: fully empty tables
@@ -60,8 +60,8 @@ beforeEach(function () {
         ],
     ];
 
-    $this->electionPath = cb_writeElectionJson($this->tmpDir, $this->election);
-    $this->precinctPath = cb_writePrecinctYaml($this->tmpDir, $this->precinct);
+    $this->electionPath = writeElectionJson($this->tmpDir, $this->election);
+    $this->precinctPath = writePrecinctYaml($this->tmpDir, $this->precinct);
 });
 
 afterEach(function () {
