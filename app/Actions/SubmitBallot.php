@@ -49,32 +49,6 @@ class SubmitBallot
 
         return hash('sha256', json_encode($norm, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
-//    private function computePayloadHash(array $votes): string
-//    {
-//        // $votes is an array of ['position' => ['code' => ...], 'candidates' => [['code' => ...], ...]]
-//        $norm = collect($votes)
-//            ->map(function (array $vote) {
-//                $pos = $vote['position']['code'] ?? null;
-//                $candCodes = collect($vote['candidates'] ?? [])
-//                    ->map(fn ($c) => is_array($c) ? ($c['code'] ?? null) : ($c->code ?? null))
-//                    ->filter()
-//                    ->sort()
-//                    ->values()
-//                    ->all();
-//
-//                return [
-//                    'position'   => $pos,
-//                    'candidates' => $candCodes,
-//                ];
-//            })
-//            ->filter(fn ($v) => $v['position'] !== null)
-//            ->sortBy('position')
-//            ->values()
-//            ->all();
-//
-//        $json = json_encode($norm, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-//        return hash('sha256', $json);
-//    }
 
     /**
      * Create a ballot for the single (strict) precinct.

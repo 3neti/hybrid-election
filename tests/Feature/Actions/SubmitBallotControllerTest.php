@@ -27,17 +27,24 @@ beforeEach(function () {
  * Minimal, valid ballot payload builder.
  * Only PRESIDENT is used for speed.
  */
-function sb_payload(string $code, string $positionCode, string $candidateCode): array {
+function sb_payload(string $precinctCode, string $positionCode, string|array $candidateCodes, string $code = 'BAL-001'): array {
+    $list = is_array($candidateCodes) ? $candidateCodes : [$candidateCodes];
     return [
         'code'  => $code,
-        'votes' => [
-            [
-                'position'   => ['code' => $positionCode],
-                'candidates' => [
-                    ['code' => $candidateCode],
-                ],
-            ],
-        ],
+        'votes' => [[
+            'position'   => ['code' => $positionCode],
+            'candidates' => collect($list)->map(fn($c) => ['code' => $c])->all(),
+        ]],
+    ];
+}
+
+function sb_payload_multi(string $precinctCode, array $rows, string $code = 'BAL-ORD'): array {
+    return [
+        'code'  => $code,
+        'votes' => collect($rows)->map(fn($r) => [
+            'position'   => ['code' => $r[0]],
+            'candidates' => collect((array) $r[1])->map(fn($c) => ['code' => $c])->all(),
+        ])->all(),
     ];
 }
 
@@ -312,4 +319,169 @@ it('409 conflict includes a helpful message', function () {
     postJson('/api/ballots', sb_payload($this->precinct->code, $this->position->code, $this->candidates[1]->code), ['Accept' => 'application/json'])
         ->assertStatus(409)
         ->assertJsonStructure(['message']);
+});
+
+it('treats different candidate order as the same ballot (200 on resubmit)', function () {
+    $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+
+    // Make a multi-vote position (e.g., Senator) or use your existing $this->position if it has count >= 2
+    $position = $this->position; // assume count >= 2 in fixtures
+    $a = $this->candidates[0]->code;
+    $b = $this->candidates[1]->code;
+
+    // First create
+    postJson('/api/ballots', sb_payload($this->precinct->code, $position->code, [$a, $b]), ['Accept' => 'application/json'])
+        ->assertStatus(201);
+
+    // Reuse same code but reversed candidate order → should be treated same (200)
+    $payload = sb_payload($this->precinct->code, $position->code, [$b, $a]);
+    postJson('/api/ballots', $payload, ['Accept' => 'application/json'])
+        ->assertStatus(200);
+});
+
+it('treats different position order as the same ballot (200 on resubmit)', function () {
+    $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+    $position = Position::factory()->create([
+        'count' => 2,
+    ]);
+
+    $candidates = Candidate::factory()
+        ->count(3)
+        ->create([
+            'position_code' => $position->code,
+        ]);
+
+    // Ensure we have two positions
+    $posA = $this->position;
+    $posB = \App\Models\Position::where('code', '!=', $posA->code)->firstOrFail();
+
+    $candA = \App\Models\Candidate::where('position_code', $posA->code)->inRandomOrder()->value('code');
+    $candB = \App\Models\Candidate::where('position_code', $posB->code)->inRandomOrder()->value('code');
+
+    // Create with A then B
+    $p1 = sb_payload_multi($this->precinct->code, [
+        [$posA->code, [$candA]],
+        [$posB->code, [$candB]],
+    ]);
+    postJson('/api/ballots', $p1, ['Accept' => 'application/json'])->assertStatus(201);
+
+    // Same code but order B then A → 200
+    $p2 = sb_payload_multi($this->precinct->code, [
+        [$posB->code, [$candB]],
+        [$posA->code, [$candA]],
+    ]);
+    postJson('/api/ballots', $p2, ['Accept' => 'application/json'])->assertStatus(200);
+});
+
+it('ignores extraneous fields in votes when computing the hash', function () {
+    $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+
+    $base = sb_payload($this->precinct->code, $this->position->code, $this->candidates[0]->code);
+    postJson('/api/ballots', $base, ['Accept' => 'application/json'])->assertStatus(201);
+
+    // Add harmless extra fields; semantics must remain identical → 200
+    $mut = $base;
+    $mut['votes'][0]['position']['name'] = 'Any Extra Noise';
+    $mut['votes'][0]['candidates'][0]['alias'] = 'NOOP';
+    postJson('/api/ballots', $mut, ['Accept' => 'application/json'])->assertStatus(200);
+});
+
+it('treats code formatting differences as the same vote (200 idempotent)', function () {
+    $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+
+    // Create original (ballot code = BAL-FMT)
+    $firstPayload = sb_payload(
+        $this->precinct->code,
+        $this->position->code,
+        $this->candidates[0]->code,
+        'BAL-FMT'
+    );
+
+    $created = postJson('/api/ballots', $firstPayload, ['Accept' => 'application/json'])
+        ->assertStatus(201)
+        ->assertJsonStructure(['id', 'code', 'votes', 'precinct'])
+        ->json();
+
+    $firstId = $created['id'];
+
+    // Same ballot code; tweak candidate code case + whitespace
+    $mut = $firstPayload;
+    $mut['votes'][0]['candidates'][0]['code'] = ' ' . strtolower($this->candidates[0]->code) . ' ';
+
+    // Because computePayloadHash() normalizes, this is considered the same vote → 200, same id
+    $second = postJson('/api/ballots', $mut, ['Accept' => 'application/json'])
+        ->assertStatus(200)
+        ->assertJsonStructure(['id', 'code', 'votes', 'precinct'])
+        ->json();
+
+    expect($second['id'])->toBe($firstId);
+});
+
+it('returns 409 when candidate set differs, even if overlapping', function () {
+    $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+
+    $pos = $this->position;
+    $a = $this->candidates[0]->code;
+    $b = $this->candidates[1]->code;
+
+    // Create with [a, b]
+    postJson('/api/ballots', sb_payload($this->precinct->code, $pos->code, [$a, $b], 'BAL-SET'), ['Accept' => 'application/json'])
+        ->assertStatus(201);
+
+    // Reuse code with only [a] → conflict
+    postJson('/api/ballots', sb_payload($this->precinct->code, $pos->code, [$a], 'BAL-SET'), ['Accept' => 'application/json'])
+        ->assertStatus(409);
+});
+
+it('returns 409 when any position’s candidates change', function () {
+    $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+    $position = Position::factory()->create([
+        'count' => 2,
+    ]);
+
+    $candidates = Candidate::factory()
+        ->count(3)
+        ->create([
+            'position_code' => $position->code,
+        ]);
+
+    $posA = $this->position;
+    $posB = \App\Models\Position::where('code', '!=', $posA->code)->firstOrFail();
+
+    $a1 = \App\Models\Candidate::where('position_code', $posA->code)->value('code');
+    $b1 = \App\Models\Candidate::where('position_code', $posB->code)->value('code');
+    $b2 = \App\Models\Candidate::where('position_code', $posB->code)->where('code', '!=', $b1)->value('code');
+
+    // Create with A=a1, B=b1
+    postJson('/api/ballots',
+        sb_payload_multi($this->precinct->code, [
+            [$posA->code, [$a1]],
+            [$posB->code, [$b1]],
+        ], 'BAL-MULTI'),
+        ['Accept' => 'application/json']
+    )->assertStatus(201);
+
+    // Reuse code but change B → conflict
+    postJson('/api/ballots',
+        sb_payload_multi($this->precinct->code, [
+            [$posA->code, [$a1]],
+            [$posB->code, [$b2]],
+        ], 'BAL-MULTI'),
+        ['Accept' => 'application/json']
+    )->assertStatus(409);
+});
+
+it('handles a larger ballot deterministically (idempotent resubmit → 200)', function () {
+    $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+
+    // build a payload across several positions/candidates (adjust to your fixtures)
+    $rows = \App\Models\Position::query()->take(4)->get()->map(function ($p) {
+        $cand = \App\Models\Candidate::where('position_code', $p->code)->inRandomOrder()->limit(max(1, min(3, $p->count)))->pluck('code')->all();
+        return [$p->code, $cand];
+    })->all();
+
+    $payload = sb_payload_multi($this->precinct->code, $rows, 'BAL-BIG');
+
+    postJson('/api/ballots', $payload, ['Accept' => 'application/json'])->assertStatus(201);
+    postJson('/api/ballots', $payload, ['Accept' => 'application/json'])->assertStatus(200);
 });
