@@ -268,7 +268,7 @@ it('fails when no ER exists and --er is omitted', function () {
     ]);
     $out = Artisan::output();
     expect($exit)->toBe(1);
-    expect($out)->toContain('No election return found');
+    expect($out)->toContain("No Election Return exists yet. Prepare an ER before certifying.\n");
 });
 
 it('fails when multiple ERs exist and --er is omitted', function () {
@@ -286,6 +286,6 @@ it('fails when multiple ERs exist and --er is omitted', function () {
     ]);
     $out = Artisan::output();
     expect($exit)->toBe(1);
-    expect($out)->toContain('Multiple election returns found');
+    expect($out)->toContain("Multiple Election Returns found. Please specify --er=CODE (with or without ER- prefix).\n");
 });
 

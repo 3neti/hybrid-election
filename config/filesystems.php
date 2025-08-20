@@ -60,6 +60,11 @@ return [
             'report' => false,
         ],
 
+        'signatures' => [
+            'driver' => 'local',
+            'root'   => storage_path('app/signatures'),
+            'throw'  => false,
+        ],
     ],
 
     /*
