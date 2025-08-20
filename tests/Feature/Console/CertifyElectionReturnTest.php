@@ -249,3 +249,43 @@ it('fails clearly for unknown inspector id', function () {
     expect($exit)->toBe(1);
     expect($out)->toContain("not found in precinct roster");
 });
+
+it('auto-picks the only ER when --er is omitted', function () {
+    // arrange one precinct + one ER in DB...
+    // call:
+    $exit = Artisan::call('certify-er', [
+        'signatures' => ['id=uuid-juan,signature=ABC123'],
+    ]);
+    expect($exit)->toBe(0);
+    $sigs = getSignaturesFor('ER-DNPT6VLVFF3N'); // or whichever you created
+    expect(count($sigs))->toBe(1);
+});
+
+it('fails when no ER exists and --er is omitted', function () {
+    \App\Models\ElectionReturn::query()->delete();
+    $exit = Artisan::call('certify-er', [
+        'signatures' => ['id=uuid-juan,signature=ABC123'],
+    ]);
+    $out = Artisan::output();
+    expect($exit)->toBe(1);
+    expect($out)->toContain('No election return found');
+});
+
+it('fails when multiple ERs exist and --er is omitted', function () {
+    $precinct = Precinct::factory()->create(['code' => 'DEF456']);
+    ElectionReturn::create([
+        'id'         => (string) Str::uuid(),
+        'code'       => 'AACS6VLVFF3N',
+        'precinct_id'=> $precinct->id,
+        'tallies'    => [],    // not relevant for signing
+        'signatures' => [],    // start clean
+    ]);
+
+    $exit = Artisan::call('certify-er', [
+        'signatures' => ['id=uuid-juan,signature=ABC123'],
+    ]);
+    $out = Artisan::output();
+    expect($exit)->toBe(1);
+    expect($out)->toContain('Multiple election returns found');
+});
+
