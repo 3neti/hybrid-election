@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
+use App\Policies\Signatures\{SignaturePolicy, ChairPlusMemberPolicy};
+use App\Services\Qr\{QrExporter, HttpQrExporter};
 use App\Contracts\ElectionReturnPdfRenderer;
 use App\Services\Pdf\PuppeteerErPdfRenderer;
+use Illuminate\Support\ServiceProvider;
 // use App\Services\Pdf\ReportLabErPdfRenderer; // optional, if you add it
 
 class ErServiceProvider extends ServiceProvider
@@ -21,5 +23,8 @@ class ErServiceProvider extends ServiceProvider
                 default     => new PuppeteerErPdfRenderer($cfg),
             };
         });
+
+        $this->app->bind(SignaturePolicy::class, ChairPlusMemberPolicy::class);
+        $this->app->bind(QrExporter::class, HttpQrExporter::class);
     }
 }
