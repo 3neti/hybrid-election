@@ -29,5 +29,9 @@ Route::get('/tally', function () {
     return Inertia::render('TallyStandalone');
 });
 
+use App\Http\Controllers\PrintErController;
+
+Route::get('/print/er/{code}', PrintErController::class)->name('print.er');
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

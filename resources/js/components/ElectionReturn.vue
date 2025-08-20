@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, watch, ref, computed, toRef } from 'vue'
+import { onMounted, watch, ref, computed, toRef, nextTick } from 'vue'
 import type { ElectionReturnData } from '@/types/election'
 import { usePrecinctPeople } from '@/composables/usePrecinctPeople'
 import { Button } from '@/components/ui/button'
@@ -146,6 +146,14 @@ watch(
 // but keeping this watch keeps parity with your known-good behavior).
 watch(() => props.qrChunks, v => {
     if (v?.length) qr.value = v
+})
+
+onMounted(async () => {
+    // Wait for DOM and reactive props to render
+    await nextTick()
+
+    // Signal to Puppeteer / Browsershot that rendering is complete
+    ;(window as any).erReady = true
 })
 </script>
 

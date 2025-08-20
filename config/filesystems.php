@@ -65,6 +65,12 @@ return [
             'root'   => storage_path('app/signatures'),
             'throw'  => false,
         ],
+
+        'election' => [
+            'driver' => 'local',
+            'root'   => storage_path('app/election'),
+            'throw'  => false,
+        ],
     ],
 
     /*

@@ -2,11 +2,12 @@
 
 namespace App\Providers;
 
+use App\Services\Pdf\{ElectionReturnPdfManager, PuppeteerErPdfRenderer, ReportLabErPdfRenderer};
+use App\Contracts\ElectionReturnPdfRenderer;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Http\Request;
-
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -15,7 +16,22 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(ElectionReturnPdfRenderer::class, function ($app) {
+            $cfg = config('pdf.er');
+            $primary = match ($cfg['driver'] ?? 'puppeteer') {
+                'reportlab' => new ReportLabErPdfRenderer($cfg),
+                default     => new PuppeteerErPdfRenderer($cfg),
+            };
+            $fallback = null;
+            if (!empty($cfg['fallback_to'])) {
+                $fallback = match ($cfg['fallback_to']) {
+                    'reportlab' => new ReportLabErPdfRenderer($cfg),
+                    'puppeteer' => new PuppeteerErPdfRenderer($cfg),
+                    default     => null,
+                };
+            }
+            return new ElectionReturnPdfManager($primary, $fallback);
+        });
     }
 
     /**
