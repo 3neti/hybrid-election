@@ -22,7 +22,10 @@ Route::get('/decoder', function () {
     return Inertia::render('Decoder');
 });
 
-Route::get('/tally-standalone', function () {
+//Route::get('/tally-standalone', function () {
+//    return Inertia::render('TallyStandalone');
+//});
+Route::get('/tally', function () {
     return Inertia::render('TallyStandalone');
 });
 

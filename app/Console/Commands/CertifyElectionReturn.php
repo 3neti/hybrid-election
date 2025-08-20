@@ -33,11 +33,11 @@ class CertifyElectionReturn extends Command
 
     public function handle(): int
     {
-//        $erCode = (string) ($this->option('er') ?? '');
         // Read options
-        $erOpt       = (string) ($this->option('er') ?? '');
-        // 🔧 normalize ER code so users can pass "ER-XXXX" or just "XXXX"
-        $erCode = $erOpt !== '' && !str_starts_with($erOpt, 'ER-') ? ('ER-' . $erOpt) : $erOpt;
+        $erOpt  = (string) ($this->option('er') ?? '');
+        // Strip "ER-" prefix if present, always return just the code
+        $erCode = $this->normalizeErCode($erOpt);
+
         if ($erCode === '') {
             $this->error('Missing required option: --er=ER_CODE');
             return self::INVALID;
@@ -203,5 +203,14 @@ class CertifyElectionReturn extends Command
     {
         $s = trim($s);
         return mb_strlen($s) <= $max ? $s : (mb_substr($s, 0, $max - 1) . '…');
+    }
+
+    private function normalizeErCode(?string $raw): string
+    {
+        $code = trim((string) $raw);
+        if ($code !== '' && str_starts_with($code, 'ER-')) {
+            $code = substr($code, 3);
+        }
+        return $code;
     }
 }

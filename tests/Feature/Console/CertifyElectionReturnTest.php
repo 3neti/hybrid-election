@@ -26,7 +26,7 @@ beforeEach(function () {
     // Fresh ER with known code (and a variant without "ER-" prefix)
     $this->er = ElectionReturn::create([
         'id'         => (string) Str::uuid(),
-        'code'       => 'ER-DNPT6VLVFF3N',
+        'code'       => 'DNPT6VLVFF3N',
         'precinct_id'=> $this->precinct->id,
         'tallies'    => [],    // not relevant for signing
         'signatures' => [],    // start clean
@@ -47,6 +47,10 @@ afterEach(function () {
 
 /** --- helpers --- */
 function getSignaturesFor(string $erCode): array {
+    $erCode = $erCode !== '' && str_starts_with($erCode, 'ER-')
+        ? substr($erCode, 3)
+        : $erCode;
+
     /** @var \App\Models\ElectionReturn $er */
     $er = \App\Models\ElectionReturn::where('code', $erCode)->firstOrFail();
     $sigs = $er->signatures ?? [];
