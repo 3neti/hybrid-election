@@ -1,14 +1,15 @@
 <?php
 
-use App\Console\Pipes\CloseBalloting;
-use App\Models\Precinct;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Console\Pipelines\FinalizeErContext;
+use App\Console\Pipes\CloseBalloting;
 use Illuminate\Support\Carbon;
+use App\Models\Precinct;
 
 uses(RefreshDatabase::class);
 
 /** Small helper: run the pipe and capture the context it passes along */
-function run_close_balloting_pipe(object $ctx): object {
+function run_close_balloting_pipe(FinalizeErContext $ctx): object {
     $pipe = new CloseBalloting();
     return $pipe->handle($ctx, fn ($c) => $c);
 }
@@ -20,7 +21,7 @@ it('closes balloting and stamps closed_at (happy path)', function () {
         'meta' => ['balloting_open' => true],
     ]);
 
-    $ctxIn  = (object)['precinct' => $p];
+    $ctxIn  = finalize_ctx_with_precinct($p);
     $ctxOut = run_close_balloting_pipe($ctxIn);
 
     // Context is passed through
@@ -39,7 +40,7 @@ it('works when meta is null or empty', function () {
 
     $p = Precinct::factory()->create(['meta' => null]);
 
-    run_close_balloting_pipe((object)['precinct' => $p]);
+    run_close_balloting_pipe(finalize_ctx_with_precinct($p));
 
     $fresh = $p->fresh();
     expect($fresh->meta['balloting_open'] ?? null)->toBeFalse();
@@ -63,7 +64,7 @@ it('preserves unrelated meta keys', function () {
         ],
     ]);
 
-    run_close_balloting_pipe((object)['precinct' => $p]);
+    run_close_balloting_pipe(finalize_ctx_with_precinct($p));
 
     $fresh = $p->fresh();
     expect($fresh->meta['some_flag'])->toBe('keep-me');
@@ -78,7 +79,7 @@ it('running twice keeps balloting closed and refreshes closed_at timestamp', fun
     Carbon::setTestNow('2025-02-01T10:00:00Z');
 
     $p = Precinct::factory()->create(['meta' => ['balloting_open' => true]]);
-    run_close_balloting_pipe((object)['precinct' => $p]);
+    run_close_balloting_pipe(finalize_ctx_with_precinct($p));
 
     $firstStr = $p->fresh()->meta->get('closed_at');
     $first    = CI::parse($firstStr);
@@ -88,7 +89,7 @@ it('running twice keeps balloting closed and refreshes closed_at timestamp', fun
 
     // Advance time and run again
     Carbon::setTestNow('2025-02-01T10:05:00Z');
-    run_close_balloting_pipe((object)['precinct' => $p]);
+    run_close_balloting_pipe(finalize_ctx_with_precinct($p));
 
     $fresh    = $p->fresh();
     $second   = CI::parse($fresh->meta->get('closed_at'));

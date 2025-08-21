@@ -2,12 +2,13 @@
 
 namespace App\Console\Pipes;
 
-use Closure;
+use App\Console\Pipelines\FinalizeErContext;
 use Illuminate\Support\Facades\Storage;
+use Closure;
 
 class ExportErJson
 {
-    public function handle($ctx, Closure $next)
+    public function handle(FinalizeErContext $ctx, Closure $next)
     {
         // Resolve disk (prefer 'election' if configured)
         $diskName = $ctx->disk

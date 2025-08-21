@@ -55,7 +55,8 @@ final class FinalizeElectionReturn extends Command
             ->through([
                 \App\Console\Pipes\ValidateSignatures::class,
                 \App\Console\Pipes\ExportErJson::class,
-                \App\Console\Pipes\ExportQr::class,
+//                \App\Console\Pipes\ExportQr::class,
+                \App\Console\Pipes\PerformQrExport::class,
                 \App\Console\Pipes\MirrorQrArtifacts::class,
                 \App\Console\Pipes\CloseBalloting::class,
             ])->thenReturn();

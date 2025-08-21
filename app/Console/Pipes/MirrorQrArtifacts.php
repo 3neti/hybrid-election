@@ -2,12 +2,13 @@
 
 namespace App\Console\Pipes;
 
-use Closure;
 use Illuminate\Support\Facades\{File, Storage};
+use App\Console\Pipelines\FinalizeErContext;
+use Closure;
 
 final class MirrorQrArtifacts
 {
-    public function handle($ctx, Closure $next)
+    public function handle(FinalizeErContext $ctx, Closure $next)
     {
         if (!$ctx->qrPersistedAbs) return $next($ctx);
 

@@ -2,13 +2,12 @@
 
 namespace App\Console\Pipes;
 
-use Carbon\CarbonImmutable;
-use Illuminate\Support\Collection;
+use App\Console\Pipelines\FinalizeErContext;
 use Closure;
 
 final class CloseBalloting
 {
-    public function handle($ctx, Closure $next)
+    public function handle(FinalizeErContext $ctx, Closure $next)
     {
         // Always stamp in UTC for deterministic tests/archives
 //        $nowUtc = CarbonImmutable::now('UTC')->toIso8601String();

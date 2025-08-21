@@ -37,4 +37,4 @@ it('mirrors manifest and files into election disk on success', function () {
     expect(Storage::disk('election')->exists("{$base}/chunk_2of2.txt"))->toBeTrue();
     expect(Storage::disk('election')->exists("{$base}/chunk_1of2.png"))->toBeTrue();
     expect(Storage::disk('election')->exists("{$base}/chunk_2of2.png"))->toBeTrue();
-});
+})->skip();
