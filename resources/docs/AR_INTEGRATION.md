@@ -1,191 +1,197 @@
-# AR Integration Guide
+# Augmented Reality (AR) Integration Guide
 
-This document describes how Augmented Reality (AR) systems can interact with the election backend using **five console commands**. These commands form the lifecycle: preflight → casting ballots → preparing the return → certifying → finalizing.
+This document provides step-by-step instructions for setting up and running the **Hybrid Election System AR Integration**. It covers configuring precincts, defining election positions and candidates, casting ballots, preparing election returns, and certifying results with digital signatures.
 
 ---
 
-## 1. PreflightStation (`php artisan preflight-er`)
-**Purpose:** Sanity check before casting any ballots.
+## 1. Database Preparation
 
-**Key checks performed:**
-- Presence of `config/election.json` and `config/precinct.yaml`.
-- Database initialized with positions and precinct(s).
-- Optional: checks connectivity to HTTP endpoints if configured.
+Before running any election commands, start fresh:
 
-**Usage:**
 ```bash
-php artisan preflight-er
-php artisan preflight-er --force       # initialize system if configs are present
-php artisan preflight-er -v            # verbose, shows which checks passed/failed
+php artisan migrate:fresh
 ```
 
-**Exit codes:**
-- `0` = success
-- `1` = one or more checks failed
+This clears and re-applies your migrations to ensure a clean slate.
 
 ---
 
-## 2. CastBallot (`php artisan app:cast-ballot`)
-**Purpose:** Cast ballots line by line, either in local DB mode or via HTTP.
+## 2. Precinct Configuration
 
-**Line format:**
+Each precinct must be explicitly configured with a unique code, location details, and electoral inspectors. This is typically stored in a file like `precinct.yaml`:
+
+```yaml
+code: CURRIMAO-001
+location_name: 'Currimao National High School'
+latitude: 17.993217
+longitude: 120.488902
+electoral_inspectors:
+  - id: uuid-juan
+    name: 'Juan dela Cruz'
+    role: 'chairperson'
+  - id: uuid-maria
+    name: 'Maria Santos'
+    role: 'member'
+  - id: uuid-pedro
+    name: 'Pedro Reyes'
+    role: 'member'
 ```
-BALLOT-CODE|POSITION:CANDIDATE[,CANDIDATE...];POSITION:CANDIDATE
-```
 
-**Examples:**
-```bash
-# Local mode, reads ballot specs from arguments
-php artisan app:cast-ballot --local "BAL-001|PRESIDENT:SJ_002;SENATOR:JD_001,JL_004"
-
-# With config overrides
-php artisan app:cast-ballot --local --election=config/election.json --precinct=config/precinct.yaml "BAL-002|PRESIDENT:SJ_001"
-
-# From STDIN (piped)
-cat ballots.txt | php artisan app:cast-ballot --local
-```
-
-**Exit codes:**
-- `0` = all lines OK or skipped
-- `1` = one or more lines failed
+**Explanation:**
+- `code`: Short code for the precinct (e.g., `CURRIMAO-001`).
+- `location_name`: Human-readable location of the precinct.
+- `latitude` / `longitude`: Optional geolocation for mapping or audit.
+- `electoral_inspectors`: List of teachers/staff serving as inspectors.
+    - Each has a unique `id`, `name`, and `role`.
+    - At least one **chairperson** and one **member** are required.
+    - Inspectors later provide **digital signatures** to certify the ER.
 
 ---
 
-## 3. PrepareElectionReturn (`php artisan prepare-er`)
-**Purpose:** Aggregate ballots into a precinct-level Election Return (ER).
+## 3. Election Setup
 
-**Usage:**
-```bash
-php artisan prepare-er
-```
+Election positions and candidate lists are configured in `election.json`. This file establishes both the offices being contested and the list of candidates available for each position.
 
-**Sample output:**
-```
-📥 Generating Election Return...
-
-🆔 Election Return ID: 1
-🔐 Return Code       : ER-DNPT6VLVFF3N
-📌 Precinct Code     : CURRIMAO-001
-📍 Location          : Currimao National High School
-🕒 Generated At      : Tue, Aug 19, 2025 10:00 AM
-
-🧾 Total Ballots     : 120
-
-👥 Electoral Board:
- - Chairperson: Juan dela Cruz
- - Member 1: Maria Santos
- - Member 2: Pedro Reyes
-------------------------------------------------------------
-🗳️  Position: PRESIDENT
-1. Alice A.      60
-2. Bob B.        60
-🧮 Total Votes Cast for PRESIDENT: 120
-```
-
-**Exit codes:**
-- `0` = success
-- `1` = failure (e.g., no precincts found)
-
----
-
-## 4. CertifyElectionReturn (`php artisan certify-er`)
-**Purpose:** Electoral inspectors sign the election return with lightweight “digital signatures” (string-based).
-
-**Accepted formats for `signatures` argument:**
-- `id=uuid-juan,signature=ABC123`
-- `uuid-juan|ABC123`
-- via `--file` containing multiple lines
-- via `--dir` scanning `*.txt` files
-- from STDIN piped in
-
-**Examples:**
-```bash
-php artisan certify-er --er=ER-DNPT6VLVFF3N "id=uuid-juan,signature=ABC123"
-php artisan certify-er --er=DNPT6VLVFF3N "uuid-juan|ABC123" "uuid-maria|DEF456"
-php artisan certify-er --er=DNPT6VLVFF3N --file=storage/signatures/demo.txt
-php artisan certify-er --er=DNPT6VLVFF3N --dir=storage/signatures
-cat storage/signatures/demo.txt | php artisan certify-er --er=ER-ABC123
-```
-
-**File format (`storage/signatures/demo.txt`):**
-```
-id=uuid-juan,signature=SIG-JUAN-123
-id=uuid-maria,signature=SIG-MARIA-456
-id=uuid-pedro,signature=SIG-PEDRO-789
-```
-
----
-
-## 5. FinalizeElectionReturn (`php artisan finalize-er`)
-**Purpose:** Print the final ER and prevent further ballot casting or regeneration.
-
-**Usage:**
-```bash
-php artisan finalize-er --er=ER-DNPT6VLVFF3N
-```
-
----
-
-## Config Files
-
-### `config/election.json`
-Defines positions and candidates.
+Example excerpt:
 
 ```json
 {
   "positions": [
-    {"code": "PRESIDENT", "name": "President", "level": "national", "count": 1},
-    {"code": "SENATOR", "name": "Senator", "level": "national", "count": 12}
+    {
+      "code": "PRESIDENT",
+      "name": "President of the Philippines",
+      "level": "national",
+      "count": 1
+    },
+    {
+      "code": "SENATOR",
+      "name": "Senator of the Philippines",
+      "level": "national",
+      "count": 12
+    }
   ],
   "candidates": {
     "PRESIDENT": [
-      {"code": "SJ_002", "name": "San Juan", "alias": "SJ"},
-      {"code": "LR_001", "name": "Lara R.", "alias": "LR"}
+      { "code": "LD_001", "name": "Leonardo DiCaprio", "alias": "LD" },
+      { "code": "SJ_002", "name": "Scarlett Johansson", "alias": "SJ" }
     ],
     "SENATOR": [
-      {"code": "JD_001", "name": "John Doe"},
-      {"code": "JL_004", "name": "Jane Lee"}
+      { "code": "JD_001", "name": "Johnny Depp", "alias": "JD" },
+      { "code": "ES_002", "name": "Emma Stone", "alias": "ES" }
     ]
   }
 }
 ```
 
-### `config/precinct.yaml`
-Describes the precinct metadata and inspectors.
+**Explanation:**
+- **Positions**:
+    - Each entry defines an office (`code`, `name`), level (`national`, `local`, `district`), and `count` (number of slots per ballot).
+    - Example: `SENATOR` has a `count` of 12 → each voter may select up to 12 candidates.
+- **Candidates**:
+    - Each candidate has a `code`, `name`, and optional `alias`.
+    - Codes (e.g., `SJ_002`) are used in **ballot casting strings**.
 
-```yaml
-code: CURRIMAO-001
-location_name: Currimao National High School
-latitude: 17.993217
-longitude: 120.488902
-electoral_inspectors:
-  - id: uuid-juan
-    name: Juan dela Cruz
-    role: chairperson
-  - id: uuid-maria
-    name: Maria Santos
-    role: member
-  - id: uuid-pedro
-    name: Pedro Reyes
-    role: member
+---
+
+## 4. Preflight Initialization
+
+Load precinct + election definitions into the system:
+
+```bash
+php artisan preflight-er --force
+```
+
+This seeds:
+- Precincts (from `precinct.yaml`)
+- Positions and candidates (from `election.json`)
+
+---
+
+## 5. Casting Ballots
+
+Ballots are cast by encoding votes into a compact string:
+
+```bash
+php artisan app:cast-ballot --local "BAL-001|PRESIDENT:SJ_002;SENATOR:ES_002,JD_001"
+```
+
+Format:
+```
+BALLOT_CODE | POSITION_CODE : CANDIDATE_CODE [,CANDIDATE_CODE,...] ; ...
+```
+
+Examples:
+```bash
+php artisan app:cast-ballot --local "BAL-002|PRESIDENT:AJ_006;VICE-PRESIDENT:TH_001;SENATOR:ES_002,LN_048,AA_018"
 ```
 
 ---
 
-## FAQ
+## 6. Preparing the Election Return
 
-**Q: Where should signature files go?**  
-A: Place them under `storage/signatures/`, e.g. `storage/signatures/demo.txt`.
+Once ballots are cast:
 
-**Q: Can `--er` be used without the `ER-` prefix?**  
-A: Yes, both `ER-DNPT6VLVFF3N` and `DNPT6VLVFF3N` are accepted.
+```bash
+php artisan prepare-er
+```
 
-**Q: What happens if I run `prepare-er` with no ballots?**  
-A: It will show *“No ballots found for this precinct yet. Nothing to summarize.”*
-
-**Q: How are digital signatures stored?**  
-A: As plain strings (e.g., `09171234567-ABCD`). They can originate from SMS PINs, PDF417/QR codes, or simple tokens.
+This aggregates tallies into a single **Election Return (ER)**.
 
 ---
 
-# End of Document
+## 7. Certifying with Digital Signatures
+
+Electoral inspectors must **certify** the ER by signing digitally:
+
+```bash
+php artisan certify-er "uuid-juan|ABC123"
+php artisan certify-er "id=uuid-maria,signature=XYZ789"
+```
+
+- The system validates if at least one **chairperson** + one **member** signature exists.
+- `--force` can override for testing, but in production this is strictly enforced.
+- See [DIGITAL_SIGNATURE.md](DIGITAL_SIGNATURE.md) for a deeper dive.
+
+---
+
+## 8. Printing the Election Return
+
+Generate a signed PDF:
+
+```bash
+php artisan er:print-pdf --paper=legal --payload=minimal
+```
+
+- `--paper`: Paper size (e.g., `a4`, `legal`).
+- `--payload`: Use `minimal` for summary or `full` for detailed tallies.
+
+---
+
+## 9. Closing Balloting
+
+Finally, mark the precinct as closed:
+
+```bash
+php artisan close-er
+```
+
+This stamps a `closed_at` timestamp into precinct metadata and locks further ballot submissions.
+
+---
+
+## 10. Developer Cheat Sheet
+
+```bash
+php artisan migrate:fresh
+php artisan preflight-er --force
+php artisan app:cast-ballot --local "BAL-001|PRESIDENT:AJ_006;VICE-PRESIDENT:TH_001;SENATOR:ES_002,LN_048,AA_018"
+php artisan prepare-er
+php artisan certify-er "uuid-juan|ABC123"
+php artisan certify-er "uuid-maria|XYZ789"
+php artisan er:print-pdf --paper=legal --payload=minimal
+php artisan close-er
+```
+
+---
+
+✅ With **precinct.yaml** and **election.json** configured properly, this flow simulates the **end-to-end election process**: setup, ballot casting, ER preparation, certification, printing, and finalization.

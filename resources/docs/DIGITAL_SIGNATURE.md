@@ -5,68 +5,95 @@ In election systems, we need to certify precinct-level election returns (ERs). T
 
 ---
 
-## 2. Signature Modes
+## 2. Precinct Inspector IDs (Source of Truth)
 
-### a) SMS OTP (Mobile + PIN)
-- Election officers register their mobile numbers before election day.
-- During certification, the system sends a one-time PIN (OTP) via SMS.
-- The signature is a concatenation: **`<mobile_number>-<PIN>`**, e.g.:  
-  `09171234567-ABCD`
-- Expiration: OTP valid for ~5 minutes, single-use.
+Certification is always tied to **precinct officers** defined in `precinct.yaml`.  
+For example:
 
-### b) QR / PDF417 Tokens
-- Each inspector receives a printed ID card with a QR code or PDF417 barcode.
-- The barcode encodes a **unique token**, e.g.:  
-  `uuid-juan|SIG-JUAN-123`
-- Scanned via a mobile app or webcam during certification.
-- Advantage: Offline-capable, no SMS needed.
+```yaml
+code: CURRIMAO-001
+location_name: 'Currimao National High School'
+latitude: 17.993217
+longitude: 120.488902
+electoral_inspectors:
+  -
+    id: uuid-juan
+    name: 'Juan dela Cruz'
+    role: 'chairperson'
+  -
+    id: uuid-maria
+    name: 'Maria Santos'
+    role: 'member'
+  -
+    id: uuid-pedro
+    name: 'Pedro Reyes'
+    role: 'member'
+```
 
-### c) Scratch Codes (Paper-Based)
-- Each inspector is given a scratch card with pre-generated codes.
-- Example: `uuid-maria|SCR-4567`
-- Each code can be used only once.
-- Cheap, resilient fallback if SMS or scanning fails.
+- Each inspector has a **unique ID** (`uuid-juan`, `uuid-maria`, `uuid-pedro`).
+- These IDs are referenced in all certification commands.
+- Without a valid inspector ID from the roster, signatures are rejected.
 
 ---
 
-## 3. Data Model for Signatures
+## 3. Signature Modes
 
-Each signature entry has:
+### a) SMS OTP (Mobile + PIN)
+- Officers register their mobile numbers pre-election.
+- Certification sends an OTP via SMS.
+- Signature format: **`<mobile_number>-<PIN>`**  
+  Example: `09171234567-ABCD`
+
+### b) QR / PDF417 Tokens
+- Inspectors are issued printed cards with QR/PDF417 barcodes.
+- Token format includes their ID:  
+  Example: `uuid-juan|SIG-JUAN-123`
+
+### c) Scratch Codes (Paper-Based)
+- Scratch cards pre-printed with codes bound to their inspector ID.
+- Example: `uuid-maria|SCR-4567`
+
+All three modes tie **back to the IDs in `precinct.yaml`**, ensuring the roster is the root of trust.
+
+---
+
+## 4. Data Model for Signatures
 ```json
 {
   "id": "uuid-juan",
   "name": "Juan dela Cruz",
   "role": "chairperson",
-  "signature": "09171234567-ABCD",
+  "signature": "uuid-juan|SIG-JUAN-123",
   "signed_at": "2025-08-19T09:30:00Z"
 }
 ```
 
-- `id`: Inspector ID from the precinct roster (source of truth).
-- `signature`: Provided string (SMS PIN, QR token, scratch code).
-- `signed_at`: ISO8601 timestamp (for audit).
+- `id`: Must match an inspector ID from `precinct.yaml`.
+- `signature`: String from OTP, QR token, or scratch code.
+- `signed_at`: ISO8601 timestamp.
 
 ---
 
-## 4. Laravel Integration
+## 5. Laravel Integration
 
 ### Command: `certify-er`
 Supports multiple input styles:
+
 ```bash
 # SMS PIN
-php artisan certify-er --er=ER-123 "id=uuid-juan,signature=09171234567-ABCD"
+php artisan certify-er "id=uuid-juan,signature=09171234567-ABCD"
 
-# QR/PDF417 pipe format
-php artisan certify-er --er=ER-123 "uuid-juan|SIG-JUAN-123"
+# QR/PDF417 token
+php artisan certify-er "uuid-juan|SIG-JUAN-123"
 
-# File input
-php artisan certify-er --er=ER-123 --file=storage/signatures/demo.txt
+# File-based
+php artisan certify-er --file=storage/signatures/demo.txt
 
-# Directory input
-php artisan certify-er --er=ER-123 --dir=storage/signatures
+# Directory-based
+php artisan certify-er --dir=storage/signatures
 ```
 
-### Example File (`storage/signatures/demo.txt`)
+Example file (`storage/signatures/demo.txt`):
 ```
 id=uuid-juan,signature=09171234567-ABCD
 id=uuid-maria,signature=SIG-MARIA-456
@@ -75,21 +102,28 @@ id=uuid-pedro,signature=SCR-7890
 
 ---
 
-## 5. Security Best Practices
-- **Replay protection:** Reject reused signatures for the same inspector.
-- **Expiry:** OTPs and scratch codes must have time or usage limits.
-- **Audit logs:** Record every attempt (success/failure) with timestamps.
-- **Offline fallback:** QR/PDF417 and scratch cards allow certification without internet.
+## 6. Security Best Practices
+- **Roster-binding:** Only IDs in `precinct.yaml` are accepted.
+- **Replay protection:** Reuse of signatures for the same inspector is blocked.
+- **Expiry:** OTPs/scratch codes expire quickly.
+- **Audit logs:** Every signature attempt is logged (success/failure).
+- **Offline fallback:** QR and scratch code certification works without connectivity.
 
 ---
 
-## 6. Example Workflow
-1. Officers cast ballots and generate election return (`prepare-er`).
-2. Officers certify the ER using one of the supported signature modes.
-3. System saves signatures into `ElectionReturn.signatures` array.
-4. Audit log stores all attempts for post-election validation.
+## 7. Example Workflow
+1. `precinct.yaml` defines inspectors and IDs.
+2. Officers cast ballots (`cast-ballot`).
+3. `prepare-er` generates the election return.
+4. Each officer certifies the ER with their ID + signature:
+   ```bash
+   php artisan certify-er "uuid-juan|SIG-JUAN-123"
+   php artisan certify-er "id=uuid-maria,signature=SCR-4567"
+   ```
+5. Signatures are persisted under `ElectionReturn.signatures`.
+6. Audit logs ensure transparency.
 
 ---
 
-## 7. Summary
-This hybrid approach balances **simplicity** (no PKI) and **auditability** (recorded, verifiable signatures). By allowing multiple lightweight signature modes (SMS OTP, QR/PDF417, scratch codes), the system adapts to varying connectivity and resource constraints.
+## 8. Summary
+This hybrid approach ensures that **precinct.yaml IDs anchor all certifications**, providing a simple but auditable digital signature system. By combining SMS OTP, QR/PDF417, and scratch cards, the system adapts to both online and offline precinct environments.
