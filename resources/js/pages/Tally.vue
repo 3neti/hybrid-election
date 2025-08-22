@@ -1,71 +1,76 @@
 <script setup lang="ts">
-import ErTallyView from '@/components/ErTallyView.vue'
 import { useElectionReturn } from '@/composables/useElectionReturn'
+import ErTallyView from '@/components/ErTallyView.vue'
+import { onMounted, onBeforeUnmount } from 'vue'
+import { useEchoPublic } from '@laravel/echo-vue'
 
-/**
- * Configure where to fetch the ER:
- * - If you have a Ziggy route named 'election-return' that returns the latest/only ER, leave as-is.
- * - If your API requires a code param, you can later add a prop or read from the route and
- *   pass it into `routeParams`. For now this loads the default ER.
- * - Alternatively, set `endpoint: '/api/election-return'`.
- */
-const {
-    er,                 // Ref<ElectionReturnData | null>
-    loading: erLoading,
-    error: erError,
-    loadFromBackend,    // () => Promise<void>
-    ready,
-    sourceMode,
-    startPolling,
-    stopPolling,
-} = useElectionReturn({
-    routeName: 'election-return', // change if your backend route differs
-    // routeParams: { code: 'ER-XXXX' }, // optional; add when you want to target a specific ER
-    // endpoint: '/api/election-return', // alternative to routeName/routeParams
-    immediate: true,                // auto-fetch on mount
-    pollMs: Number(import.meta.env.VITE_TALLY_POLL_MS ?? 0), // set >1000 to enable polling
+const PRECINCT_CODE = 'CURRIMAO-001'
+
+// Election Return state (loads immediately from backend)
+const { er, loading: erLoading, error: erError, loadFromBackend } = useElectionReturn({
+    routeName: 'election-return', // make sure your Ziggy route name matches
+    immediate: true,
+})
+
+// Debounced refresh
+let refreshTimer: number | null = null
+function refreshSoon(ms = 250) {
+    if (refreshTimer) clearTimeout(refreshTimer)
+    refreshTimer = window.setTimeout(() => {
+        console.info('[Tally] refreshing ER…')
+        loadFromBackend().catch(err => console.error('[Tally] refresh error', err))
+        refreshTimer = null
+    }, ms) as unknown as number
+}
+
+interface BallotSubmittedEvent {
+    ballot?: { precinct?: { code?: string } }
+}
+
+// Public channel subscription: precinct.{code}
+const { listen, stopListening, leaveChannel } = useEchoPublic<BallotSubmittedEvent>(
+    `precinct.${PRECINCT_CODE}`,
+    '.ballot.submitted',
+    (payload) => {
+        console.groupCollapsed('[Tally] BallotSubmitted (public)')
+        console.log('payload:', payload)
+
+        const pcode = payload?.ballot?.precinct?.code
+        if (pcode && pcode !== PRECINCT_CODE) {
+            console.warn('[Tally] ignoring event for other precinct:', pcode)
+            console.groupEnd()
+            return
+        }
+
+        refreshSoon(250)
+        console.groupEnd()
+    }
+)
+
+onMounted(() => {
+    listen()
+})
+
+onBeforeUnmount(() => {
+    stopListening()
+    leaveChannel(true)
 })
 </script>
 
 <template>
-    <div class="max-w-5xl mx-auto p-6 space-y-4">
+    <div class="max-w-5xl mx-auto p-6 space-y-6">
         <header class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold">Precinct Tally</h1>
-            <div class="flex gap-2">
-                <button
-                    class="px-3 py-2 rounded bg-slate-700 text-white disabled:opacity-60"
-                    :disabled="erLoading"
-                    @click="loadFromBackend"
-                    title="Refresh from server"
-                >
-                    {{ erLoading ? 'Loading…' : 'Refresh' }}
-                </button>
-            </div>
+            <h1 class="text-xl font-semibold">Precinct Tally — {{ PRECINCT_CODE }}</h1>
+            <button class="px-3 py-1 rounded bg-slate-700 text-white" :disabled="erLoading" @click="loadFromBackend">
+                {{ erLoading ? 'Loading…' : 'Refresh' }}
+            </button>
         </header>
 
         <p v-if="erError" class="text-sm text-red-600">Error: {{ erError }}</p>
 
         <section v-if="er" class="border rounded p-4">
-            <div class="text-sm text-gray-600 mb-2">
-                <span>ER: {{ er.code }}</span>
-                <span v-if="er.precinct?.code"> · Precinct: {{ er.precinct.code }}</span>
-                <span v-if="er.precinct?.location_name"> · {{ er.precinct.location_name }}</span>
-                <span v-if="sourceMode"> · source={{ sourceMode }}</span>
-            </div>
-
             <ErTallyView :er="er" />
         </section>
-
-        <section v-else class="text-sm text-gray-500">
-            {{ erLoading ? 'Loading tally…' : 'No tally loaded yet.' }}
-        </section>
+        <p v-else class="text-sm text-gray-600">Loading election return…</p>
     </div>
 </template>
-
-<style scoped>
-@media print {
-    header, button { display: none; }
-    .border { border: none; }
-    .p-4 { padding: 0; }
-}
-</style>
