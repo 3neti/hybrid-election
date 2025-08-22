@@ -12,21 +12,15 @@ Route::get('dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::get('/election-returns', [ElectionReturnController::class, 'index']);
-Route::get('/election-returns/{id}', [ElectionReturnController::class, 'show']);
+//Route::get('/election-returns', [ElectionReturnController::class, 'index']);
+//Route::get('/election-returns/{id}', [ElectionReturnController::class, 'show']);
 
-use App\Http\Controllers\TallyController;
-Route::get('/tally', [TallyController::class, 'index']);
-
-Route::get('/decoder', function () {
-    return Inertia::render('Decoder');
-});
-
-//Route::get('/tally-standalone', function () {
-//    return Inertia::render('TallyStandalone');
+//Route::get('/decoder', function () {
+//    return Inertia::render('Decoder');
 //});
-Route::get('/tally', function () {
-    return Inertia::render('TallyStandalone');
+
+Route::get('/sandbox', function () {
+    return Inertia::render('Sandbox');
 });
 
 use App\Http\Controllers\PrintErController;
