@@ -1,23 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue'
-import type { ElectionReturnData } from '@/types/election'
+
 import ErOfficialsSignatures from '@/components/ErOfficialsSignatures.vue'
 import ErPrecinctCard from '@/components/ErPrecinctCard.vue'
 import ErTalliesTable from '@/components/ErTalliesTable.vue'
-import ErQrChunks from '@/components/ErQrChunks.vue'
-
-interface QrChunkLike {
-    index: number
-    png?: string
-    text?: string
-    png_error?: string
-}
+import type { ElectionReturnData } from '@/types/election'
+import { computed, ref, watch, onMounted } from 'vue'
 
 /** ---------------- Props ---------------- */
 const props = defineProps<{
     er: ElectionReturnData
-    /** optional QR thumbnails / metadata to show (already generated elsewhere) */
-    qrChunks?: QrChunkLike[]
     /** heading override */
     title?: string
     /** ms to keep highlight flash for last_ballot changes */
@@ -29,10 +20,6 @@ const highlights = ref<Set<string>>(new Set())
 const flashing = ref<Set<string>>(new Set())
 
 /** ---------------- Helpers ---------------- */
-// function keyOf(pos: string, cand: string) {
-//     return `${pos}::${cand}`
-// }
-
 function computeHighlights(er: ElectionReturnData | null): Set<string> {
     const set = new Set<string>()
     if (!er?.last_ballot?.votes) return set
@@ -63,79 +50,17 @@ function triggerFlash(newSet: Set<string>, ms = 1200) {
     setTimeout(() => { flashing.value = new Set() }, ms)
 }
 
-function copyTextChunk(txt?: string) {
-    if (!txt) return
-    navigator.clipboard?.writeText(txt).catch(() => {})
-}
-
-function formatWhen(s?: string | null) {
-    if (!s) return ''
-    try { return new Date(s).toLocaleString() } catch { return s }
-}
-
-function mapsHref(lat?: number | null, lon?: number | null) {
-    if (lat == null || lon == null) return null
-    return `https://maps.google.com/?q=${lat},${lon}`
-}
-
 /** ---------------- Derived ---------------- */
-const totalChunks = computed(() => props.qrChunks?.length ?? 0)
-const anyPngError = computed(() => (props.qrChunks ?? []).some(c => !!c.png_error))
-
 const hasPrecinctExtras = computed(() => {
     const p = props.er?.precinct
     return !!(p?.location_name || p?.latitude || p?.longitude)
 })
 
-/** Merge inspectors + signatures by (name, role); we don’t show “source” */
-type MergedSigner = {
-    key: string
-    name: string
-    role?: string | null
-    signed_at?: string | null
-}
-const mergedPeople = computed<MergedSigner[]>(() => {
-    const map = new Map<string, MergedSigner>()
-
+const hasPeople = computed(() => {
     const inspectors = props.er?.precinct?.electoral_inspectors ?? []
-    for (const ei of inspectors) {
-        const key = `${(ei.name || '').trim().toLowerCase()}|${(ei.role || '').trim().toLowerCase()}`
-        map.set(key, {
-            key,
-            name: ei.name,
-            role: ei.role ?? null,
-            signed_at: undefined,
-        })
-    }
-
-    const sigs = props.er?.signatures ?? []
-    for (const s of sigs) {
-        const key = `${(s.name || '').trim().toLowerCase()}|${(s.role || '').trim().toLowerCase()}`
-        const existing = map.get(key)
-        if (existing) {
-            existing.signed_at = existing.signed_at ?? s.signed_at
-        } else {
-            map.set(key, {
-                key,
-                name: s.name || '—',
-                role: s.role ?? null,
-                signed_at: s.signed_at ?? undefined,
-            })
-        }
-    }
-
-    // Stable, human-friendly sort: by role, then name
-    return Array.from(map.values()).sort((a, b) => {
-        const ra = (a.role || '').toLowerCase()
-        const rb = (b.role || '').toLowerCase()
-        if (ra !== rb) return ra < rb ? -1 : 1
-        const na = a.name.toLowerCase()
-        const nb = b.name.toLowerCase()
-        return na < nb ? -1 : na > nb ? 1 : 0
-    })
+    const sigs       = props.er?.signatures ?? []
+    return inspectors.length > 0 || sigs.length > 0
 })
-
-const hasPeople = computed(() => mergedPeople.value.length > 0)
 
 /** ---------------- Lifecycle / watchers ---------------- */
 onMounted(() => {
@@ -187,29 +112,5 @@ watch(() => props.er?.last_ballot, () => {
             :flash-keys="flashing"
             highlight-color="red"
         />
-
-        <!-- Optional QR thumbnails (if caller passes qrChunks) -->
-        <section v-if="totalChunks" class="space-y-2">
-            <div class="flex items-center justify-between">
-                <h2 class="text-lg font-semibold">QR Tally</h2>
-                <div v-if="anyPngError" class="text-xs text-amber-700">
-                    Some PNGs could not be generated; you can still copy the chunk text.
-                </div>
-            </div>
-
-            <ErQrChunks
-                v-if="qrChunks && qrChunks.length"
-                :chunks="qrChunks"
-                title="QR Tally"
-            />
-        </section>
     </div>
 </template>
-
-<style scoped>
-@keyframes ringPulse {
-    0%   { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.25); }
-    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-}
-.flash-ring { animation: ringPulse 0.9s ease-out 1; }
-</style>
