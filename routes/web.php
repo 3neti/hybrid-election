@@ -23,6 +23,10 @@ Route::get('/sandbox', function () {
     return Inertia::render('Sandbox');
 });
 
+Route::get('/tally', function () {
+    return Inertia::render('Tally');
+});
+
 use App\Http\Controllers\PrintErController;
 
 Route::get('/print/er/{code}', PrintErController::class)->name('print.er');
