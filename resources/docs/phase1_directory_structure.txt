@@ -1,0 +1,64 @@
+laravel-app/                 # Root Laravel 12 project
+├── app/                     # Standard Laravel app (Models, Http, etc.)
+├── bootstrap/
+├── config/
+├── database/
+├── public/
+├── resources/
+│   ├── js/                  # Frontend (Vite/Inertia) entrypoint
+│   └── views/
+├── routes/
+├── tests/                   # Laravel feature/unit tests
+│
+├── packages/                # Local mono-repo style packages
+│   ├── truth-codec-php/     # PHP codec for Truth (Laravel-ready)
+│   │   ├── src/
+│   │   │   ├── TruthCodec.php
+│   │   │   ├── Contracts/
+│   │   │   │   └── TruthCodecInterface.php
+│   │   │   └── Support/
+│   │   │       ├── JsonCanonicalizer.php
+│   │   │       ├── YamlCanonicalizer.php
+│   │   │       └── Chunker.php
+│   │   ├── tests/
+│   │   │   ├── TruthCodecTest.php
+│   │   │   ├── JsonCodecTest.php
+│   │   │   └── YamlCodecTest.php
+│   │   ├── composer.json
+│   │   └── phpunit.xml
+│   │
+│   ├── truth-codec-ts/      # TypeScript codec (frontend / node-lib)
+│   │   ├── src/
+│   │   │   ├── index.ts
+│   │   │   ├── TruthCodec.ts
+│   │   │   ├── canonical/json.ts
+│   │   │   ├── canonical/yaml.ts
+│   │   │   └── chunker.ts
+│   │   ├── tests/
+│   │   │   ├── TruthCodec.test.ts
+│   │   │   ├── JsonCodec.test.ts
+│   │   │   └── YamlCodec.test.ts
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   └── vitest.config.ts
+│   │
+│   └── vectors/             # Canonical test fixtures (shared between TS & PHP)
+│       ├── ballot/
+│       │   ├── sample-01.json
+│       │   ├── sample-01.yaml
+│       │   ├── sample-01.truth.txt     # joined (all chunks)
+│       │   └── sample-01.chunks.txt    # 1/N lines
+│       ├── er/
+│       │   ├── sample-01.json
+│       │   ├── sample-01.yaml
+│       │   ├── sample-01.truth.txt
+│       │   └── sample-01.chunks.txt
+│       └── canvass/
+│           ├── sample-01.json
+│           ├── sample-01.yaml
+│           ├── sample-01.truth.txt
+│           └── sample-01.chunks.txt
+│
+├── composer.json            # Laravel + truth-codec-php dev path reference
+├── package.json             # Frontend (Vite/TS) + truth-codec-ts dev path ref
+└── vite.config.ts

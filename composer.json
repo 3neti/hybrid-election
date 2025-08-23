@@ -8,6 +8,12 @@
         "framework"
     ],
     "license": "MIT",
+    "repositories": [
+        {
+            "type": "path",
+            "url": "./packages/lbhurtado/*"
+        }
+    ],
     "require": {
         "php": "^8.2",
         "endroid/qr-code": "^6.0",
