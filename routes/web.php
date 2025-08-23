@@ -27,6 +27,10 @@ Route::get('/tally', function () {
     return Inertia::render('Tally');
 });
 
+Route::get('/truth', function () {
+    return Inertia::render('Truth');
+});
+
 use App\Http\Controllers\PrintErController;
 
 Route::get('/print/er/{code}', PrintErController::class)->name('print.er');
