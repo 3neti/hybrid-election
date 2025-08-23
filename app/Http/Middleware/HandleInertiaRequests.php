@@ -2,10 +2,12 @@
 
 namespace App\Http\Middleware;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
-use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
+use App\Models\Precinct;
+use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -39,6 +41,19 @@ class HandleInertiaRequests extends Middleware
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
+        $precinct = Cache::remember(
+            'shared.precinct',
+            now()->addMinutes(10), // or rememberForever()
+            function () {
+                $p = Precinct::query()->first();
+                // If you use Spatie Data: $p->getData()->toArray()
+                // If not, fallback to arrayable Eloquent:
+                return method_exists($p, 'getData')
+                    ? $p->getData()->toArray()
+                    : $p?->toArray();
+            }
+        );
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
@@ -51,6 +66,7 @@ class HandleInertiaRequests extends Middleware
                 'location' => $request->url(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'precinct' => $precinct
         ];
     }
 }

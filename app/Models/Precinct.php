@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use App\Data\{BallotData, PrecinctData};
 use Illuminate\Database\Eloquent\Model;
 use Spatie\LaravelData\DataCollection;
+use Illuminate\Support\Facades\Cache;
 use App\Data\ElectoralInspectorData;
 use App\Services\VoteTallyService;
 use Spatie\LaravelData\WithData;
@@ -79,6 +80,14 @@ class Precinct extends Model
         return [
             'electoral_inspectors' => DataCollection::class . ':' . ElectoralInspectorData::class,
         ];
+    }
+
+    /**
+     * Remove from cache.
+     *
+     */
+    protected static function booted() {
+        static::saved(fn() => Cache::forget('shared.precinct'));
     }
 
     /**

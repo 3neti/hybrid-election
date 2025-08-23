@@ -1,18 +1,24 @@
 <script setup lang="ts">
 
 import ErOfficialsSignatures from '@/components/ErOfficialsSignatures.vue'
+import { computed, ref, watch, onBeforeUnmount, onMounted } from 'vue'
 import ErPrecinctCard from '@/components/ErPrecinctCard.vue'
 import ErTalliesTable from '@/components/ErTalliesTable.vue'
 import type { ElectionReturnData } from '@/types/election'
-import { computed, ref, watch, onMounted } from 'vue'
+import { useEchoPublic } from '@laravel/echo-vue'
 
 /** ---------------- Props ---------------- */
 const props = defineProps<{
     er: ElectionReturnData
+    precinctCode?: string
     /** heading override */
     title?: string
     /** ms to keep highlight flash for last_ballot changes */
     flashMs?: number
+}>()
+
+const emit = defineEmits<{
+    (e: 'refresh-request'): void
 }>()
 
 /** ---------------- Local state ---------------- */
@@ -67,6 +73,55 @@ onMounted(() => {
     const set = computeHighlights(props.er)
     highlights.value = set
     triggerFlash(set, props.flashMs ?? 1200)
+})
+
+// --- Realtime (public) – emit refresh requests up to the parent
+interface BallotSubmittedEvent {
+    ballot?: { precinct?: { code?: string } }
+}
+
+let refreshTimer: number | null = null
+function requestRefreshSoon(ms = 250) {
+    if (refreshTimer) window.clearTimeout(refreshTimer)
+    refreshTimer = window.setTimeout(() => {
+        emit('refresh-request')
+        refreshTimer = null
+    }, ms) as unknown as number
+}
+
+const channelName = computed(
+    () => `precinct.${props.precinctCode ?? 'DEFAULT-PRECINCT'}`
+)
+
+const { listen, stopListening, leaveChannel } = useEchoPublic<BallotSubmittedEvent>(
+    channelName.value,
+    '.ballot.submitted',
+    (payload) => {
+        try {
+            const pcode = payload?.ballot?.precinct?.code
+            if (pcode && props.precinctCode && pcode !== props.precinctCode) {
+                // ignore other precincts (defensive)
+                return
+            }
+            requestRefreshSoon(250)
+        } catch (e) {
+            console.error('[ErTallyView] listener error', e)
+        }
+    }
+)
+
+onMounted(() => {
+    // existing highlight bootstrapping
+    const set = computeHighlights(props.er)
+    highlights.value = set
+    triggerFlash(set, props.flashMs ?? 1200)
+
+    listen()
+})
+
+onBeforeUnmount(() => {
+    stopListening()
+    leaveChannel(true)
 })
 
 watch(() => props.er?.last_ballot, () => {
