@@ -2,12 +2,17 @@
 
 namespace TruthCodec;
 
-use TruthCodec\Serializer\AutoDetectSerializer;
-use TruthCodec\Serializer\SerializerRegistry;
-use TruthCodec\Contracts\PayloadSerializer;
-use TruthCodec\Serializer\JsonSerializer;
-use TruthCodec\Serializer\YamlSerializer;
 use Illuminate\Support\ServiceProvider;
+use TruthCodec\Contracts\PayloadSerializer;
+use TruthCodec\Contracts\TransportCodec;
+use TruthCodec\Serializer\AutoDetectSerializer;
+use TruthCodec\Serializer\JsonSerializer;
+use TruthCodec\Serializer\SerializerRegistry;
+use TruthCodec\Serializer\TransportRegistry;
+use TruthCodec\Serializer\YamlSerializer;
+use TruthCodec\Transport\Base64UrlGzipTransport;
+use TruthCodec\Transport\Base64UrlTransport;
+use TruthCodec\Transport\NoopTransport;
 
 /**
  * Laravel service provider for TruthCodec.
@@ -64,6 +69,23 @@ class TruthCodecServiceProvider extends ServiceProvider
             $primary    = $reg->get($primaryName);
 
             return new AutoDetectSerializer($candidates, $primary);
+        });
+
+        // Transports
+        $this->app->singleton(TransportRegistry::class, function () {
+            return new TransportRegistry([
+                'none' => new NoopTransport(),
+                'base64url' => new Base64UrlTransport(),
+                'base64url+gzip' => new Base64UrlGzipTransport(),
+            ]);
+        });
+
+        // Default binding for TransportCodec
+        $this->app->bind(TransportCodec::class, function ($app) {
+            /** @var TransportRegistry $reg */
+            $reg = $app->make(TransportRegistry::class);
+            $name = config('truth-codec.transport', 'none');
+            return $reg->get($name);
         });
     }
 

@@ -3,6 +3,7 @@
 namespace TruthCodec\Decode;
 
 use TruthCodec\Contracts\PayloadSerializer;
+use TruthCodec\Contracts\TransportCodec;
 
 /**
  * The ChunkAssembler is responsible for collecting and validating
@@ -39,9 +40,11 @@ class ChunkAssembler
 
     /**
      * @param PayloadSerializer $serializer Serializer to use when decoding the final payload
+     * @param TransportCodec $transport Transporter to use when decompressing the final payload
      */
     public function __construct(
-        private readonly PayloadSerializer $serializer
+        private readonly PayloadSerializer $serializer,
+        private readonly TransportCodec $transport
     ) {}
 
     /**
@@ -132,7 +135,9 @@ class ChunkAssembler
         }
         ksort($this->parts);
         $blob = implode('', $this->parts);
-        return $this->serializer->decode($blob);
+        $unpacked = $this->transport->decode($blob);
+        return $this->serializer->decode($unpacked);
+//        return $this->serializer->decode($blob);
     }
 
     /**

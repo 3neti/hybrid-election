@@ -3,6 +3,7 @@
 namespace TruthCodec\Encode;
 
 use TruthCodec\Contracts\PayloadSerializer;
+use TruthCodec\Contracts\TransportCodec;
 use TruthCodec\Envelope\EnvelopeV1;
 
 /**
@@ -31,9 +32,11 @@ class ChunkEncoder
 {
     /**
      * @param PayloadSerializer $serializer Strategy for serializing payloads (e.g., JSON, YAML).
+     * @param TransportCodec $transport Strategy for compressing payloads (base64 URL, Gzip)
      */
     public function __construct(
-        private readonly PayloadSerializer $serializer
+        private readonly PayloadSerializer $serializer,
+        private readonly TransportCodec $transport
     ) {}
 
     /**
@@ -47,17 +50,19 @@ class ChunkEncoder
      *
      * @example
      * $payload = ['type' => 'ER', 'code' => 'XYZ', 'data' => ['hello' => 'world']];
-     * $encoder = new ChunkEncoder(new JsonSerializer());
+     * $encoder = new ChunkEncoder(new JsonSerializer(), new Base64UrlTransport());
      * $chunks = $encoder->encodeToChunks($payload, 'XYZ', 400);
      * // $chunks[0] = "ER|v1|XYZ|1/2|{...}"
      * // $chunks[1] = "ER|v1|XYZ|2/2|..."
      */
     public function encodeToChunks(array $payload, string $code, int $chunkSize = 800): array
     {
+        // serialize → transport → split
         $blob = $this->serializer->encode($payload);
+        $packed = $this->transport->encode($blob);
 
         // Split payload into fixed-size parts
-        $parts = str_split($blob, $chunkSize);
+        $parts = str_split($packed, $chunkSize);
         $total = count($parts);
 
         $lines = [];

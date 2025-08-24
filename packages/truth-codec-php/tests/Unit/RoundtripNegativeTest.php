@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use TruthCodec\Transport\Base64UrlTransport;
 use TruthCodec\Serializer\JsonSerializer;
 use TruthCodec\Decode\ChunkAssembler;
 use TruthCodec\Decode\ChunkDecoder;
@@ -16,9 +17,9 @@ it('fails to assemble when a chunk is missing', function () {
         'data' => ['hello' => 'world'],
     ];
 
-    $enc = new ChunkEncoder(new JsonSerializer());
+    $enc = new ChunkEncoder(new JsonSerializer(), new Base64UrlTransport());
     $dec = new ChunkDecoder();
-    $asm = new ChunkAssembler(new JsonSerializer());
+    $asm = new ChunkAssembler(new JsonSerializer(), new Base64UrlTransport());
 
     $lines = iterator_to_array($enc->encodeToChunks($payload, 'ABC', 5)); // 5 chunks
     // drop one
@@ -39,9 +40,9 @@ it('rejects chunks with mixed ER codes', function () {
         'data' => ['hello' => 'world'],
     ];
 
-    $enc = new ChunkEncoder(new JsonSerializer());
+    $enc = new ChunkEncoder(new JsonSerializer(), new Base64UrlTransport());
     $dec = new ChunkDecoder();
-    $asm = new ChunkAssembler(new JsonSerializer());
+    $asm = new ChunkAssembler(new JsonSerializer(), new Base64UrlTransport());
 
     // Generate consistent chunks (code = XYZ)
     $lines = iterator_to_array($enc->encodeToChunks($payload, 'XYZ', 4));
@@ -68,9 +69,9 @@ it('rejects mismatched totals across chunks', function () {
         'data' => ['hello' => 'world'],
     ];
 
-    $enc = new ChunkEncoder(new JsonSerializer());
+    $enc = new ChunkEncoder(new JsonSerializer(), new Base64UrlTransport());
     $dec = new ChunkDecoder();
-    $asm = new ChunkAssembler(new JsonSerializer());
+    $asm = new ChunkAssembler(new JsonSerializer(), new Base64UrlTransport());
 
     // Generate a 3-chunk message with a consistent header (code = XYZ)
     $lines = iterator_to_array($enc->encodeToChunks($payload, 'XYZ', 3));
@@ -116,9 +117,9 @@ it('rejects out-of-range index (e.g. 4/3)', function () {
         'data' => ['hello' => 'world'],
     ];
 
-    $enc = new ChunkEncoder(new JsonSerializer());
+    $enc = new ChunkEncoder(new JsonSerializer(), new Base64UrlTransport());
     $dec = new ChunkDecoder();
-    $asm = new ChunkAssembler(new JsonSerializer());
+    $asm = new ChunkAssembler(new JsonSerializer(), new Base64UrlTransport());
 
     // Make a clean 3-chunk message.
     $lines = iterator_to_array($enc->encodeToChunks($payload, 'XYZ', 3));
@@ -154,9 +155,9 @@ it('rejects out-of-range index (e.g. 4/3)', function () {
 it('fails when a chunk payload is corrupted', function () {
     $payload = ['type' => 'ER', 'code' => 'XYZ', 'data' => ['hello' => 'world']];
 
-    $enc = new ChunkEncoder(new JsonSerializer());
+    $enc = new ChunkEncoder(new JsonSerializer(), new Base64UrlTransport());
     $dec = new ChunkDecoder();
-    $asm = new ChunkAssembler(new JsonSerializer());
+    $asm = new ChunkAssembler(new JsonSerializer(), new Base64UrlTransport());
 
     $lines = iterator_to_array($enc->encodeToChunks($payload, 'XYZ', 4));
 
@@ -179,9 +180,9 @@ it('fails when a chunk payload is corrupted', function () {
 });
 
 it('does not assemble when mixing envelopes (ER vs BAL) even if code matches', function () {
-    $enc = new ChunkEncoder(new JsonSerializer());
+    $enc = new ChunkEncoder(new JsonSerializer(), new Base64UrlTransport());
     $dec = new ChunkDecoder();
-    $asm = new ChunkAssembler(new JsonSerializer());
+    $asm = new ChunkAssembler(new JsonSerializer(), new Base64UrlTransport());
 
     $er = [
         'type' => 'ER',
@@ -224,9 +225,9 @@ it('errors on duplicate index chunk (same i/N twice)', function () {
         'data' => ['hello' => 'world'],
     ];
 
-    $enc = new ChunkEncoder(new JsonSerializer());
+    $enc = new ChunkEncoder(new JsonSerializer(), new Base64UrlTransport());
     $dec = new ChunkDecoder();
-    $asm = new ChunkAssembler(new JsonSerializer());
+    $asm = new ChunkAssembler(new JsonSerializer(), new Base64UrlTransport());
 
     $lines = iterator_to_array($enc->encodeToChunks($payload, 'XYZ', 3));
 
@@ -262,9 +263,9 @@ it('ignores duplicate index chunk if already present', function () {
         'data' => ['hello' => 'world'],
     ];
 
-    $enc = new ChunkEncoder(new JsonSerializer());
+    $enc = new ChunkEncoder(new JsonSerializer(), new Base64UrlTransport());
     $dec = new ChunkDecoder();
-    $asm = new ChunkAssembler(new JsonSerializer());
+    $asm = new ChunkAssembler(new JsonSerializer(), new Base64UrlTransport());
 
     $lines = iterator_to_array($enc->encodeToChunks($payload, 'XYZ', 3));
 
