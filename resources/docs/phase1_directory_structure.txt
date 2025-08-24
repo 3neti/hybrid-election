@@ -62,3 +62,43 @@ laravel-app/                 # Root Laravel 12 project
 ├── composer.json            # Laravel + truth-codec-php dev path reference
 ├── package.json             # Frontend (Vite/TS) + truth-codec-ts dev path ref
 └── vite.config.ts
+
+updated layout
+
+packages/
+  truth-codec-php/
+    src/
+      Contracts/ (PayloadSerializer, TransportCodec, …)
+      Envelope/
+      Encode/ (ChunkEncoder)
+      Decode/ (ChunkDecoder, ChunkAssembler)
+      Serializer/ (Json, Yaml, AutoDetect, Registry)
+      Transport/ (Base64Url, Gzip, None)
+      Support/
+    tests/ (Pest)
+    config/truth-codec.php
+
+  truth-qr/                # optional separate package
+    src/
+      Writer/
+        QrWriter.php       # implements TruthWriter (from truth-codec Contracts if you keep it there)
+        Layouts/…
+    tests/
+
+app/                       # your Laravel app
+  Domain/
+    DTO/                   # **Your** ER/Ballot/Canvass PHP DTOs (or Spatie Data)
+  resources/js/types/      # **Your** TS interfaces (ER, Ballot, Canvass)
+  Features/Truth/
+    UseCases/              # application services that call codec, then writer
+
+
+	•	Optionally publish a JSON Schema for ER/Ballot/Canvass so both PHP and TS can validate against the same contract.
+
+https://yourdomain.com/truth/ingest
+  ?t=ER             // type: ER | BAL | CANV
+  &v=1              // envelope version
+  &c=C3VJOY0NVVHP   // code
+  &i=3              // index (1-based)
+  &n=5              // total
+  &p=7Vtbc-...      // payload part (transport-encoded: base64url, optional gzip)

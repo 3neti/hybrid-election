@@ -15,7 +15,9 @@ use TruthCodec\Transport\Base64UrlTransport;
 use TruthCodec\Transport\NoopTransport;
 use TruthCodec\Encode\ChunkEncoder;
 use TruthCodec\Decode\ChunkAssembler;
-
+use TruthCodec\Envelope\EnvelopeV1Contract;
+use TruthCodec\Envelope\EnvelopeV1Line;
+use TruthCodec\Envelope\EnvelopeV1Url;
 /**
  * Laravel service provider for TruthCodec.
  *
@@ -45,6 +47,23 @@ class TruthCodecServiceProvider extends ServiceProvider
         // Concrete serializers as singletons (stateless, safe to reuse).
         $this->app->singleton(JsonSerializer::class, fn () => new JsonSerializer());
         $this->app->singleton(YamlSerializer::class, fn () => new YamlSerializer());
+
+//        // Envelope binding by mode
+        $this->app->bind(EnvelopeV1Contract::class, function () {
+            $transport = config('truth-codec.envelope.transport', 'line'); // 'line' or 'url'
+            $prefix    = config('truth-codec.envelope.prefix', 'ER');
+
+            if ($transport === 'url') {
+                return new EnvelopeV1Url(
+                    payloadParam: config('truth-codec.envelope.url.payload', 'c'),
+                    versionParam: config('truth-codec.envelope.url.version', 'v'),
+                    webBase: config('truth-codec.envelope.url.web_base'),
+                    scheme: config('truth-codec.envelope.url.scheme', 'truth'),
+                );
+            }
+
+            return new EnvelopeV1Line(defaultPrefix: $prefix);
+        });
 
         // Registry with named serializers for easy lookup and custom wiring.
         $this->app->singleton(SerializerRegistry::class, function ($app) {
@@ -95,7 +114,8 @@ class TruthCodecServiceProvider extends ServiceProvider
         $this->app->bind(ChunkEncoder::class, function ($app) {
             return new ChunkEncoder(
                 $app->make(PayloadSerializer::class),
-                $app->make(TransportCodec::class)
+                $app->make(TransportCodec::class),
+                app(EnvelopeV1Contract::class),
             );
         });
 

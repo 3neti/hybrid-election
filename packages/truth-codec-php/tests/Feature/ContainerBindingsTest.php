@@ -1,11 +1,13 @@
 <?php
 
 use TruthCodec\Contracts\PayloadSerializer;
+use TruthCodec\Serializer\JsonSerializer;
 use TruthCodec\Contracts\TransportCodec;
 use TruthCodec\Encode\ChunkEncoder;
 use TruthCodec\Decode\ChunkAssembler;
 use TruthCodec\Decode\ChunkDecoder;
-use TruthCodec\Serializer\JsonSerializer;
+//use TruthCodec\Contracts\Envelope;
+use TruthCodec\Envelope\EnvelopeV1Contract as Envelope;
 
 /**
  * A tiny fake transport that makes its work obvious:
@@ -46,7 +48,8 @@ it('resolves ChunkEncoder from the container and uses injected transport', funct
     $this->app->bind(ChunkEncoder::class, function ($app) {
         return new ChunkEncoder(
             $app->make(PayloadSerializer::class),
-            $app->make(TransportCodec::class)
+            $app->make(TransportCodec::class),
+            app(Envelope::class)
         );
     });
 
@@ -79,7 +82,8 @@ it('roundtrips via container (encoder -> decoder/assembler) with injected transp
     $this->app->bind(ChunkEncoder::class, function ($app) {
         return new ChunkEncoder(
             $app->make(PayloadSerializer::class),
-            $app->make(TransportCodec::class)
+            $app->make(TransportCodec::class),
+            app(Envelope::class)
         );
     });
 
@@ -96,7 +100,7 @@ it('roundtrips via container (encoder -> decoder/assembler) with injected transp
     /** @var ChunkAssembler $assembler */
     $assembler = app(ChunkAssembler::class);
 
-    $decoder = new ChunkDecoder();
+    $decoder = new ChunkDecoder(app(Envelope::class));
 
     $payload = [
         'type' => 'ER',

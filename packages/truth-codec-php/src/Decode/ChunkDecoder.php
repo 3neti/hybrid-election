@@ -2,7 +2,7 @@
 
 namespace TruthCodec\Decode;
 
-use TruthCodec\Envelope\EnvelopeV1;
+use TruthCodec\Envelope\EnvelopeV1Contract;
 
 /**
  * ChunkDecoder is responsible for parsing a single encoded
@@ -17,7 +17,7 @@ use TruthCodec\Envelope\EnvelopeV1;
  *   - `<i>/<N>` indicates the 1-based index of this chunk and the total count.
  *   - `<payload-part>` is a segment of the serialized payload (e.g. base64url).
  *
- * This decoder delegates header parsing to {@see EnvelopeV1::parseHeader()}.
+ * This decoder delegates header parsing to {@see EnvelopeV1Contract::parseHeader()}.
  *
  * Typical usage:
  *
@@ -31,6 +31,10 @@ use TruthCodec\Envelope\EnvelopeV1;
  */
 class ChunkDecoder
 {
+    public function __construct(
+        private readonly EnvelopeV1Contract $envelope
+    ) {}
+
     /**
      * Parse a single chunk line into a {@see ChunkHeader}.
      *
@@ -39,11 +43,12 @@ class ChunkDecoder
      * @return ChunkHeader Structured header containing code, index, total, and payload part.
      *
      * @throws \InvalidArgumentException If the line does not match the expected format
-     *                                   or if {@see EnvelopeV1::parseHeader()} fails.
+     *                                   or if {@see EnvelopeV1Contract::parseHeader()} fails.
      */
     public function parseLine(string $line): ChunkHeader
     {
-        [$code, $idx, $tot, $payload] = EnvelopeV1::parseHeader($line);
+        [$code, $idx, $tot, $payload] = $this->envelope->parse($line);
+
         return new ChunkHeader($code, $idx, $tot, $payload);
     }
 }

@@ -6,6 +6,8 @@ use TruthCodec\Transport\Base64UrlTransport;
 use TruthCodec\Serializer\JsonSerializer;
 use TruthCodec\Contracts\TransportCodec;
 use TruthCodec\Encode\ChunkEncoder;
+//use TruthCodec\Contracts\Envelope;
+use TruthCodec\Envelope\EnvelopeV1Contract;
 
 it('roundtrips JSON with base64url transport', function () {
     $payload = [
@@ -16,12 +18,14 @@ it('roundtrips JSON with base64url transport', function () {
 
     $serializer = new JsonSerializer();
     $transport = app(TransportCodec::class);
+    $envelope = app(EnvelopeV1Contract::class);
 
-    $enc = new ChunkEncoder($serializer, $transport);
-    $dec = new ChunkDecoder();
+    $enc = new ChunkEncoder($serializer, $transport, $envelope);
+    $dec = new ChunkDecoder($envelope);
     $asm = new ChunkAssembler($serializer, $transport);
 
     $lines = $enc->encodeToChunks($payload, 'XYZ', 32);
+
     expect($lines)->toBeArray()->and($lines)->not->toBeEmpty();
 
     // quick check: payload parts look base64url-ish (no '+' or '/')
@@ -47,9 +51,10 @@ it('roundtrips JSON with base64url+gzip transport', function () {
 
     $serializer = new JsonSerializer();
     $transport = app(TransportCodec::class);
+    $envelope = app(EnvelopeV1Contract::class);
 
-    $enc = new ChunkEncoder($serializer, $transport);
-    $dec = new ChunkDecoder();
+    $enc = new ChunkEncoder($serializer, $transport, $envelope);
+    $dec = new ChunkDecoder($envelope);
     $asm = new ChunkAssembler($serializer, $transport);
 
     $lines = $enc->encodeToChunks($payload, 'XYZ', 32);
@@ -71,9 +76,10 @@ it('fails assemble when base64url payload is corrupted', function () {
 
     $serializer = new JsonSerializer();
     $transport = new Base64UrlTransport();
+    $envelope = app(EnvelopeV1Contract::class);
 
-    $enc = new ChunkEncoder($serializer, $transport);
-    $dec = new ChunkDecoder();
+    $enc = new ChunkEncoder($serializer, $transport, $envelope);
+    $dec = new ChunkDecoder($envelope);
     $asm = new ChunkAssembler($serializer, $transport);
 
     $lines = $enc->encodeToChunks($payload, 'XYZ', 32);
