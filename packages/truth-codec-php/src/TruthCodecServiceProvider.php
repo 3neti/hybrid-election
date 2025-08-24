@@ -13,6 +13,8 @@ use TruthCodec\Serializer\YamlSerializer;
 use TruthCodec\Transport\Base64UrlGzipTransport;
 use TruthCodec\Transport\Base64UrlTransport;
 use TruthCodec\Transport\NoopTransport;
+use TruthCodec\Encode\ChunkEncoder;
+use TruthCodec\Decode\ChunkAssembler;
 
 /**
  * Laravel service provider for TruthCodec.
@@ -86,6 +88,22 @@ class TruthCodecServiceProvider extends ServiceProvider
             $reg = $app->make(TransportRegistry::class);
             $name = config('truth-codec.transport', 'none');
             return $reg->get($name);
+        });
+
+        // PayloadSerializer (AutoDetect), and TransportCodec (by config)
+        // Let the container construct the encoder with both deps injected
+        $this->app->bind(ChunkEncoder::class, function ($app) {
+            return new ChunkEncoder(
+                $app->make(PayloadSerializer::class),
+                $app->make(TransportCodec::class)
+            );
+        });
+
+        $this->app->bind(ChunkAssembler::class, function ($app) {
+            return new ChunkAssembler(
+                $app->make(PayloadSerializer::class),
+                $app->make(TransportCodec::class)
+            );
         });
     }
 

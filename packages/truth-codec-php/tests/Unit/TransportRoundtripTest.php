@@ -4,6 +4,7 @@ use TruthCodec\Decode\{ChunkAssembler, ChunkDecoder};
 use TruthCodec\Transport\Base64UrlGzipTransport;
 use TruthCodec\Transport\Base64UrlTransport;
 use TruthCodec\Serializer\JsonSerializer;
+use TruthCodec\Contracts\TransportCodec;
 use TruthCodec\Encode\ChunkEncoder;
 
 it('roundtrips JSON with base64url transport', function () {
@@ -14,7 +15,7 @@ it('roundtrips JSON with base64url transport', function () {
     ];
 
     $serializer = new JsonSerializer();
-    $transport  = new Base64UrlTransport();
+    $transport = app(TransportCodec::class);
 
     $enc = new ChunkEncoder($serializer, $transport);
     $dec = new ChunkDecoder();
@@ -45,7 +46,7 @@ it('roundtrips JSON with base64url+gzip transport', function () {
     ];
 
     $serializer = new JsonSerializer();
-    $transport = new Base64UrlGzipTransport();
+    $transport = app(TransportCodec::class);
 
     $enc = new ChunkEncoder($serializer, $transport);
     $dec = new ChunkDecoder();
