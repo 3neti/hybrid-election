@@ -2,16 +2,16 @@
 
 namespace TruthCodec\Encode;
 
-use TruthCodec\Envelope\EnvelopeV1Contract;
 use TruthCodec\Contracts\PayloadSerializer;
 use TruthCodec\Contracts\TransportCodec;
+use TruthCodec\Contracts\Envelope;
 
 /**
  * Encodes an arbitrary payload (e.g., Election Return, Ballot, Canvass)
  * into a sequence of fixed-size "chunks" suitable for QR codes or
  * other constrained transport mediums.
  *
- * Each chunk is wrapped in an {@see EnvelopeV1Contract} header containing:
+ * Each chunk is wrapped in an {@see Envelope} header containing:
  *   - A version marker (`v1`),
  *   - A caller-provided code identifying the payload set,
  *   - The index of this chunk (1-based),
@@ -33,12 +33,12 @@ class ChunkEncoder
     /**
      * @param PayloadSerializer $serializer Strategy for serializing payloads (e.g., JSON, YAML).
      * @param TransportCodec $transport Strategy for compressing payloads (base64 URL, Gzip)
-     * @param EnvelopeV1Contract $envelope
+     * @param Envelope $envelope
      */
     public function __construct(
         private readonly PayloadSerializer $serializer,
         private readonly TransportCodec $transport,
-        private readonly EnvelopeV1Contract $envelope
+        private readonly Envelope $envelope
     ) {}
 
     /**

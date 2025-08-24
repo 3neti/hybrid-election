@@ -15,7 +15,7 @@ use TruthCodec\Transport\Base64UrlTransport;
 use TruthCodec\Transport\NoopTransport;
 use TruthCodec\Encode\ChunkEncoder;
 use TruthCodec\Decode\ChunkAssembler;
-use TruthCodec\Envelope\EnvelopeV1Contract;
+use TruthCodec\Contracts\Envelope;
 use TruthCodec\Envelope\EnvelopeV1Line;
 use TruthCodec\Envelope\EnvelopeV1Url;
 /**
@@ -49,7 +49,7 @@ class TruthCodecServiceProvider extends ServiceProvider
         $this->app->singleton(YamlSerializer::class, fn () => new YamlSerializer());
 
 //        // Envelope binding by mode
-        $this->app->bind(EnvelopeV1Contract::class, function () {
+        $this->app->bind(Envelope::class, function () {
             $transport = config('truth-codec.envelope.transport', 'line'); // 'line' or 'url'
             $prefix    = config('truth-codec.envelope.prefix', 'ER');
 
@@ -115,7 +115,7 @@ class TruthCodecServiceProvider extends ServiceProvider
             return new ChunkEncoder(
                 $app->make(PayloadSerializer::class),
                 $app->make(TransportCodec::class),
-                app(EnvelopeV1Contract::class),
+                app(Envelope::class),
             );
         });
 

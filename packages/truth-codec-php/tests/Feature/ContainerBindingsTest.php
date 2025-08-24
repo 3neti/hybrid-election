@@ -6,8 +6,7 @@ use TruthCodec\Contracts\TransportCodec;
 use TruthCodec\Encode\ChunkEncoder;
 use TruthCodec\Decode\ChunkAssembler;
 use TruthCodec\Decode\ChunkDecoder;
-//use TruthCodec\Contracts\Envelope;
-use TruthCodec\Envelope\EnvelopeV1Contract as Envelope;
+use TruthCodec\Contracts\Envelope;
 
 /**
  * A tiny fake transport that makes its work obvious:

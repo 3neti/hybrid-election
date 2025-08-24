@@ -1,7 +1,8 @@
 <?php
-// src/Envelope/EnvelopeV1Url.php
 
 namespace TruthCodec\Envelope;
+
+use TruthCodec\Contracts\Envelope;
 
 /**
  * V1 URL envelope.
@@ -12,7 +13,7 @@ namespace TruthCodec\Envelope;
  *
  * Prefix & version are resolved via EnvelopeV1Common (override/config/default).
  */
-final class EnvelopeV1Url implements EnvelopeV1Contract
+final class EnvelopeV1Url implements Envelope
 {
     use EnvelopeV1Common;
 

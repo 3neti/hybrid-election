@@ -2,6 +2,8 @@
 
 namespace TruthCodec\Envelope;
 
+use TruthCodec\Contracts\Envelope;
+
 /**
  * V1 line (pipe-delimited) envelope:
  *   <PREFIX>|v1|<CODE>|<i>/<N>|<payload>
@@ -11,7 +13,7 @@ namespace TruthCodec\Envelope;
  *  - Laravel config: truth-codec.envelope.{prefix,version},
  *  - class defaults from prefix()/version().
  */
-final class EnvelopeV1Line implements EnvelopeV1Contract
+final class EnvelopeV1Line implements Envelope
 {
     use EnvelopeV1Common;
 

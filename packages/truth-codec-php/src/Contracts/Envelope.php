@@ -3,30 +3,33 @@
 namespace TruthCodec\Contracts;
 
 /**
- * Envelope abstraction for chunk headers/lines.
- *
- * Implementations (e.g., V1 line, V1 URL) must:
- *  - create a transport line from code/index/total/payload
- *  - parse a transport line back to [code, index, total, payload]
+ * Envelope format contract (v1 family).
+ * Implementations encode/decode chunk metadata + payload fragment.
  */
-/** @deprecated  */
 interface Envelope
 {
     /**
-     * Build a complete transport line for one chunk.
+     * Build a complete transport string (line or URL) for one chunk.
+     * Return SHOULD include the payload fragment already appended/encoded.
      *
-     * @param string $code    caller-supplied group code
-     * @param int    $index   1-based index of this chunk
-     * @param int    $total   total expected chunks
-     * @param string $payload payload fragment (already serialized+transported)
+     * @return string e.g. "ER|v1|CODE|i/N|<payload>" or "truth://v1/ER/CODE/i/N?c=<payload>"
      */
-    public function makeLine(string $code, int $index, int $total, string $payload): string;
+    public function header(string $code, int $index, int $total, string $payloadPart): string;
 
     /**
-     * Parse a transport line into metadata + payload fragment.
+     * Parse an encoded line/URL into [code, index, total, payloadPart].
      *
-     * @return array{0:string,1:int,2:int,3:string} [code, index, total, payloadFragment]
+     * @return array{0:string,1:int,2:int,3:string}
      * @throws \InvalidArgumentException on malformed/unsupported input
      */
-    public function parseLine(string $line): array;
+    public function parse(string $encoded): array;
+
+    /** The logical family prefix (e.g., "ER", "BAL", "TRUTH"). */
+    public function prefix(): string;
+
+    /** The semantic version (e.g., "v1"). */
+    public function version(): string;
+
+    /** Transport form: "line" or "url". */
+    public function transport(): string;
 }
