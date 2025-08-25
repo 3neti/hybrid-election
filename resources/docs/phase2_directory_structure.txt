@@ -1,0 +1,31 @@
+packages/truth-qr-php/
+  composer.json
+  src/
+    Http/
+      Controllers/
+        TruthIngestController.php
+        TruthCollectController.php
+        TruthProgressController.php
+        TruthRenderController.php
+    Services/
+      TruthStore.php           // interface
+      RedisTruthStore.php      // Redis-backed impl
+      TruthAssembler.php       // uses codec: assemble/cached artifact
+      QrWriter.php             // renders PNG/PDF grids for chunks
+    Support/
+      UrlBuilder.php           // builds deep-link & web-link envelopes
+    Providers/
+      TruthQrServiceProvider.php
+    Resources/
+      views/collect.blade.php
+      views/render.blade.php
+  routes/web.php
+  config/truth-qr.php
+  tests/Pest.php
+  tests/Feature/
+    IngestFlowTest.php
+    UrlEnvelopeCompatibilityTest.php
+  tests/Unit/
+    QrWriterTest.php
+    UrlBuilderTest.php
+    RedisTruthStoreTest.php
