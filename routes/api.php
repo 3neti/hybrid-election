@@ -1,7 +1,7 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -81,3 +81,10 @@ use App\Actions\InitializeSystem;
 // If you expose init via API (optional):
 Route::middleware(['throttle:init'])->post('/initialize-system', InitializeSystem::class)
     ->name('system.initialize');
+
+use TruthQr\Support\RouteRegistrar as TruthRouteRegistrar;
+
+TruthRouteRegistrar::register([
+    'prefix' => 'truth',
+    'middleware' => ['web', 'throttle:60,1'],
+]);

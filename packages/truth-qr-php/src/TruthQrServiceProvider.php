@@ -13,6 +13,8 @@ use TruthQr\Contracts\TruthStore;
 use TruthQr\Stores\ArrayTruthStore;
 use TruthQr\Stores\RedisTruthStore;
 use TruthQr\Assembly\TruthAssembler;
+use Illuminate\Support\Facades\Route;
+use TruthQr\Support\RouteRegistrar;
 
 class TruthQrServiceProvider extends ServiceProvider
 {
@@ -86,7 +88,22 @@ class TruthQrServiceProvider extends ServiceProvider
         ], 'truth-qr-config');
 
         // Load package routes
-        $this->loadRoutesFrom(__DIR__ . '/../routes/truth-qr.php');
+//        $this->loadRoutesFrom(__DIR__ . '/../routes/truth-qr.php');
+
+        // Optional route macro so host apps can do: Route::truthQr([...]);
+        if (method_exists(Route::class, 'macro')) {
+            Route::macro('truthQr', function (array $options = []) {
+                RouteRegistrar::register($options);
+            });
+        }
+
+        // (Optional) Auto-register if user opts in via config
+        if (config('truth-qr.auto_routes', false)) {
+            RouteRegistrar::register([
+                'prefix' => config('truth-qr.routes.prefix', 'truth'),
+                'middleware' => config('truth-qr.routes.middleware', ['web']),
+            ]);
+        }
 
         // Register CLI command(s)
         if ($this->app->runningInConsole()) {

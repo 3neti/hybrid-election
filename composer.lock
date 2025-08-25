@@ -3035,9 +3035,10 @@
             "dist": {
                 "type": "path",
                 "url": "packages/truth-qr-php",
-                "reference": "9f4f47a88195c1515af98916a136317a0015bb21"
+                "reference": "31d332704158b2bce1a1d332a15115accb5b3ac5"
             },
             "require": {
+                "bacon/bacon-qr-code": "^3.0",
                 "ext-json": "*",
                 "illuminate/support": "^12.0",
                 "lbhurtado/truth-codec-php": "dev-main",

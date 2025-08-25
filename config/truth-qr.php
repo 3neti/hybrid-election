@@ -34,12 +34,4 @@ return [
             'ttl'        => env('TRUTH_QR_TTL', 86400),
         ],
     ],
-    // Keep false so the package doesn’t auto-wire routes unless asked to
-    'auto_routes' => false,
-
-    // Used only when auto_routes=true
-    'routes' => [
-        'prefix' => 'truth',
-        'middleware' => ['web'],
-    ],
 ];
