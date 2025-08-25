@@ -2,12 +2,17 @@
 
 namespace TruthQr;
 
+use TruthQr\Assembly\Contracts\TruthAssemblerContract;
 use Illuminate\Support\ServiceProvider;
 use TruthCodec\Contracts\Envelope;
 use TruthCodec\Envelope\EnvelopeV1Url;   // pulled from truth-codec-php
 use TruthQr\Contracts\TruthQrWriter;
 use TruthQr\Writers\NullQrWriter;
 use TruthQr\Writers\BaconQrWriter;
+use TruthQr\Contracts\TruthStore;
+use TruthQr\Stores\ArrayTruthStore;
+use TruthQr\Stores\RedisTruthStore;
+use TruthQr\Assembly\TruthAssembler;
 
 class TruthQrServiceProvider extends ServiceProvider
 {
@@ -22,13 +27,6 @@ class TruthQrServiceProvider extends ServiceProvider
             // or read a custom class name from config later.
             return new EnvelopeV1Url();
         });
-
-        // Bind a QR writer (swap later with Endroid/Bacon/Built-in)
-//        $this->app->bind(TruthQrWriter::class, function ($app) {
-//            // Start with a null writer that returns raw data/URIs for tests
-//            return new NullQrWriter(config('truth-qr.default_format', 'png'));
-//        });
-
 
         $this->app->bind(TruthQrWriter::class, function ($app) {
             $driver = config('truth-qr.driver', 'bacon');
@@ -46,6 +44,38 @@ class TruthQrServiceProvider extends ServiceProvider
             // Fallback: null writer
             return new NullQrWriter($fmt);
         });
+
+        // TruthStore binding (configurable)
+        $this->app->bind(TruthStore::class, function ($app) {
+            $driver = config('truth-qr.store', 'array');
+
+            if ($driver === 'redis') {
+                $cfg = config('truth-qr.stores.redis', []);
+                return new RedisTruthStore(
+                    keyPrefix: $cfg['key_prefix'] ?? 'truth:qr:',
+                    defaultTtl: (int) ($cfg['ttl'] ?? 86400),
+                    connection: $cfg['connection'] ?? null
+                );
+            }
+
+            $cfg = config('truth-qr.stores.array', []);
+            return new ArrayTruthStore(
+                defaultTtl: (int) ($cfg['ttl'] ?? 0)
+            );
+        });
+
+        $this->app->singleton(TruthAssemblerContract::class, function ($app) {
+            return $app->make(TruthAssembler::class);
+        });
+
+        $this->app->bind(TruthAssembler::class, function ($app) {
+            return new TruthAssembler(
+                store: $app->make(\TruthQr\Contracts\TruthStore::class),
+                envelope: $app->make(\TruthCodec\Contracts\Envelope::class),
+                transport: $app->make(\TruthCodec\Contracts\TransportCodec::class),
+                serializer: $app->make(\TruthCodec\Contracts\PayloadSerializer::class),
+            );
+        });
     }
 
     public function boot(): void
@@ -54,5 +84,15 @@ class TruthQrServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__ . '/../config/truth-qr.php' => config_path('truth-qr.php'),
         ], 'truth-qr-config');
+
+        // Load package routes
+        $this->loadRoutesFrom(__DIR__ . '/../routes/truth-qr.php');
+
+        // Register CLI command(s)
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \TruthQr\Console\TruthIngestFileCommand::class,
+            ]);
+        }
     }
 }

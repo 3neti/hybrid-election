@@ -21,4 +21,17 @@ return [
     */
     'size'   => 512,
     'margin' => 16,
+
+    'store' => env('TRUTH_QR_STORE', 'array'), // 'array' | 'redis'
+
+    'stores' => [
+        'array' => [
+            'ttl' => 0, // no expiry
+        ],
+        'redis' => [
+            'connection' => env('TRUTH_QR_REDIS_CONNECTION', null), // null = default
+            'key_prefix' => env('TRUTH_QR_REDIS_PREFIX', 'truth:qr:'),
+            'ttl'        => env('TRUTH_QR_TTL', 86400),
+        ],
+    ],
 ];
