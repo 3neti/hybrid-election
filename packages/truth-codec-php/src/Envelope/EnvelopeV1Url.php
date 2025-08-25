@@ -5,43 +5,30 @@ namespace TruthCodec\Envelope;
 use TruthCodec\Contracts\Envelope;
 
 /**
- * V1 URL envelope.
+ * URL-based V1 envelope.
  *
- * Supports either:
- *  - deep link:  truth://v1/<prefix>/<code>/<i>/<n>?c=<payload>
- *  - web link:   https://…?truth=v1&prefix=<prefix>&code=<code>&i=<i>&n=<n>&c=<payload>
+ * Supports:
+ *  • Deep link: truth://v1/<prefix>/<code>/<i>/<n>?c=<payload>
+ *  • Web link : https://host/path?truth=v1&prefix=...&code=...&i=...&n=...&c=...
  *
- * Prefix & version are resolved via EnvelopeV1Common (override/config/default).
+ * Configuration (config/truth-codec.php):
+ *
+ *  'envelope' => [
+ *      'prefix'  => 'ER',        // used by both line + url variants (can be ER/BAL/TRUTH/etc.)
+ *      'version' => 'v1',
+ *  ],
+ *  'url' => [
+ *      'scheme'        => 'truth',                        // deep-link scheme
+ *      'web_base'      => null,                           // if set, produce https URL instead of deep link
+ *      'payload_param' => 'c',                            // query key for payload
+ *      'version_param' => 'v',                            // alt key if "truth" not desired
+ *  ],
  */
 final class EnvelopeV1Url implements Envelope
 {
     use EnvelopeV1Common;
 
-    /** URL query key carrying the payload fragment. */
-    private string $payloadParam;
-
-    /** Optional alternative version param for web links (defaults to 'truth'). */
-    private string $versionParam;
-
-    /** Optional web base (when present, we emit http(s) link instead of deep link). */
-    private ?string $webBase;
-
-    /** Deep-link scheme for truth URLs (e.g., "truth"). */
-    private string $scheme;
-
-    public function __construct(
-        string $payloadParam = 'c',
-        string $versionParam = 'truth',
-        ?string $webBase = null,
-        string $scheme = 'truth'
-    ) {
-        $this->payloadParam = $payloadParam;
-        $this->versionParam = $versionParam;
-        $this->webBase      = $webBase;
-        $this->scheme       = $scheme;
-    }
-
-    /** Default logical family token (can be overridden via config/override). */
+    /** Default logical family token (falls back if no config/override). */
     public function prefix(): string { return 'ER'; }
 
     /** Envelope semantic version token. */
@@ -51,7 +38,9 @@ final class EnvelopeV1Url implements Envelope
     public function transport(): string { return 'url'; }
 
     /**
-     * Build a deep link (truth://…) or web URL (http/https) carrying one chunk.
+     * Build a URL for one chunk.
+     * If 'url.web_base' is null → deep link (truth://…)
+     * else → web link (https://…?truth=v1&prefix=…&code=…&i=…&n=…&c=…)
      */
     public function header(string $code, int $index, int $total, string $payloadPart): string
     {
@@ -60,8 +49,15 @@ final class EnvelopeV1Url implements Envelope
         $pfx = $this->configuredPrefix();
         $ver = $this->configuredVersion();
 
-        if ($this->webBase === null) {
-            // truth://v1/<prefix>/<code>/<i>/<n>?c=<payload>
+        // Resolve URL options with defaults
+        $scheme       = $this->cfg('url.scheme', 'truth');
+        $webBase      = $this->cfg('url.web_base', null);
+        $payloadParam = $this->cfg('url.payload_param', 'c');
+        $versionParam = $this->cfg('url.version_param', 'v'); // used only as fallback reader in parse()
+
+        // Prefer deep-link when no web_base configured
+        if ($webBase === null) {
+            // truth://v1/<prefix>/<code>/<i>/<n>?c=payload
             $path = sprintf(
                 '%s/%s/%s/%d/%d',
                 rawurlencode($ver),
@@ -70,89 +66,108 @@ final class EnvelopeV1Url implements Envelope
                 $index,
                 $total
             );
-            $qs = http_build_query([$this->payloadParam => $payloadPart], '', '&', PHP_QUERY_RFC3986);
-            return sprintf('%s://%s?%s', $this->scheme, $path, $qs);
+            $qs = http_build_query([$payloadParam => $payloadPart], '', '&', PHP_QUERY_RFC3986);
+            return sprintf('%s://%s?%s', $scheme, $path, $qs);
         }
 
-        // https://…?truth=v1&prefix=<pfx>&code=<code>&i=<i>&n=<n>&c=<payload>
+        // https://host/path?truth=v1&prefix=ER&code=XYZ&i=2&n=5&c=payload
         $q = [
-            $this->versionParam => $ver,
-            'prefix'            => $pfx,
-            'code'              => $code,
-            'i'                 => $index,
-            'n'                 => $total,
-            $this->payloadParam => $payloadPart,
+            'truth'      => $ver,
+            'prefix'     => $pfx,
+            'code'       => $code,
+            'i'          => $index,
+            'n'          => $total,
+            $payloadParam => $payloadPart,
         ];
         $qs = http_build_query($q, '', '&', PHP_QUERY_RFC3986);
-        return rtrim($this->webBase, '/') . '?' . $qs;
+        return rtrim($webBase, '/') . '?' . $qs;
     }
 
     /**
-     * Parse a truth:// deep link or an http(s) URL back to [code, index, total, payload].
+     * Parse a deep-link or web URL back to [code, index, total, payloadPart].
      */
     public function parse(string $encoded): array
     {
         $pfx = $this->configuredPrefix();
         $ver = $this->configuredVersion();
 
-        // Deep link?
-        if (str_starts_with($encoded, $this->scheme . '://')) {
+        $scheme       = $this->cfg('url.scheme', 'truth');
+        $payloadParam = $this->cfg('url.payload_param', 'c');
+        $versionParam = $this->cfg('url.version_param', 'v');
+
+        // Deep-link: truth://…
+        if (str_starts_with($encoded, $scheme . '://')) {
             $u = parse_url($encoded);
             if (!$u || !isset($u['host'])) {
-                throw new \InvalidArgumentException('Invalid truth:// URL.');
+                throw new \InvalidArgumentException('Invalid deep-link URL.');
             }
 
             // host + path → "v1/<prefix>/<code>/<i>/<n>"
-            $path  = $u['host'] . ($u['path'] ?? '');
-            $segs  = array_values(array_filter(explode('/', $path), 'strlen'));
-            if (count($segs) < 5) {
+            $path = $u['host'] . ($u['path'] ?? '');
+            $parts = array_values(array_filter(explode('/', $path), 'strlen'));
+            if (count($parts) < 5) {
                 throw new \InvalidArgumentException('Invalid deep-link path segments.');
             }
 
-            [$vSeg, $pfxSeg, $code, $i, $n] = $segs;
+            [$v, $p, $code, $i, $n] = $parts;
 
-            if ($vSeg !== $ver || $pfxSeg !== $pfx) {
-                throw new \InvalidArgumentException('Prefix/version mismatch.');
-            }
+            if ($v !== $ver)    throw new \InvalidArgumentException('Envelope version mismatch.');
+            if ($p !== $pfx)    throw new \InvalidArgumentException('Envelope prefix mismatch.');
+
             if (!isset($u['query'])) {
-                throw new \InvalidArgumentException('Missing payload query segment.');
+                throw new \InvalidArgumentException('Missing deep-link query.');
             }
-
             parse_str($u['query'], $q);
-            $payload = $q[$this->payloadParam] ?? null;
+
+            $payload = $q[$payloadParam] ?? null;
             if (!is_string($payload)) {
-                throw new \InvalidArgumentException('Missing payload parameter.');
+                throw new \InvalidArgumentException('Missing payload segment.');
             }
 
             $i = (int) $i;
             $n = (int) $n;
             $this->assertIndexTotal($i, $n);
+
             return [$code, $i, $n, $payload];
         }
 
-        // Web URL?
+        // Web URL: http(s)://…
         if (str_starts_with($encoded, 'http://') || str_starts_with($encoded, 'https://')) {
             $u = parse_url($encoded);
             if (!$u || !isset($u['query'])) {
-                throw new \InvalidArgumentException('Invalid http(s) URL envelope.');
+                throw new \InvalidArgumentException('Invalid web URL envelope.');
             }
             parse_str($u['query'], $q);
 
-            $v  = $q[$this->versionParam] ?? null;
-            $pf = $q['prefix'] ?? null;
-            $cd = $q['code']   ?? null;
-            $i  = isset($q['i']) ? (int) $q['i'] : null;
-            $n  = isset($q['n']) ? (int) $q['n'] : null;
-            $pl = $q[$this->payloadParam] ?? null;
+            $v = $q['truth'] ?? $q[$versionParam] ?? null;
+            $c = $q['code'] ?? null;
+            $i = isset($q['i']) ? (int) $q['i'] : null;
+            $n = isset($q['n']) ? (int) $q['n'] : null;
+            $p = $q['prefix'] ?? null;
+            $payload = $q[$payloadParam] ?? null;
 
-            if ($v !== $ver || $pf !== $pfx || !is_string($cd) || !is_string($pl) || !is_int($i) || !is_int($n)) {
-                throw new \InvalidArgumentException('Missing/invalid URL envelope parameters.');
+            if ($v !== $ver || $p !== $pfx || !is_string($c) || !is_string($payload) || !is_int($i) || !is_int($n)) {
+                throw new \InvalidArgumentException('Missing/invalid URL envelope params.');
             }
 
             $this->assertIndexTotal($i, $n);
-            return [$cd, $i, $n, $pl];
+            return [$c, $i, $n, $payload];
         }
 
-        throw new \InvalidArgumentException('Unsupported envelope string (expected truth:// or http(s) URL).');
+        throw new \InvalidArgumentException('Unsupported envelope string (not a recognized URL).');
+    }
+
+    /**
+     * Convenience config reader under the package namespace.
+     * @param mixed $default
+     * @return mixed
+     */
+    private function cfg(string $key, $default = null)
+    {
+        if (function_exists('config')) {
+            $full = "truth-codec.$key";
+            return config($full, $default);
+        }
+        return $default;
     }
 }

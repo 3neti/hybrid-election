@@ -9,31 +9,32 @@ use TruthCodec\Contracts\Envelope;
  *   <PREFIX>|v1|<CODE>|<i>/<N>|<payload>
  *
  * Prefix & version are resolved via EnvelopeV1Common:
- *  - runtime override constants (PREFIX_OVERRIDE / VERSION_OVERRIDE),
  *  - Laravel config: truth-codec.envelope.{prefix,version},
+ *  - runtime override constants (PREFIX_OVERRIDE / VERSION_OVERRIDE),
  *  - class defaults from prefix()/version().
  */
 final class EnvelopeV1Line implements Envelope
 {
     use EnvelopeV1Common;
 
-    public function __construct(
-        private readonly string $defaultPrefix = 'ER'
-    ) {}
-
-    /** Default logical family token (can be overridden via config/override). */
-    public function prefix(): string { return 'ER'; }
+    /** Default logical family token. */
+    public function prefix(): string
+    {
+        return 'ER'; // fallback if no config/override
+    }
 
     /** Envelope semantic version token. */
-    public function version(): string { return 'v1'; }
+    public function version(): string
+    {
+        return 'v1';
+    }
 
     /** Human-friendly transport form. */
-    public function transport(): string { return 'line'; }
+    public function transport(): string
+    {
+        return 'line';
+    }
 
-    /**
-     * Build a header/line for one chunk.
-     * Format: PREFIX|v1|<CODE>|<i>/<N>|<payload>
-     */
     public function header(string $code, int $index, int $total, string $payloadPart): string
     {
         $this->assertIndexTotal($index, $total);
@@ -44,13 +45,8 @@ final class EnvelopeV1Line implements Envelope
         return sprintf('%s|%s|%s|%d/%d|%s', $pfx, $ver, $code, $index, $total, $payloadPart);
     }
 
-    /**
-     * Parse a line back to [code, index, total, payload].
-     * Accepts only the configured prefix/version.
-     */
     public function parse(string $encoded): array
     {
-        // Expected: PREFIX|v1|<CODE>|i/N|<payload>
         $parts = explode('|', $encoded, 5);
         if (count($parts) < 5) {
             throw new \InvalidArgumentException('Invalid envelope line (expected 5 segments).');

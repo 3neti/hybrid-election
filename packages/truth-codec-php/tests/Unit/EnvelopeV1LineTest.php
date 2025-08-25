@@ -3,7 +3,7 @@
 use TruthCodec\Envelope\EnvelopeV1Line;
 
 it('round-trips a line envelope', function () {
-    $env = new EnvelopeV1Line(); // defaults: prefix=ER, version=v1
+    $env = new EnvelopeV1Line; // defaults: prefix=ER, version=v1
 
     $code = 'XYZ';
     $i    = 2;

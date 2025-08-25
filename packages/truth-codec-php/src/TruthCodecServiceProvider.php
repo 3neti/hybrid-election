@@ -51,18 +51,12 @@ class TruthCodecServiceProvider extends ServiceProvider
 //        // Envelope binding by mode
         $this->app->bind(Envelope::class, function () {
             $transport = config('truth-codec.envelope.transport', 'line'); // 'line' or 'url'
-            $prefix    = config('truth-codec.envelope.prefix', 'ER');
 
             if ($transport === 'url') {
-                return new EnvelopeV1Url(
-                    payloadParam: config('truth-codec.envelope.url.payload', 'c'),
-                    versionParam: config('truth-codec.envelope.url.version', 'v'),
-                    webBase: config('truth-codec.envelope.url.web_base'),
-                    scheme: config('truth-codec.envelope.url.scheme', 'truth'),
-                );
+                return new EnvelopeV1Url;
             }
 
-            return new EnvelopeV1Line(defaultPrefix: $prefix);
+            return new EnvelopeV1Line;
         });
 
         // Registry with named serializers for easy lookup and custom wiring.
