@@ -35,5 +35,24 @@ use App\Http\Controllers\PrintErController;
 
 Route::get('/print/er/{code}', PrintErController::class)->name('print.er');
 
+use TruthQr\TruthQrPublisher;
+use TruthQr\Writers\BaconQrWriter;
+
+Route::get('/demo-publish', function (TruthQrPublisher $publisher) {
+    $payload = [
+        'type' => 'ER',
+        'code' => 'DEMO123',
+        'data' => ['hello' => 'world'],
+    ];
+
+    $writer = new BaconQrWriter('svg');
+    $images = $publisher->publishQrImages($payload, $payload['code'], $writer, [
+        'by' => 'count',
+        'count' => 2,
+    ]);
+
+    return response()->json($images);
+});
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

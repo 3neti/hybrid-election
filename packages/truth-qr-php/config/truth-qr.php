@@ -1,19 +1,23 @@
 <?php
 
+use TruthCodec\Transport\Base64UrlTransport;
+use TruthCodec\Serializer\JsonSerializer;
+use TruthCodec\Envelope\EnvelopeV1Url;
+
 return [
     // Which writer to bind by default: 'null' | 'bacon'
-    'driver' => env('TRUTH_QR_DRIVER', 'null'),
+    'driver' => env('TRUTH_QR_DRIVER', 'null'), /** @deprecated */
 
     // Default output format for writers that support multiple formats.
     // bacon: 'svg' (no deps) or 'png' (requires GD/Imagick)
-    'default_format' => env('TRUTH_QR_FORMAT', 'png'),
+    'default_format' => env('TRUTH_QR_FORMAT', 'png'), /** @deprecated */
 
     // Bacon settings
     'bacon' => [
         'size'    => (int) env('TRUTH_QR_SIZE', 512),     // pixels
         'margin'  => (int) env('TRUTH_QR_MARGIN', 16),    // quiet zone
         'level'   => env('TRUTH_QR_ECLEVEL', 'M'),        // L | M | Q | H
-    ],
+    ], /** @deprecated */
     /*
     |--------------------------------------------------------------------------
     | Default QR size & margin
@@ -41,5 +45,49 @@ return [
     'routes' => [
         'prefix' => 'truth',
         'middleware' => ['web'],
+    ],
+
+    /*
+|--------------------------------------------------------------------------
+| Core codec collaborators
+|--------------------------------------------------------------------------
+| You can point these at alternative implementations (FQCN strings).
+| They MUST implement the corresponding TruthCodec\Contracts interfaces.
+*/
+    'serializer' => JsonSerializer::class,           // implements PayloadSerializer
+    'transport'  => Base64UrlTransport::class,      // implements TransportCodec
+    'envelope'   => EnvelopeV1Url::class,           // implements TruthCodec\Contracts\Envelope
+
+    /*
+    |--------------------------------------------------------------------------
+    | Default QR writer
+    |--------------------------------------------------------------------------
+    | Choose which writer to bind to TruthQr\Contracts\TruthQrWriter.
+    | driver: 'bacon' | 'null'
+    | format: 'svg' (default), 'png'
+    */
+    'writer' => [
+        'driver' => env('TRUTH_QR_WRITER', 'bacon'),
+        'format' => env('TRUTH_QR_FORMAT', 'svg'),
+
+        // BaconQR defaults
+        'bacon' => [
+            'size'   => (int) env('TRUTH_QR_SIZE', 512),
+            'margin' => (int) env('TRUTH_QR_MARGIN', 16),
+            'level'  => env('TRUTH_QR_ECLEVEL', 'M'),        // L | M | Q | H
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Publish strategy defaults
+    |--------------------------------------------------------------------------
+    | How TruthQrPublisher splits payloads into chunks for envelopes/QRs.
+    | strategy: 'count' (N equal-ish parts) or 'size' (max chars per part)
+    */
+    'publish' => [
+        'strategy' => env('TRUTH_QR_PUBLISH_STRATEGY', 'count'), // 'count'|'size'
+        'count'    => (int) env('TRUTH_QR_PUBLISH_COUNT', 3),
+        'size'     => (int) env('TRUTH_QR_PUBLISH_SIZE', 800),
     ],
 ];

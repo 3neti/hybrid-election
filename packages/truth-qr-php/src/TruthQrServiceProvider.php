@@ -2,6 +2,8 @@
 
 namespace TruthQr;
 
+use TruthCodec\Contracts\PayloadSerializer;
+use TruthCodec\Contracts\TransportCodec;
 use TruthQr\Assembly\Contracts\TruthAssemblerContract;
 use Illuminate\Support\ServiceProvider;
 use TruthCodec\Contracts\Envelope;
@@ -15,6 +17,10 @@ use TruthQr\Stores\RedisTruthStore;
 use TruthQr\Assembly\TruthAssembler;
 use Illuminate\Support\Facades\Route;
 use TruthQr\Support\RouteRegistrar;
+use TruthCodec\Serializer\JsonSerializer;
+use TruthCodec\Transport\Base64UrlTransport;
+use TruthQr\TruthQrPublisher;
+use TruthQr\Publishing\TruthQrPublisherFactory;
 
 class TruthQrServiceProvider extends ServiceProvider
 {
@@ -30,22 +36,22 @@ class TruthQrServiceProvider extends ServiceProvider
             return new EnvelopeV1Url();
         });
 
-        $this->app->bind(TruthQrWriter::class, function ($app) {
-            $driver = config('truth-qr.driver', 'bacon');
-            $fmt    = config('truth-qr.default_format', 'svg');
-
-            if ($driver === 'bacon') {
-                $cfg = config('truth-qr.bacon', []);
-                return new BaconQrWriter(
-                    fmt:    $fmt,
-                    size:   (int)($cfg['size']   ?? 512),
-                    margin: (int)($cfg['margin'] ?? 16)
-                );
-            }
-
-            // Fallback: null writer
-            return new NullQrWriter($fmt);
-        });
+//        $this->app->bind(TruthQrWriter::class, function ($app) {
+//            $driver = config('truth-qr.driver', 'bacon');
+//            $fmt    = config('truth-qr.default_format', 'svg');
+//
+//            if ($driver === 'bacon') {
+//                $cfg = config('truth-qr.bacon', []);
+//                return new BaconQrWriter(
+//                    fmt:    $fmt,
+//                    size:   (int)($cfg['size']   ?? 512),
+//                    margin: (int)($cfg['margin'] ?? 16)
+//                );
+//            }
+//
+//            // Fallback: null writer
+//            return new NullQrWriter($fmt);
+//        });
 
         // TruthStore binding (configurable)
         $this->app->bind(TruthStore::class, function ($app) {
@@ -77,6 +83,70 @@ class TruthQrServiceProvider extends ServiceProvider
                 transport: $app->make(\TruthCodec\Contracts\TransportCodec::class),
                 serializer: $app->make(\TruthCodec\Contracts\PayloadSerializer::class),
             );
+        });
+
+        // Bind TruthQrPublisher as a singleton
+//        $this->app->singleton(TruthQrPublisher::class, function ($app) {
+//            // For now: hard-coded defaults (can be replaced by config later)
+//            $serializer = new JsonSerializer();
+//            $transport  = new Base64UrlTransport();
+//            $envelope   = new EnvelopeV1Url();
+//
+//            return new TruthQrPublisher(
+//                serializer: $serializer,
+//                transport: $transport,
+//                envelope: $envelope,
+//            );
+//        });
+        // Bind TruthQrWriter via config
+        $this->app->bind(TruthQrWriter::class, function ($app) {
+            $cfg = (array) config('truth-qr.writer', []);
+            $driver = $cfg['driver'] ?? 'bacon';
+            $format = $cfg['format'] ?? 'svg';
+
+            return match ($driver) {
+                'null'  => new NullQrWriter($format),
+                'bacon' => new BaconQrWriter(
+                    fmt: $format,
+                    size: (int) ($cfg['bacon']['size']   ?? 512),
+                    margin: (int) ($cfg['bacon']['margin'] ?? 16),
+                ),
+                default => throw new \InvalidArgumentException("Unknown TruthQr writer driver: {$driver}"),
+            };
+        });
+
+        // Bind TruthQrPublisher using config-driven collaborators
+        $this->app->singleton(TruthQrPublisher::class, function ($app) {
+            $serializerFqcn = (string) config('truth-qr.serializer');
+            $transportFqcn  = (string) config('truth-qr.transport');
+            $envelopeFqcn   = (string) config('truth-qr.envelope');
+
+            /** @var PayloadSerializer $serializer */
+            $serializer = $app->make($serializerFqcn);
+            /** @var TransportCodec $transport */
+            $transport  = $app->make($transportFqcn);
+            /** @var Envelope $envelope */
+            $envelope   = $app->make($envelopeFqcn);
+
+            return new TruthQrPublisher(
+                serializer: $serializer,
+                transport:  $transport,
+                envelope:   $envelope,
+            );
+        });
+
+        $this->app->singleton(TruthQrPublisherFactory::class, function ($app) {
+            /** @var TruthQrPublisher $publisher */
+            $publisher = $app->make(TruthQrPublisher::class);
+
+            $pubCfg = (array) config('truth-qr.publish', []);
+            $defaults = [
+                'strategy' => $pubCfg['strategy'] ?? 'count', // 'count' | 'size'
+                'count'    => (int) ($pubCfg['count'] ?? 3),
+                'size'     => (int) ($pubCfg['size']  ?? 800),
+            ];
+
+            return new TruthQrPublisherFactory($publisher, $defaults);
         });
     }
 
