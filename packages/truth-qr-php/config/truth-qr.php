@@ -74,7 +74,13 @@ return [
         'bacon' => [
             'size'   => (int) env('TRUTH_QR_SIZE', 512),
             'margin' => (int) env('TRUTH_QR_MARGIN', 16),
-            'level'  => env('TRUTH_QR_ECLEVEL', 'M'),        // L | M | Q | H
+        ],
+        'endroid' => [
+            'size'   => (int) env('TRUTH_QR_SIZE', 512),
+            'margin' => (int) env('TRUTH_QR_MARGIN', 16),
+            'writer_options' => [
+                \Endroid\QrCode\Writer\SvgWriter::WRITER_OPTION_EXCLUDE_XML_DECLARATION => true,
+            ],
         ],
     ],
 

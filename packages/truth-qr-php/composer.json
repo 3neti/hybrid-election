@@ -24,7 +24,8 @@
         "illuminate/support": "^12.0",
         "lbhurtado/truth-codec-php": "dev-main",
         "ext-json": "*",
-        "bacon/bacon-qr-code": "^3.0"
+        "bacon/bacon-qr-code": "^3.0",
+        "endroid/qr-code": "^6.0"
     },
     "require-dev": {
         "orchestra/testbench": "^10.3",

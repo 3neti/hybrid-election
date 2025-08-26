@@ -11,7 +11,7 @@ use TruthCodec\Envelope\EnvelopeV1Url;   // pulled from truth-codec-php
 use TruthQr\Classify\Classify;
 use TruthQr\Contracts\TruthQrWriter;
 use TruthQr\Writers\NullQrWriter;
-use TruthQr\Writers\BaconQrWriter;
+use TruthQr\Writers\{BaconQrWriter, EndroidQrWriter};
 use TruthQr\Contracts\TruthStore;
 use TruthQr\Stores\ArrayTruthStore;
 use TruthQr\Stores\RedisTruthStore;
@@ -86,35 +86,75 @@ class TruthQrServiceProvider extends ServiceProvider
             );
         });
 
-        // Bind TruthQrPublisher as a singleton
-//        $this->app->singleton(TruthQrPublisher::class, function ($app) {
-//            // For now: hard-coded defaults (can be replaced by config later)
-//            $serializer = new JsonSerializer();
-//            $transport  = new Base64UrlTransport();
-//            $envelope   = new EnvelopeV1Url();
-//
-//            return new TruthQrPublisher(
-//                serializer: $serializer,
-//                transport: $transport,
-//                envelope: $envelope,
-//            );
-//        });
         // Bind TruthQrWriter via config
-        $this->app->bind(TruthQrWriter::class, function ($app) {
-            $cfg = (array) config('truth-qr.writer', []);
-            $driver = $cfg['driver'] ?? 'bacon';
-            $format = $cfg['format'] ?? 'svg';
+        $this->app->singleton(TruthQrWriter::class, function ($app) {
+            $cfg    = (array) config('truth-qr.writer', []);
+            $driver = strtolower((string) ($cfg['driver'] ?? 'bacon'));
+            $format = strtolower((string) ($cfg['format'] ?? 'svg'));
+
+            $bacon  = (array) ($cfg['bacon']   ?? []);
+            $endrd  = (array) ($cfg['endroid'] ?? []);
 
             return match ($driver) {
-                'null'  => new NullQrWriter($format),
-                'bacon' => new BaconQrWriter(
-                    fmt: $format,
-                    size: (int) ($cfg['bacon']['size']   ?? 512),
-                    margin: (int) ($cfg['bacon']['margin'] ?? 16),
-                ),
+                'null' => new NullQrWriter($format),
+
+                'bacon' => (function () use ($format, $bacon) {
+                    if (!in_array($format, ['svg','png','eps'], true)) {
+                        throw new \InvalidArgumentException("BaconQrWriter does not support format '{$format}'.");
+                    }
+                    if (!class_exists(\BaconQrCode\Writer::class)) {
+                        throw new \RuntimeException("bacon/qr-code not installed but 'bacon' writer selected.");
+                    }
+
+                    return new BaconQrWriter(
+                        fmt:    $format,
+                        size:   (int) ($bacon['size']   ?? 512),
+                        margin: (int) ($bacon['margin'] ?? 16),
+                    );
+                })(),
+
+                'endroid' => (function () use ($format, $endrd) {
+                    if (!in_array($format, ['svg','png'], true)) {
+                        throw new \InvalidArgumentException("EndroidQrWriter supports only 'svg' or 'png', got '{$format}'.");
+                    }
+                    if (!class_exists(\Endroid\QrCode\Builder\Builder::class)) {
+                        throw new \RuntimeException("endroid/qr-code not installed but 'endroid' writer selected.");
+                    }
+
+                    // NEW: pass writer options through to Endroid (e.g., SVG flags)
+                    $writerOptions = (array) ($endrd['writer_options'] ?? []);
+
+                    return new EndroidQrWriter(
+                        fmt:           $format,
+                        size:          (int) ($endrd['size']   ?? 512),
+                        margin:        (int) ($endrd['margin'] ?? 16),
+                        writerOptions: $writerOptions,
+                    );
+                })(),
+
                 default => throw new \InvalidArgumentException("Unknown TruthQr writer driver: {$driver}"),
             };
         });
+//        $this->app->bind(TruthQrWriter::class, function ($app) {
+//            $cfg = (array) config('truth-qr.writer', []);
+//            $driver = $cfg['driver'] ?? 'bacon';
+//            $format = $cfg['format'] ?? 'svg';
+//
+//            return match ($driver) {
+//                'null'  => new NullQrWriter($format),
+//                'bacon' => new BaconQrWriter(
+//                    fmt: $format,
+//                    size: (int) ($cfg['bacon']['size']   ?? 512),
+//                    margin: (int) ($cfg['bacon']['margin'] ?? 16),
+//                ),
+//                'endroid' => new EndroidQrWriter(
+//                    fmt: $format,
+//                    size: (int) ($cfg['endroid']['size']   ?? 512),
+//                    margin: (int) ($cfg['endroid']['margin'] ?? 16),
+//                ),
+//                default => throw new \InvalidArgumentException("Unknown TruthQr writer driver: {$driver}"),
+//            };
+//        });
 
         // Bind TruthQrPublisher using config-driven collaborators
         $this->app->singleton(TruthQrPublisher::class, function ($app) {
