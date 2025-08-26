@@ -8,6 +8,7 @@ use TruthQr\Assembly\Contracts\TruthAssemblerContract;
 use Illuminate\Support\ServiceProvider;
 use TruthCodec\Contracts\Envelope;
 use TruthCodec\Envelope\EnvelopeV1Url;   // pulled from truth-codec-php
+use TruthQr\Classify\Classify;
 use TruthQr\Contracts\TruthQrWriter;
 use TruthQr\Writers\NullQrWriter;
 use TruthQr\Writers\BaconQrWriter;
@@ -147,6 +148,12 @@ class TruthQrServiceProvider extends ServiceProvider
             ];
 
             return new TruthQrPublisherFactory($publisher, $defaults);
+        });
+
+        $this->app->singleton(Classify::class, function ($app) {
+            return new Classify(
+                $app->make(TruthAssemblerContract::class)
+            );
         });
     }
 

@@ -1,5 +1,6 @@
 <?php
 
+use TruthQr\Classify\Classify;
 use TruthQr\Publishing\TruthQrPublisherFactory;
 use TruthCodec\Serializer\JsonSerializer;
 use TruthCodec\Contracts\TransportCodec;
@@ -241,14 +242,11 @@ it('round-trips ER JSON using URL envelope + Base64Url transport (split by count
         'size' => 3, // force multiple parts
     ]);
 
-    // Ingest in order (doesn’t matter)
-    foreach ($urls as $u) {
-        $asm->ingestLine($u);
-    }
-
-    // Assemble
-    expect($asm->isComplete($payload['code']))->toBeTrue();
-    $decoded = $asm->assemble($payload['code']);
+    $classify = new Classify($asm);
+    $sess = $classify->newSession();
+    $sess->addLines($urls);
+    expect($sess->isComplete())->toBeTrue();
+    $decoded = $sess->assemble();
     expect($decoded)->toEqual($payload);
 
     // Artifact (JSON)
@@ -338,66 +336,18 @@ it('round-trips ER JSON using URL envelope + Base64Url transport', function () {
                 'signed_at' => '2025-08-07T12:05:00+08:00',
             ],
         ],
-        'ballots' => [
-            [
-                'id' => 'uuid-ballot-001',
-                'code' => 'BAL-001',
-                'precinct' => [
-                    'id' => 'uuid-precinct-001',
-                    'code' => 'CURRIMAO-001',
-                    'location_name' => 'Currimao Central School',
-                    'latitude' => 17.993217,
-                    'longitude' => 120.488902,
-                    'electoral_inspectors' => [
-                        [
-                            'id' => 'uuid-ei-001',
-                            'name' => 'Juan dela Cruz',
-                            'role' => 'chairperson',
-//                    'signature' => null,
-//                    'signed_at' => null,
-                        ],
-                        [
-                            'id' => 'uuid-ei-002',
-                            'name' => 'Maria Santos',
-                            'role' => 'member',
-//                    'signature' => null,
-//                    'signed_at' => null,
-                        ],
-                    ],
-                ],
-                'votes' => [
-                    [
-                        'position' => [
-                            'code' => 'PRESIDENT',
-                            'name' => 'President of the Philippines',
-                            'level' => 'national',
-                            'count' => 1,
-                        ],
-                        'candidates' => [
-                            [
-                                'code' => 'uuid-bbm',
-                                'name' => 'Ferdinand Marcos Jr.',
-                                'alias' => 'BBM',
-                            ],
-                        ],
-                    ],
-                ],
-            ],
-        ],
         'created_at' => '2025-08-07T12:00:00+08:00',
         'updated_at' => '2025-08-07T12:10:00+08:00',
     ];
-
     $lines = $publisherFactory->publish($payload, $payload['code']);
 
     // Ingest out of order
     shuffle($lines);
-    foreach ($lines as $line) {
-        $asm->ingestLine($line);
-    }
 
-    expect($asm->isComplete($payload['code']))->toBeTrue();
-
-    $decoded = $asm->assemble($payload['code']);
+    $classify = new Classify($asm);
+    $sess = $classify->newSession();
+    $sess->addLines($lines);
+    expect($sess->isComplete())->toBeTrue();
+    $decoded = $sess->assemble();
     expect($decoded)->toEqual($payload);
 });

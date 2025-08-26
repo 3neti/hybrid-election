@@ -24,4 +24,15 @@ abstract class TestCase extends BaseTestCase
         // Optional: override any config defaults here during tests
         $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
     }
+
+    protected function defineRoutes($router): void
+    {
+        // Option A: just include your package route file
+        require __DIR__ . '/../routes/truth-qr.php';
+
+        // Option B (if you want to mount under /api with middleware during tests):
+        // $router->middleware('throttle:60,1')->group(function () use ($router) {
+        //     require __DIR__ . '/../routes/truth-qr.php';
+        // });
+    }
 }

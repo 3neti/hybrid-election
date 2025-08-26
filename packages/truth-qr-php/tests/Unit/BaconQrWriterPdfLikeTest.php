@@ -3,8 +3,9 @@
 declare(strict_types=1);
 
 use BaconQrCode\Renderer\Image\ImagickImageBackEnd; // used in optional conversion test
-use BaconQrCode\Renderer\Image\EpsImageBackEnd; // vector EPS backend
+use BaconQrCode\Renderer\Image\EpsImageBackEnd;     // vector EPS backend
 use TruthQr\Contracts\TruthQrWriter;
+use TruthQr\Writers\BaconQrWriter;
 
 /**
  * EPS is BaconQrCode's vector “print-friendly” backend.
@@ -15,9 +16,8 @@ it('renders EPS vector data for given lines', function () {
         $this->markTestSkipped('EPS backend (EpsImageBackEnd) not available.');
     }
 
-    // Ensure we use the Bacon writer + EPS format
-    config()->set('truth-qr.driver', 'bacon');
-    config()->set('truth-qr.default_format', 'eps');
+    // Explicitly bind Bacon writer with EPS format
+    app()->bind(TruthQrWriter::class, fn () => new BaconQrWriter('eps', 512, 16));
 
     /** @var TruthQrWriter $writer */
     $writer = app(TruthQrWriter::class);
@@ -45,7 +45,6 @@ it('renders EPS vector data for given lines', function () {
     expect(strlen($out[2]))->toBeGreaterThan(100);
 });
 
-
 /**
  * OPTIONAL smoke test: convert EPS to PDF using Imagick.
  * This requires Ghostscript + Imagick PDF support and is brittle in CI.
@@ -60,8 +59,8 @@ it('optionally converts EPS to PDF via Imagick (smoke test)', function () {
         $this->markTestSkipped('Guarded by ENABLE_EPS_TO_PDF_TEST env flag.');
     }
 
-    config()->set('truth-qr.driver', 'bacon');
-    config()->set('truth-qr.default_format', 'eps');
+    // Explicit binding again
+    app()->bind(TruthQrWriter::class, fn () => new BaconQrWriter('eps', 512, 16));
 
     /** @var TruthQrWriter $writer */
     $writer = app(TruthQrWriter::class);
