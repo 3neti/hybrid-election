@@ -3,6 +3,7 @@
 use TruthCodec\Transport\Base64UrlTransport;
 use TruthCodec\Serializer\JsonSerializer;
 use TruthCodec\Envelope\EnvelopeV1Url;
+use TruthCodec\Contracts\Envelope;
 
 return [
     // Which writer to bind by default: 'null' | 'bacon'
@@ -56,7 +57,7 @@ return [
 */
     'serializer' => JsonSerializer::class,           // implements PayloadSerializer
     'transport'  => Base64UrlTransport::class,      // implements TransportCodec
-    'envelope'   => EnvelopeV1Url::class,           // implements TruthCodec\Contracts\Envelope
+    'envelope'   => app(Envelope::class)::class,           // implements TruthCodec\Contracts\Envelope
 
     /*
     |--------------------------------------------------------------------------

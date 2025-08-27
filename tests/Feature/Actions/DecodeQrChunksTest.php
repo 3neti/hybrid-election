@@ -122,9 +122,20 @@ it('reports missing indices when a chunk is absent', function () {
     );
 
     // Remove one chunk intentionally
+//    $lines = collect($qr['chunks'])
+//        ->sortBy('index')
+//        ->reject(fn ($c) => $c['index'] === 2) // remove #2
+//        ->pluck('text')
+//        ->values()
+//        ->all();
     $lines = collect($qr['chunks'])
         ->sortBy('index')
-        ->reject(fn ($c) => $c['index'] === 2) // remove #2
+        ->reject(function ($c) {
+            // header is "...|i/N|payload"
+            $idxTot = explode('|', $c['text'], 5)[3] ?? '';
+            $i = (int) explode('/', $idxTot, 2)[0];
+            return $i === 2; // drop header index 2
+        })
         ->pluck('text')
         ->values()
         ->all();

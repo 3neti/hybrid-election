@@ -23,6 +23,6 @@ return [
     // which serializer to use for ENCODE when using AutoDetectSerializer
     'primary' => 'json',
 
-    // Transport: 'none', 'base64url', 'base64url+gzip'
-    'transport' => env('TRUTH_TRANSPORT', 'none'),
+    // Transport: 'none', 'base64url', 'base64url+gzip', 'base64url+deflate'
+    'transport' => env('TRUTH_TRANSPORT', 'base64url+deflate'),
 ];

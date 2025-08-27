@@ -30,12 +30,12 @@ class TruthQrServiceProvider extends ServiceProvider
         // Merge default config
         $this->mergeConfigFrom(__DIR__ . '/../config/truth-qr.php', 'truth-qr');
 
-        // Bind the Envelope used for URL generation (configurable)
-        $this->app->bind(Envelope::class, function ($app) {
-            // You can switch to EnvelopeV1Line if you prefer line style
-            // or read a custom class name from config later.
-            return new EnvelopeV1Url();
-        });
+//        // Bind the Envelope used for URL generation (configurable)
+//        $this->app->bind(Envelope::class, function ($app) {
+//            // You can switch to EnvelopeV1Line if you prefer line style
+//            // or read a custom class name from config later.
+//            return new EnvelopeV1Url();
+//        });
 
 //        $this->app->bind(TruthQrWriter::class, function ($app) {
 //            $driver = config('truth-qr.driver', 'bacon');

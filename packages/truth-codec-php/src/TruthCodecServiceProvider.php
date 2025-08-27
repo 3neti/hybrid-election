@@ -10,6 +10,7 @@ use TruthCodec\Serializer\JsonSerializer;
 use TruthCodec\Serializer\SerializerRegistry;
 use TruthCodec\Serializer\TransportRegistry;
 use TruthCodec\Serializer\YamlSerializer;
+use TruthCodec\Transport\Base64UrlDeflateTransport;
 use TruthCodec\Transport\Base64UrlGzipTransport;
 use TruthCodec\Transport\Base64UrlTransport;
 use TruthCodec\Transport\NoopTransport;
@@ -50,9 +51,9 @@ class TruthCodecServiceProvider extends ServiceProvider
 
 //        // Envelope binding by mode
         $this->app->bind(Envelope::class, function () {
-            $transport = config('truth-codec.envelope.transport', 'line'); // 'line' or 'url'
+            $mode = config('truth-codec.envelope.mode', 'line'); // 'line' or 'url'
 
-            if ($transport === 'url') {
+            if ($mode === 'url') {
                 return new EnvelopeV1Url;
             }
 
@@ -89,9 +90,10 @@ class TruthCodecServiceProvider extends ServiceProvider
         // Transports
         $this->app->singleton(TransportRegistry::class, function () {
             return new TransportRegistry([
-                'none' => new NoopTransport(),
-                'base64url' => new Base64UrlTransport(),
-                'base64url+gzip' => new Base64UrlGzipTransport(),
+                'none'                => new NoopTransport(),
+                'base64url'           => new Base64UrlTransport(),
+                'base64url+gzip'      => new Base64UrlGzipTransport(),
+                'base64url+deflate'   => new Base64UrlDeflateTransport(), // ✅ fixed
             ]);
         });
 
