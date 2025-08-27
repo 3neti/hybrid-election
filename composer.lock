@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6dff198173905530e7fe7c7fd4ced026",
+    "content-hash": "51f9800181cf06b3b9fee58d8e0d590c",
     "packages": [
         {
             "name": "amphp/amp",
@@ -3035,10 +3035,11 @@
             "dist": {
                 "type": "path",
                 "url": "packages/truth-qr-php",
-                "reference": "31d332704158b2bce1a1d332a15115accb5b3ac5"
+                "reference": "85b752505b2554b4469cfb1868faea4e769effd9"
             },
             "require": {
                 "bacon/bacon-qr-code": "^3.0",
+                "endroid/qr-code": "^6.0",
                 "ext-json": "*",
                 "illuminate/support": "^12.0",
                 "lbhurtado/truth-codec-php": "dev-main",
@@ -3075,6 +3076,54 @@
                 "proprietary"
             ],
             "description": "QR writer utilities for TRUTH envelopes (line & URL) using truth-codec-php.",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "lbhurtado/truth-qr-ui",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "packages/truth-qr-ui",
+                "reference": "930c4de1b6a19a0733609c0d3599cc1ef779befe"
+            },
+            "require": {
+                "illuminate/support": "^12.0",
+                "lbhurtado/truth-qr-php": "dev-main",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^10.3",
+                "pestphp/pest": "^3.8"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "TruthQrUi\\TruthQrUiServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "TruthQrUi\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "TruthQrUi\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "vendor/bin/pest"
+                ]
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "Visual UI for truth-codec-php and truth-qr-php: encode payloads to QR chunks and decode them back",
             "transport-options": {
                 "relative": true
             }
@@ -12182,7 +12231,8 @@
     "aliases": [],
     "minimum-stability": "dev",
     "stability-flags": {
-        "lbhurtado/truth-qr-php": 20
+        "lbhurtado/truth-qr-php": 20,
+        "lbhurtado/truth-qr-ui": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,
