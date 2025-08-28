@@ -2,47 +2,33 @@
 
 namespace TruthQrUi\Actions;
 
-use TruthCodec\Contracts\{Envelope, PayloadSerializer, TransportCodec};
 use Lorisleiva\Actions\Concerns\AsAction;
-use TruthQrUi\Support\CodecAliasFactory;
 use Lorisleiva\Actions\ActionRequest;
 use TruthQr\Assembly\TruthAssembler;
-use TruthQr\Stores\ArrayTruthStore;
 use TruthQr\Classify\Classify;
+use TruthQr\Stores\ArrayTruthStore;
+use TruthCodec\Contracts\Envelope;
+use TruthCodec\Contracts\PayloadSerializer;
+use TruthCodec\Contracts\TransportCodec;
+use TruthQrUi\Support\CodecAliasFactory;
 
-/**
- * DecodePayload
- *
- * Ingest TRUTH envelope lines/URLs and (when complete) return the decoded payload
- * using **explicitly provided collaborators** (no IoC bindings inside handle()).
- *
- * Programmatic usage:
- *   $res = app(DecodePayload::class)->handle(
- *       lines:      [... "truth://v1/..." or "ER|v1|..." ...],
- *       envelope:   new EnvelopeV1Url(),           // or EnvelopeV1Line
- *       transport:  new Base64UrlDeflateTransport(),
- *       serializer: new JsonSerializer(),
- *   );
- *
- * Returns:
- *   [
- *     'code'     => string,
- *     'total'    => int,
- *     'received' => int,
- *     'missing'  => int[],
- *     'complete' => bool,
- *     'payload'  => array|null,  // present when complete
- *   ]
- */
 final class DecodePayload
 {
     use AsAction;
 
     /**
-     * @param  array<int,string> $lines One line per element (ER|v1|... or truth://v1/...)
+     * Handle: ingest chunk lines and return the decoded payload (if complete)
+     * plus helpful status.
+     *
+     * @param string[]          $lines  One line / URL per element (ER|v1|... or truth://v1/...)
+     * @param Envelope          $envelope
+     * @param TransportCodec    $transport
+     * @param PayloadSerializer $serializer
      * @return array{
-     *   code:string,total:int,received:int,missing:array<int,int>,complete:bool,
-     *   payload?:array<string,mixed>
+     *   code?:string,total?:int,received?:int,missing?:int[],
+     *   complete:bool,
+     *   payload?:array<string,mixed>,
+     *   artifact?:array{mime:string,body:string}
      * }
      */
     public function handle(
@@ -62,77 +48,126 @@ final class DecodePayload
         $sess     = $classify->newSession();
         $sess->addLines($lines);
 
-        $st = $sess->status();        // ['code','total','received','missing'=>[]]
+        $st = $sess->status(); // ['code','total','received','missing'=>[]]
         $complete = $sess->isComplete();
 
         $out = [
-            'code'     => (string)($st['code'] ?? ''),
-            'total'    => (int)   ($st['total'] ?? 0),
-            'received' => (int)   ($st['received'] ?? 0),
-            'missing'  => array_values($st['missing'] ?? []),
-            'complete' => $complete,
-        ];
+                'complete' => $complete,
+            ] + $st;
 
         if ($complete) {
-            $out['payload'] = $sess->assemble();
+            try {
+                // Attempt to assemble the full payload. If a conflicting/tainted
+                // piece slipped through (e.g., duplicate with altered payload),
+                // downstream decoding may throw. Normalize that to a 422.
+                $payload = $sess->assemble(); // decoded array
+            } catch (\Throwable $e) {
+                abort(422, 'Failed to assemble payload (corrupted or conflicting chunks): ' . $e->getMessage());
+            }
+
+            $out['payload'] = $payload;
+
+            if (method_exists($asm, 'artifact')) {
+                $art = $asm->artifact($st['code']);
+                if (is_array($art)) {
+                    $out['artifact'] = $art; // ['mime' => ..., 'body' => ...]
+                }
+            }
         }
 
         return $out;
+
+//        $st = $sess->status(); // ['code','total','received','missing'=>[]]
+//        $complete = $sess->isComplete();
+//
+//        $out = [
+//                'complete' => $complete,
+//            ] + $st;
+//
+//        if ($complete) {
+//            $payload = $sess->assemble(); // decoded array
+//            $out['payload'] = $payload;
+//
+//            if (method_exists($asm, 'artifact')) {
+//                $art = $asm->artifact($st['code']);
+//                if (is_array($art)) {
+//                    $out['artifact'] = $art; // ['mime' => ..., 'body' => ...]
+//                }
+//            }
+//        }
+//
+//        return $out;
     }
 
     /**
-     * HTTP controller entrypoint (explicit constructor style with friendly aliases).
+     * Slim HTTP controller: resolves collaborators (aliases or FQCN),
+     * normalizes input lines, calls handle(), and returns JSON.
      *
-     * POST /api/decode
-     * Body:
-     * {
-     *   "lines": ["truth://v1/...", ...] | "chunks": [{"text":"..."}, ...],
-     *   "envelope":   "v1url"|"v1line"                      (default: v1url)
-     *   "transport":  "base64url"|"base64url+deflate"|...   (default: base64url+deflate)
-     *   "serializer": "json"|"yaml"|"auto"                  (default: json)
+     * Body accepts either:
+     *   - "lines":  ["ER|v1|...","truth://v1/..."]
+     *   - "chunks": [{"text":"..."}]
      *
-     *   // or pass FQCNs instead of aliases:
-     *   "envelope_fqcn":   "\\TruthCodec\\Envelope\\EnvelopeV1Url",
-     *   "transport_fqcn":  "\\TruthCodec\\Transport\\Base64UrlDeflateTransport",
-     *   "serializer_fqcn": "\\TruthCodec\\Serializer\\JsonSerializer"
-     * }
+     * And codec specifiers by alias (preferred) or FQCN:
+     *   - envelope:  v1line | v1url         (alias)
+     *   - transport: base64url | base64url+deflate | base64url+gzip (alias)
+     *   - serializer: json | yaml | auto    (alias)
+     * or:
+     *   - envelope_fqcn, transport_fqcn, serializer_fqcn (FQCNs)
      */
     public function asController(ActionRequest $request)
     {
-        try {
-            $lines = $this->extractLines($request->input('lines'), $request->input('chunks'));
+        // 1) Resolve collaborators (aliases first, FQCN fallbacks)
+        [$envelope, $transport, $serializer] = $this->resolveCollaborators($request);
 
-            $envAlias = (string) $request->input('envelope', 'v1line');
-            $txAlias  = (string) $request->input('transport', 'base64url');
-            $serAlias = (string) $request->input('serializer', 'json');
+        // 2) Normalize input lines (supports 'lines' OR 'chunks')
+        $lines = $this->extractLines($request->input('lines'), $request->input('chunks'));
 
-            $envelope   = \TruthQrUi\Support\CodecAliasFactory::makeEnvelope($envAlias);
-            $transport  = \TruthQrUi\Support\CodecAliasFactory::makeTransport($txAlias);
-            $serializer = \TruthQrUi\Support\CodecAliasFactory::makeSerializer($serAlias);
+        // 3) Execute core
+        $res = $this->handle($lines, $envelope, $transport, $serializer);
 
-            $res = $this->handle($lines, $envelope, $transport, $serializer);
-
-            return response()->json($res);
-        } catch (\InvalidArgumentException|\JsonException $e) {
-            // bad input / corrupted payload / conflicting duplicate, etc.
-            return response()->json(['error' => $e->getMessage()], 422);
-        } catch (\Throwable $e) {
-            // keep logs, return safe error
-            report($e);
-            return response()->json(['error' => 'Decode failed'], 422);
-        }
+        // 4) Return raw result; shape already friendly for Decode
+        return response()->json($res);
     }
 
-    // -------- helpers --------
+    /** @return array{0:Envelope,1:TransportCodec,2:PayloadSerializer} */
+    private function resolveCollaborators(ActionRequest $request): array
+    {
+        // Aliases (preferred)
+        $envAlias = $request->input('envelope');   // 'v1line' | 'v1url'
+        $txAlias  = $request->input('transport');  // 'base64url' | 'base64url+deflate' | 'base64url+gzip'
+        $serAlias = $request->input('serializer'); // 'json' | 'yaml' | 'auto'
+
+        // FQCN fallbacks (only used if alias not supplied)
+        $envFqcn = (string) $request->input('envelope_fqcn',  \TruthCodec\Envelope\EnvelopeV1Url::class);
+        $txFqcn  = (string) $request->input('transport_fqcn', \TruthCodec\Transport\Base64UrlDeflateTransport::class);
+        $serFqcn = (string) $request->input('serializer_fqcn',\TruthCodec\Serializer\JsonSerializer::class);
+
+        /** @var Envelope $envelope */
+        $envelope = is_string($envAlias) && $envAlias !== ''
+            ? CodecAliasFactory::makeEnvelope($envAlias)
+            : $this->new($envFqcn);
+
+        /** @var TransportCodec $transport */
+        $transport = is_string($txAlias) && $txAlias !== ''
+            ? CodecAliasFactory::makeTransport($txAlias)
+            : $this->new($txFqcn);
+
+        /** @var PayloadSerializer $serializer */
+        $serializer = is_string($serAlias) && $serAlias !== ''
+            ? CodecAliasFactory::makeSerializer($serAlias)
+            : $this->new($serFqcn);
+
+        return [$envelope, $transport, $serializer];
+    }
 
     /**
      * Accept either:
-     * - lines: ["ER|v1|...","truth://v1/..."]
-     * - chunks: [{"text":"..."}, ...]
+     *  - lines:  ["ER|v1|...","truth://v1/..."]
+     *  - chunks: [{"text":"..."}]
      *
-     * @param  mixed $lines
-     * @param  mixed $chunks
-     * @return array<int,string>
+     * @param mixed $lines
+     * @param mixed $chunks
+     * @return string[]
      */
     private function extractLines(mixed $lines, mixed $chunks): array
     {

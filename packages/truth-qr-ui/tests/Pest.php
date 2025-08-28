@@ -129,3 +129,22 @@ function ep_roundtrip(array $lines, PayloadSerializer $ser, TransportCodec $tx, 
     expect($sess->isComplete())->toBeTrue();
     return $sess->assemble();
 }
+
+function ensureMultipart(array $payload, int $targetMinParts = 3): array {
+    $size = 64;
+    do {
+        $res = test()->postJson('/api/encode', [
+            'payload' => $payload,
+            'code' => $payload['code'],
+            'envelope' => 'v1url',
+            'transport' => 'base64url+deflate',
+            'serializer' => 'json',
+            'by' => 'size',
+            'size' => $size,
+        ])->assertOk()->json();
+
+        $lines = dc_extract_lines($res);
+        $size = (int) max(1, $size / 2);
+    } while (count($lines) < $targetMinParts && $size > 1);
+    return $lines;
+}
