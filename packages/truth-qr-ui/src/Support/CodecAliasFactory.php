@@ -100,15 +100,6 @@ final class CodecAliasFactory
             default => throw new InvalidArgumentException("Unknown envelope alias: {$alias}"),
         };
     }
-//    public static function makeEnvelope(string $alias): Envelope
-//    {
-//        $key = self::norm($alias);
-//        return match ($key) {
-//            'v1line', 'line', 'er|v1|line' => new EnvelopeV1Line(),
-//            'v1url', 'url', 'truth://v1'   => new EnvelopeV1Url(),
-//            default => throw new InvalidArgumentException("Unknown envelope alias: {$alias}"),
-//        };
-//    }
 
     // ---------- Writers ----------
     /**

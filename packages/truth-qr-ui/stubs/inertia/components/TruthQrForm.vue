@@ -16,6 +16,13 @@ const form = ref({
     by: 'size' as 'size' | 'count',
     size: 120,
     count: 3,
+
+    // NEW: simple writer controls
+    include_qr: false,
+    writer: 'none' as 'none' | 'bacon' | 'endroid',
+    writerFmt: 'svg' as 'svg' | 'png' | 'eps',
+    writerSize: 256,
+    writerMargin: 16,
 })
 
 const rawPayload = ref(JSON.stringify(form.value.payload, null, 2))
@@ -35,6 +42,15 @@ function onPayloadInput(e: Event) {
 
 const { encode, decode, encodeResult, decodeResult, loading, error } = useTruthQr()
 
+// NEW: build writer spec string only when enabled
+function buildWriterSpec(): string {
+    if (!form.value.include_qr || form.value.writer === 'none') return ''
+    const fmt    = form.value.writerFmt
+    const size   = form.value.writerSize
+    const margin = form.value.writerMargin
+    return `${form.value.writer}(${fmt},size=${size},margin=${margin})`
+}
+
 const onEncode = async () => {
     if (payloadError.value) return
     await encode({
@@ -48,6 +64,10 @@ const onEncode = async () => {
         by: form.value.by,
         size: form.value.size,
         count: form.value.count,
+
+        // NEW: writer + include_qr
+        include_qr: form.value.include_qr,
+        writer: buildWriterSpec(),
     })
 }
 
@@ -84,14 +104,18 @@ function downloadAll() {
 function downloadQrSvgs() {
     const qr = encodeResult.value?.qr
     if (!qr || typeof qr !== 'object') return
-    // normalize to values array
+
     const items = Object.values(qr) as string[]
     items.forEach((data, idx) => {
-        if (typeof data === 'string' && data.trim().startsWith('<?xml')) {
-            const name = `${form.value.payload?.code ?? 'truth'}-qr-${idx + 1}.svg`
-            downloadText(name, data)
+        const baseName = `${form.value.payload?.code ?? 'truth'}-qr-${idx + 1}`
+        if (typeof data === 'string') {
+            const trimmed = data.trim()
+            if (trimmed.startsWith('<?xml')) {
+                downloadText(`${baseName}.svg`, data)
+            } else if (trimmed.startsWith('data:image/png')) {
+                downloadDataUrl(`${baseName}.png`, data)
+            }
         }
-        // if PNG base64 in future, use downloadDataUrl
     })
 }
 </script>
@@ -154,7 +178,51 @@ type="number"
 min="1"
 class="w-full border rounded p-2"
 placeholder="count" />
+    </div>
+    </div>
+    </div>
+
+    <!-- NEW: Writer controls -->
+    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+<div class="flex items-center gap-2">
+<input id="incqr" type="checkbox" v-model="form.include_qr" />
+    <label for="incqr" class="text-sm font-medium">Include QR images</label>
 </div>
+
+<div>
+<label class="block text-sm font-medium">Writer</label>
+    <select v-model="form.writer" class="w-full border rounded p-2" :disabled="!form.include_qr">
+<option value="none">none</option>
+    <option value="bacon">bacon</option>
+    <option value="endroid">endroid</option>
+</select>
+</div>
+
+<div>
+<label class="block text-sm font-medium">Format</label>
+    <select v-model="form.writerFmt" class="w-full border rounded p-2" :disabled="!form.include_qr || form.writer==='none'">
+<option value="svg">svg</option>
+    <option value="png">png</option>
+    <option value="eps" :disabled="form.writer!=='bacon'">eps</option>
+</select>
+</div>
+
+<div>
+<label class="block text-sm font-medium">Size</label>
+    <input v-model.number="form.writerSize"
+type="number"
+min="64"
+class="w-full border rounded p-2"
+:disabled="!form.include_qr || form.writer==='none'"/>
+</div>
+
+<div>
+<label class="block text-sm font-medium">Margin</label>
+    <input v-model.number="form.writerMargin"
+type="number"
+min="0"
+class="w-full border rounded p-2"
+:disabled="!form.include_qr || form.writer==='none'"/>
 </div>
 </div>
 
@@ -207,16 +275,31 @@ class="w-full border rounded p-2 h-40 font-mono text-sm"
 </ul>
 </div>
 
-<!-- QR previews (SVG only for now) -->
+<!-- QR previews (SVG-only display for now) -->
 <div v-if="encodeResult?.qr" class="mt-3 space-y-2">
 <div class="font-semibold text-sm">QR Preview</div>
 <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-    <div v-for="(svg, k) in encodeResult.qr" :key="k" class="border rounded p-2 bg-white">
-    <div v-if="typeof svg==='string' && svg.trim().startsWith('<?xml')" v-html="svg" />
+    <div
+        v-for="(val, k) in encodeResult.qr"
+    :key="k"
+class="border rounded p-2 bg-white"
+    >
+    <!-- SVG string -->
+<div v-if="typeof val === 'string' && val.trim().startsWith('<?xml')" v-html="val" />
+
+    <!-- PNG (or other image) data URL -->
+<img
+    v-else-if="typeof val === 'string' && val.startsWith('data:image')"
+    :src="val"
+class="w-full h-auto"
+    />
+
+    <!-- Fallback -->
     <div v-else class="text-xs text-gray-500">Unsupported QR format</div>
 </div>
 </div>
 </div>
+
 </div>
 
 <div class="p-3 bg-gray-50 border rounded overflow-auto">
