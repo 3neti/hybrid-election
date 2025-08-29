@@ -179,6 +179,9 @@ min="1"
 class="w-full border rounded p-2"
 placeholder="count" />
     </div>
+    <p v-if="form.by==='count' && form.count===1" class="text-xs text-amber-600">
+    Using 1 part can exceed QR capacity for large payloads. Consider “by size” or increasing count.
+</p>
     </div>
     </div>
 
@@ -299,6 +302,7 @@ class="w-full h-auto"
 </div>
 </div>
 </div>
+
 
 </div>
 

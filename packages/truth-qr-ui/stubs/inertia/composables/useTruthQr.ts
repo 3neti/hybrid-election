@@ -75,11 +75,24 @@ export default function useTruthQr() {
 
             const res = await fetch(routes.encode, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 body: JSON.stringify(body),
             })
-            const json = await res.json()
-            if (!res.ok) throw new Error(json?.error || 'Encode failed')
+            const raw = await res.text()
+            let json: any = null
+            try {
+                json = raw ? JSON.parse(raw) : null
+            } catch {
+                // not JSON; keep raw HTML/text for diagnosis
+            }
+            if (!res.ok) {
+                // prefer JSON error; otherwise show first 200 chars of raw
+                const msg = (json && json.error) ? json.error : (raw?.slice(0, 200) || 'Request failed')
+                throw new Error(msg)
+            }
+            encodeResult.value = json
+            // const json = await res.json()
+            // if (!res.ok) throw new Error(json?.error || 'Encode failed')
             encodeResult.value = json
             return json
         } catch (e: any) {
@@ -96,7 +109,7 @@ export default function useTruthQr() {
         try {
             const res = await fetch(routes.decode, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 body: JSON.stringify({
                     lines: args.lines,
                     chunks: args.chunks,
