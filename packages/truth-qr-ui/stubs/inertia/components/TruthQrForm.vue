@@ -1,155 +1,128 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import useTruthQr from '../composables/useTruthQr'
-import { downloadText, downloadDataUrl } from '../composables/download'
+import { ref } from 'vue'
 import { parseIndexTotal } from '../composables/MultiPartTools'
+
+// New composables (extracted)
+import usePayloadJson from '../composables/usePayloadJson'
+import useWriterSpec from '../composables/useWriterSpec'
+import useEncodeDecode from '../composables/useEncodeDecode'
+import usePartsList from '../composables/usePartsList'
+import useDownloads from '../composables/useDownloads'
+import useQrGallery from '../composables/useQrGallery'
 
 type AnyObject = Record<string, any>
 
+/** ------------------------------
+ * Form (non-payload, non-writer)
+ * ------------------------------ */
 const form = ref({
-    payload: { type: 'demo', code: 'DEMO-001', data: { hello: 'world' } } as AnyObject,
     envelope: 'v1url',
-    prefix: 'TRUTH',    // default visible
+    prefix: 'TRUTH',
     version: 'v1',
     transport: 'base64url+deflate',
     serializer: 'json',
     by: 'size' as 'size' | 'count',
     size: 120,
     count: 3,
-
-    // Writer controls
-    include_qr: false,
-    writer: 'none' as 'none' | 'bacon' | 'endroid',
-    writerFmt: 'svg' as 'svg' | 'png' | 'eps',
-    writerSize: 256,
-    writerMargin: 16,
 })
 
-const rawPayload = ref(JSON.stringify(form.value.payload, null, 2))
-const payloadError = ref<string | null>(null)
+/** ------------------------------
+ * Payload JSON editor
+ * ------------------------------ */
+const {
+    rawPayload,
+    payload,
+    payloadError,
+    onPayloadInput,
+    setPayload, // not used yet, but handy for presets
+} = usePayloadJson({ type: 'demo', code: 'DEMO-001', data: { hello: 'world' } })
 
-function onPayloadInput(e: Event) {
-    const txt = (e.target as HTMLTextAreaElement).value
-    rawPayload.value = txt
-    try {
-        const parsed = JSON.parse(txt)
-        form.value.payload = parsed
-        payloadError.value = null
-    } catch {
-        payloadError.value = 'Invalid JSON'
-    }
-}
+/** ------------------------------
+ * Writer controls & spec builder
+ * ------------------------------ */
+const {
+    include_qr,
+    writer,
+    writerFmt,
+    writerSize,
+    writerMargin,
+    isWriterEnabled,
+    buildWriterSpec,
+} = useWriterSpec()
 
-const { encode, decode, encodeResult, decodeResult, loading, error } = useTruthQr()
+/** ------------------------------
+ * Encode/Decode API bridge
+ * ------------------------------ */
+const {
+    encodeWith,
+    decodeWith,
+    encodeResult,
+    decodeResult,
+    loading,
+    error,
+} = useEncodeDecode()
 
-// Build writer spec string only when enabled
-function buildWriterSpec(): string {
-    if (!form.value.include_qr || form.value.writer === 'none') return ''
-    const fmt    = form.value.writerFmt
-    const size   = form.value.writerSize
-    const margin = form.value.writerMargin
-    return `${form.value.writer}(${fmt},size=${size},margin=${margin})`
-}
+/** ------------------------------
+ * Parts utilities & downloads
+ * ------------------------------ */
+const { listItems } = usePartsList()
+const { downloadAllLines, downloadQrAssets } = useDownloads()
 
-const onEncode = async () => {
+function onEncode() {
     if (payloadError.value) return
-    await encode({
-        payload: form.value.payload,
-        code: form.value.payload?.code,
+    const spec = buildWriterSpec()
+    return encodeWith({
+        payload: payload.value,
+        code: (payload.value as AnyObject)?.code,
         envelope: form.value.envelope as any,
         prefix: form.value.prefix,
         version: form.value.version,
         transport: form.value.transport,
         serializer: form.value.serializer,
-        by: form.value.by,
+        by: form.value.by as any,
         size: form.value.size,
         count: form.value.count,
-
-        // writer + include_qr
-        include_qr: form.value.include_qr,
-        writer: buildWriterSpec(),
+        include_qr: include_qr.value,
+        writer: spec,
     } as any)
 }
 
-const onDecode = async () => {
-    const lines: string[] =
-        encodeResult.value?.urls ??
-        encodeResult.value?.lines ??
-        []
+function onDecode() {
+    const lines = (encodeResult.value?.urls ?? encodeResult.value?.lines ?? []) as string[]
     if (!lines.length) return
-    await decode({
+    return decodeWith(
+        {
+            payload: null,
+            code: undefined,
+            envelope: form.value.envelope as any,
+            prefix: form.value.prefix,
+            version: form.value.version,
+            transport: form.value.transport,
+            serializer: form.value.serializer,
+        } as any,
         lines,
-        envelope: form.value.envelope as any,
-        prefix: form.value.prefix,
-        version: form.value.version,
-        transport: form.value.transport,
-        serializer: form.value.serializer,
-    } as any)
-}
-
-function listItems(): string[] {
-    if (!encodeResult.value) return []
-    if (Array.isArray(encodeResult.value.urls)) return encodeResult.value.urls as string[]
-    if (Array.isArray(encodeResult.value.lines)) return encodeResult.value.lines as string[]
-    return []
-}
-
-function downloadAll() {
-    const items = listItems()
-    if (!items.length) return
-    const content = items.join('\n')
-    downloadText(`${form.value.payload?.code ?? 'truth'}-chunks.txt`, content)
-}
-
-function downloadQrSvgs() {
-    const qr = encodeResult.value?.qr
-    if (!qr || typeof qr !== 'object') return
-
-    const items = Object.values(qr) as string[]
-    items.forEach((data, idx) => {
-        const baseName = `${form.value.payload?.code ?? 'truth'}-qr-${idx + 1}`
-        if (typeof data === 'string') {
-            const trimmed = data.trim()
-            if (trimmed.startsWith('<?xml')) {
-                downloadText(`${baseName}.svg`, data)
-            } else if (trimmed.startsWith('data:image/png')) {
-                downloadDataUrl(`${baseName}.png`, data)
-            }
-        }
-    })
+    )
 }
 
 /** ------------------------------
- * QR Gallery Pagination (3×3 default)
+ * Downloads
  * ------------------------------ */
-const perPage = ref(9) // default 9 → 3×3 grid
-const page = ref(1)
-
-const qrItems = computed<string[]>(() => {
-    const raw = encodeResult.value?.qr
-    if (!raw || typeof raw !== 'object') return []
-    return Object.values(raw) as string[]
-})
-
-const totalPages = computed(() => {
-    return qrItems.value.length ? Math.ceil(qrItems.value.length / perPage.value) : 1
-})
-
-const pagedQrs = computed(() => {
-    const start = (page.value - 1) * perPage.value
-    const end = start + perPage.value
-    return qrItems.value.slice(start, end)
-})
-
-function prevPage() {
-    if (page.value > 1) page.value--
-}
-function nextPage() {
-    if (page.value < totalPages.value) page.value++
+function downloadAll() {
+    const items = listItems(encodeResult.value)
+    if (!items.length) return
+    const code = (encodeResult.value?.code ?? (payload.value as AnyObject)?.code) as string | undefined
+    downloadAllLines(code, items)
 }
 
-// Reset to page 1 whenever fresh QR results arrive
-watch(() => encodeResult.value?.qr, () => { page.value = 1 })
+function downloadQr() {
+    const code = (encodeResult.value?.code ?? (payload.value as AnyObject)?.code) as string | undefined
+    downloadQrAssets(code, encodeResult.value?.qr)
+}
+
+/** ------------------------------
+ * QR Gallery Pagination (default 3×3 → 9/page)
+ * ------------------------------ */
+const { perPage, page, qrItems, totalPages, pagedQrs, prevPage, nextPage } = useQrGallery(encodeResult, 9)
 </script>
 
 <template>
@@ -225,13 +198,13 @@ watch(() => encodeResult.value?.qr, () => { page.value = 1 })
         <!-- Writer controls -->
         <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
             <div class="flex items-center gap-2">
-                <input id="incqr" type="checkbox" v-model="form.include_qr" />
+                <input id="incqr" type="checkbox" v-model="include_qr" />
                 <label for="incqr" class="text-sm font-medium">Include QR images</label>
             </div>
 
             <div>
                 <label class="block text-sm font-medium">Writer</label>
-                <select v-model="form.writer" class="w-full border rounded p-2" :disabled="!form.include_qr">
+                <select v-model="writer" class="w-full border rounded p-2" :disabled="!include_qr">
                     <option value="none">none</option>
                     <option value="bacon">bacon</option>
                     <option value="endroid">endroid</option>
@@ -241,35 +214,35 @@ watch(() => encodeResult.value?.qr, () => { page.value = 1 })
             <div>
                 <label class="block text-sm font-medium">Format</label>
                 <select
-                    v-model="form.writerFmt"
+                    v-model="writerFmt"
                     class="w-full border rounded p-2"
-                    :disabled="!form.include_qr || form.writer==='none'"
+                    :disabled="!include_qr || writer==='none'"
                 >
                     <option value="svg">svg</option>
                     <option value="png">png</option>
-                    <option value="eps" :disabled="form.writer!=='bacon'">eps</option>
+                    <option value="eps" :disabled="writer!=='bacon'">eps</option>
                 </select>
             </div>
 
             <div>
                 <label class="block text-sm font-medium">Size</label>
                 <input
-                    v-model.number="form.writerSize"
+                    v-model.number="writerSize"
                     type="number"
                     min="64"
                     class="w-full border rounded p-2"
-                    :disabled="!form.include_qr || form.writer==='none'"
+                    :disabled="!include_qr || writer==='none'"
                 />
             </div>
 
             <div>
                 <label class="block text-sm font-medium">Margin</label>
                 <input
-                    v-model.number="form.writerMargin"
+                    v-model.number="writerMargin"
                     type="number"
                     min="0"
                     class="w-full border rounded p-2"
-                    :disabled="!form.include_qr || form.writer==='none'"
+                    :disabled="!include_qr || writer==='none'"
                 />
             </div>
         </div>
@@ -296,7 +269,7 @@ watch(() => encodeResult.value?.qr, () => { page.value = 1 })
             <button v-if="encodeResult" @click="downloadAll" class="px-4 py-2 rounded bg-gray-100">
                 Download lines
             </button>
-            <button v-if="encodeResult?.qr" @click="downloadQrSvgs" class="px-4 py-2 rounded bg-gray-100">
+            <button v-if="encodeResult?.qr" @click="downloadQr" class="px-4 py-2 rounded bg-gray-100">
                 Download QR images
             </button>
         </div>
@@ -314,7 +287,7 @@ watch(() => encodeResult.value?.qr, () => { page.value = 1 })
                 <div v-if="encodeResult" class="mt-3 space-y-1">
                     <div class="font-semibold text-sm">Parts</div>
                     <ul class="text-xs space-y-1">
-                        <li v-for="(line, idx) in listItems()" :key="idx" class="flex items-center gap-2">
+                        <li v-for="(line, idx) in listItems(encodeResult)" :key="idx" class="flex items-center gap-2">
               <span class="inline-flex px-2 py-0.5 rounded bg-gray-200 text-gray-800">
                 {{ parseIndexTotal(line)?.i ?? '?' }}/{{ parseIndexTotal(line)?.n ?? '?' }}
               </span>
@@ -340,7 +313,7 @@ watch(() => encodeResult.value?.qr, () => { page.value = 1 })
                         </div>
                     </div>
 
-                    <!-- 3 × 3 grid by default -->
+                    <!-- 3×3 by default via perPage=9 -->
                     <div class="grid grid-cols-3 gap-3">
                         <div v-for="(val, k) in pagedQrs" :key="k" class="border rounded p-2 bg-white">
                             <!-- SVG string -->
