@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "51f9800181cf06b3b9fee58d8e0d590c",
+    "content-hash": "346dabdbc870099d7949fc32417c0253",
     "packages": [
         {
             "name": "amphp/amp",
@@ -3086,11 +3086,13 @@
             "dist": {
                 "type": "path",
                 "url": "packages/truth-qr-ui",
-                "reference": "930c4de1b6a19a0733609c0d3599cc1ef779befe"
+                "reference": "889426e16db4eb2b222f00b7d80af0c37683c7ab"
             },
             "require": {
+                "ext-zip": "*",
                 "illuminate/support": "^12.0",
                 "lbhurtado/truth-qr-php": "dev-main",
+                "lorisleiva/laravel-actions": "^2.9",
                 "php": "^8.2"
             },
             "require-dev": {
@@ -12237,7 +12239,8 @@
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
-        "php": "^8.2"
+        "php": "^8.2",
+        "ext-zip": "*"
     },
     "platform-dev": {
         "ext-zlib": "*"

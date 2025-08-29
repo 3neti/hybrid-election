@@ -22,4 +22,7 @@ return [
         'allowed' => true,
         'disk'    => 'local',
     ],
+    'playground' => [
+        'inertia_page' => 'TruthQrUi/Playground'
+    ]
 ];
