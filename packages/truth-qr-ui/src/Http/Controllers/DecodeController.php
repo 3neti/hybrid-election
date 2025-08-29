@@ -1,135 +1,163 @@
 <?php
 
+declare(strict_types=1);
+
 namespace TruthQrUi\Http\Controllers;
 
-use Illuminate\Routing\Controller;
 use Illuminate\Http\JsonResponse;
 use Lorisleiva\Actions\ActionRequest;
 use TruthQrUi\Actions\DecodePayload;
-use TruthQrUi\Support\CodecAliasFactory as Alias;
+use TruthQrUi\Support\CodecAliasFactory;
 use TruthCodec\Contracts\Envelope;
 use TruthCodec\Contracts\PayloadSerializer;
 use TruthCodec\Contracts\TransportCodec;
 
-final class DecodeController extends Controller
+/**
+ * DecodeController
+ *
+ * Thin HTTP controller for the Playground.
+ *
+ * Responsibilities:
+ * - Accept alias/FQCN params for serializer/transport/envelope.
+ * - Accept optional envelope overrides (prefix, version).
+ * - Normalize "lines" or "chunks" input into a flat string[].
+ * - Call constructor-driven DecodePayload::handle() with explicit collaborators.
+ */
+final class DecodeController
 {
-    /**
-     * POST /api/decode
-     *
-     * Body:
-     * {
-     *   "lines":  ["ER|v1|...", ...]     // OR
-     *   "chunks": [{"text":"..."}, ...],
-     *
-     *   // Prefer these short aliases (friendly UI):
-     *   "envelope":   "v1line" | "v1url",
-     *   "transport":  "base64url" | "base64url+deflate" | "base64url+gzip",
-     *   "serializer": "json" | "yaml" | "auto",
-     *
-     *   // Fallback: fully-qualified class names (if aliases omitted):
-     *   "envelope_fqcn":   "\\TruthCodec\\Envelope\\EnvelopeV1Line" | "\\TruthCodec\\Envelope\\EnvelopeV1Url",
-     *   "transport_fqcn":  "\\TruthCodec\\Transport\\Base64UrlDeflateTransport",
-     *   "serializer_fqcn": "\\TruthCodec\\Serializer\\JsonSerializer"
-     * }
-     */
-    public function __invoke(ActionRequest $request): JsonResponse
+    public function __invoke(ActionRequest $request)
     {
+        return $this->store($request);
+    }
+
+    public function store(ActionRequest $request): JsonResponse
+    {
+        // --- Early shape validation so we return {"error": "..."} instead of Laravel's {"message": "..."} ---
+        $linesInput  = $request->input('lines');
+        $chunksInput = $request->input('chunks');
+
+        $hasLines  = is_array($linesInput)  && !empty($linesInput);
+        $hasChunks = is_array($chunksInput) && !empty($chunksInput);
+
+        if (!$hasLines && !$hasChunks) {
+            return response()->json([
+                'error' => 'Provide either "lines": string[] or "chunks": [{"text": "..."}].',
+            ], 422);
+        }
+
+        // Normalize to a simple string[] for the action (mirrors extractLines logic)
+        $lines = $hasLines
+            ? array_map(static fn($v) => (string) $v, array_values($linesInput))
+            : array_map(static fn($c) => (string) ($c['text'] ?? ''), array_values($chunksInput));
+
+        // --- Collaborators via alias or FQCN + optional prefix/version overrides ---
+        $envAlias    = $request->input('envelope');
+        $txAlias     = $request->input('transport');
+        $serAlias    = $request->input('serializer');
+        $envPrefix   = $request->string('envelope_prefix')->value();  // optional
+        $envVersion  = $request->string('envelope_version')->value(); // optional
+
+        $serFqcn = (string) $request->input('serializer_fqcn', \TruthCodec\Serializer\JsonSerializer::class);
+        $txFqcn  = (string) $request->input('transport_fqcn',  \TruthCodec\Transport\Base64UrlDeflateTransport::class);
+        $envFqcn = (string) $request->input('envelope_fqcn',   \TruthCodec\Envelope\EnvelopeV1Url::class);
+
+        /** @var PayloadSerializer $serializer */
+        $serializer = is_string($serAlias) && $serAlias !== ''
+            ? CodecAliasFactory::makeSerializer($serAlias)
+            : new $serFqcn();
+
+        /** @var TransportCodec $transport */
+        $transport = is_string($txAlias) && $txAlias !== ''
+            ? CodecAliasFactory::makeTransport($txAlias)
+            : new $txFqcn();
+
+        /** @var Envelope $envelope */
+        $envelope = is_string($envAlias) && $envAlias !== ''
+            ? CodecAliasFactory::makeEnvelope($envAlias, [
+                'prefix'  => $envPrefix,
+                'version' => $envVersion,
+            ])
+            : new $envFqcn($envPrefix, $envVersion);
+
+        // --- Execute action ---
         try {
-            $lines = $this->extractLines($request);
-
-            // --- Resolve collaborators (aliases win; else FQCNs; else sane defaults) ---
-            /** @var PayloadSerializer $serializer */
-            $serializer = $this->resolveSerializer(
-                $request->input('serializer'),
-                $request->input('serializer_fqcn')
-            );
-
-            /** @var TransportCodec $transport */
-            $transport = $this->resolveTransport(
-                $request->input('transport'),
-                $request->input('transport_fqcn')
-            );
-
-            /** @var Envelope $envelope */
-            $envelope = $this->resolveEnvelope(
-                $request->input('envelope'),
-                $request->input('envelope_fqcn')
-            );
-
-            // Delegate to the action (explicit constructor style)
-            $out = app(DecodePayload::class)->handle(
-                lines:      $lines,
-                envelope:   $envelope,
-                transport:  $transport,
-                serializer: $serializer
-            );
-
-            return response()->json($out);
-
+            $res = app(DecodePayload::class)->handle($lines, $envelope, $transport, $serializer);
+            return response()->json($res);
         } catch (\InvalidArgumentException|\JsonException $e) {
-            // bad input / corrupted payload / conflicting duplicate, etc.
             return response()->json(['error' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
             report($e);
             return response()->json(['error' => 'Decode failed'], 422);
         }
     }
-
-    // ----------------- helpers -----------------
-
-    /** @return array<int,string> */
-    private function extractLines(ActionRequest $request): array
-    {
-        $lines = $request->input('lines');
-        if (is_array($lines) && !empty($lines)) {
-            return array_map(static fn($v) => (string)$v, array_values($lines));
-        }
-
-        $chunks = $request->input('chunks');
-        if (is_array($chunks) && !empty($chunks)) {
-            return array_map(static fn($c) => (string)($c['text'] ?? ''), array_values($chunks));
-        }
-
-        throw new \InvalidArgumentException('Provide either "lines": string[] or "chunks": [{"text":"..."}].');
-    }
-
-    private function resolveEnvelope(?string $alias, ?string $fqcn): Envelope
-    {
-        if (is_string($alias) && $alias !== '') {
-            return Alias::makeEnvelope($alias);
-        }
-        $fqcn = $fqcn ?: \TruthCodec\Envelope\EnvelopeV1Url::class; // default
-        return $this->new($fqcn);
-    }
-
-    private function resolveTransport(?string $alias, ?string $fqcn): TransportCodec
-    {
-        if (is_string($alias) && $alias !== '') {
-            return Alias::makeTransport($alias);
-        }
-        $fqcn = $fqcn ?: \TruthCodec\Transport\Base64UrlDeflateTransport::class; // default
-        return $this->new($fqcn);
-    }
-
-    private function resolveSerializer(?string $alias, ?string $fqcn): PayloadSerializer
-    {
-        if (is_string($alias) && $alias !== '') {
-            return Alias::makeSerializer($alias);
-        }
-        $fqcn = $fqcn ?: \TruthCodec\Serializer\JsonSerializer::class; // default
-        return $this->new($fqcn);
-    }
+//    public function store(ActionRequest $request): JsonResponse
+//    {
+//        // --- collect lines ---
+//        $lines = $this->extractLines($request->input('lines'), $request->input('chunks'));
+//
+//        // --- Collaborators via alias or FQCN + optional prefix/version overrides ---
+//        $envAlias    = $request->input('envelope');
+//        $txAlias     = $request->input('transport');
+//        $serAlias    = $request->input('serializer');
+//        $envPrefix   = $request->string('envelope_prefix')->value();  // optional
+//        $envVersion  = $request->string('envelope_version')->value(); // optional
+//
+//        $serFqcn = (string) $request->input('serializer_fqcn', \TruthCodec\Serializer\JsonSerializer::class);
+//        $txFqcn  = (string) $request->input('transport_fqcn',  \TruthCodec\Transport\Base64UrlDeflateTransport::class);
+//        $envFqcn = (string) $request->input('envelope_fqcn',   \TruthCodec\Envelope\EnvelopeV1Url::class);
+//
+//        /** @var PayloadSerializer $serializer */
+//        $serializer = is_string($serAlias) && $serAlias !== ''
+//            ? CodecAliasFactory::makeSerializer($serAlias)
+//            : new $serFqcn();
+//
+//        /** @var TransportCodec $transport */
+//        $transport = is_string($txAlias) && $txAlias !== ''
+//            ? CodecAliasFactory::makeTransport($txAlias)
+//            : new $txFqcn();
+//
+//        /** @var Envelope $envelope */
+//        $envelope = is_string($envAlias) && $envAlias !== ''
+//            ? CodecAliasFactory::makeEnvelope($envAlias, [
+//                'prefix'  => $envPrefix,
+//                'version' => $envVersion,
+//            ])
+//            : new $envFqcn($envPrefix, $envVersion);
+//
+//        // --- Execute action ---
+//        try {
+//            $res = app(DecodePayload::class)->handle($lines, $envelope, $transport, $serializer);
+//            return response()->json($res);
+//        } catch (\InvalidArgumentException|\JsonException $e) {
+//            return response()->json(['error' => $e->getMessage()], 422);
+//        } catch (\Throwable $e) {
+//            report($e);
+//            return response()->json(['error' => 'Decode failed'], 422);
+//        }
+//    }
 
     /**
-     * @template T
-     * @param class-string<T> $fqcn
-     * @return T
+     * Accept either:
+     * - lines: ["ER|v1|...","truth://v1/..."]
+     * - chunks: [{"text":"..."}, ...]
+     *
+     * @param  mixed $lines
+     * @param  mixed $chunks
+     * @return array<int,string>
      */
-    private function new(string $fqcn)
+    private function extractLines(mixed $lines, mixed $chunks): array
     {
-        if (!class_exists($fqcn)) {
-            throw new \InvalidArgumentException("Class not found: {$fqcn}");
+        if (is_array($lines) && !empty($lines)) {
+            return array_map(static fn($v) => (string) $v, array_values($lines));
         }
-        return new $fqcn();
+
+        if (is_array($chunks) && !empty($chunks)) {
+            return array_map(
+                static fn($c) => (string) ($c['text'] ?? ''),
+                array_values($chunks)
+            );
+        }
+
+        abort(422, 'Provide either "lines": string[] or "chunks": [{"text": "..."}].');
     }
 }

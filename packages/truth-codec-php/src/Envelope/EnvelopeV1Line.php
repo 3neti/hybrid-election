@@ -8,19 +8,34 @@ use TruthCodec\Contracts\Envelope;
  * V1 line (pipe-delimited) envelope:
  *   <PREFIX>|v1|<CODE>|<i>/<N>|<payload>
  *
- * Prefix & version are resolved via EnvelopeV1Common:
- *  - Laravel config: truth-codec.envelope.{prefix,version},
- *  - runtime override constants (PREFIX_OVERRIDE / VERSION_OVERRIDE),
- *  - class defaults from prefix()/version().
+ * How the effective prefix/version are chosen (highest → lowest):
+ *  1) Runtime overrides supplied to the instance (e.g., via constructor or setters).
+ *  2) Class constants (PREFIX_OVERRIDE / VERSION_OVERRIDE), if present.
+ *  3) Laravel config: truth-codec.envelope.{prefix,version}.
+ *  4) This class' defaults from prefix() / version().
  */
 final class EnvelopeV1Line implements Envelope
 {
     use EnvelopeV1Common;
 
+    /**
+     * Optional constructor to set runtime overrides explicitly (constructor-driven style).
+     * If nulls are passed, normal precedence applies.
+     */
+    public function __construct(?string $prefix = null, ?string $version = null)
+    {
+        if (is_string($prefix) && $prefix !== '') {
+            $this->prefixOverrideRuntime = $prefix; // from trait
+        }
+        if (is_string($version) && $version !== '') {
+            $this->versionOverrideRuntime = $version; // from trait
+        }
+    }
+
     /** Default logical family token. */
     public function prefix(): string
     {
-        return 'ER'; // fallback if no config/override
+        return 'ER';
     }
 
     /** Envelope semantic version token. */

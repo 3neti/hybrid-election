@@ -126,3 +126,15 @@ it('rejects invalid web URL structures', function () {
     $bad4 = 'https://truth.example/ingest?truth=v1&prefix=ER&code=XYZ&i=4&n=3&c=x';
     expect(fn() => $env->parse($bad4))->toThrow(InvalidArgumentException::class);
 });
+
+it('allows runtime override via constructor and fluent setters (url)', function () {
+    config()->set('truth-codec.url.web_base', null); // deep-link
+    $env = new \TruthCodec\Envelope\EnvelopeV1Url('BAL', 'v1');
+
+    $url = $env->header('CODE', 1, 2, 'P');
+    expect($url)->toStartWith('truth://v1/BAL/CODE/1/2?');
+
+    $env2 = $env->withPrefix('ER');
+    $url2 = $env2->header('CODE', 1, 2, 'P');
+    expect($url2)->toStartWith('truth://v1/ER/CODE/1/2?');
+});

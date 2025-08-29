@@ -19,8 +19,14 @@ final class TruthQrUiServiceProvider extends ServiceProvider
             => resource_path('js/Pages/TruthQrUi/Playground.vue'),
             __DIR__ . '/../stubs/inertia/components/TruthQrForm.vue'
             => resource_path('js/Pages/TruthQrUi/components/TruthQrForm.vue'),
+            __DIR__ . '/../stubs/inertia/components/ScannerPanel.vue'
+            => resource_path('js/Pages/TruthQrUi/components/ScannerPanel.vue'),
             __DIR__ . '/../stubs/inertia/composables/useTruthQr.ts'
             => resource_path('js/Pages/TruthQrUi/composables/useTruthQr.ts'),
+            __DIR__ . '/../stubs/inertia/composables/download.ts'
+            => resource_path('js/Pages/TruthQrUi/composables/download.ts'),
+            __DIR__ . '/../stubs/inertia/composables/MultiPartTools.ts'
+            => resource_path('js/Pages/TruthQrUi/composables/MultiPartTools.ts'),
         ], 'truth-qr-ui-stubs');
 
         // Optional: load routes if you decide to ship default routes

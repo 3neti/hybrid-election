@@ -58,3 +58,14 @@ it('guards index/total during parse()', function () {
     $line2 = 'ER|v1|CODE|0/0|abc';
     expect(fn () => $env->parse($line2))->toThrow(InvalidArgumentException::class);
 });
+
+it('allows runtime override via constructor and fluent setters (line)', function () {
+    $env = new \TruthCodec\Envelope\EnvelopeV1Line('BAL', 'v1');
+    $line = $env->header('CODE', 1, 2, 'x');
+    expect($line)->toStartWith('BAL|v1|CODE|1/2|');
+
+    // Fluent override wins over ctor
+    $env2 = $env->withPrefix('ER');
+    $line2 = $env2->header('CODE', 1, 2, 'x');
+    expect($line2)->toStartWith('ER|v1|CODE|1/2|');
+});

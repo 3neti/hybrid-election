@@ -75,15 +75,40 @@ final class CodecAliasFactory
     }
 
     // ---------- Envelopes ----------
-    public static function makeEnvelope(string $alias): Envelope
+    /**
+     * @param string $alias  e.g. 'v1line' | 'v1url' | 'line' | 'url'
+     * @param array{prefix?:string, version?:string} $opts  optional constructor overrides
+     */
+    public static function makeEnvelope(string $alias, array $opts = []): Envelope
     {
         $key = self::norm($alias);
+
+        // If either override is provided, we’ll pass both (nulls coalesce below).
+        $hasOverrides = array_key_exists('prefix', $opts) || array_key_exists('version', $opts);
+        $prefix  = $opts['prefix']  ?? null;
+        $version = $opts['version'] ?? null;
+
         return match ($key) {
-            'v1line', 'line', 'er|v1|line' => new EnvelopeV1Line(),
-            'v1url', 'url', 'truth://v1'   => new EnvelopeV1Url(),
+            'v1line', 'line', 'er|v1|line' => $hasOverrides
+                ? new EnvelopeV1Line($prefix, $version)   // constructor takes nulls fine → library resolves
+                : new EnvelopeV1Line(),
+
+            'v1url', 'url', 'truth://v1'   => $hasOverrides
+                ? new EnvelopeV1Url($prefix, $version)
+                : new EnvelopeV1Url(),
+
             default => throw new InvalidArgumentException("Unknown envelope alias: {$alias}"),
         };
     }
+//    public static function makeEnvelope(string $alias): Envelope
+//    {
+//        $key = self::norm($alias);
+//        return match ($key) {
+//            'v1line', 'line', 'er|v1|line' => new EnvelopeV1Line(),
+//            'v1url', 'url', 'truth://v1'   => new EnvelopeV1Url(),
+//            default => throw new InvalidArgumentException("Unknown envelope alias: {$alias}"),
+//        };
+//    }
 
     // ---------- Writers ----------
     /**

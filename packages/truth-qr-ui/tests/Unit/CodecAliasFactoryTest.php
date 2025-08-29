@@ -94,3 +94,54 @@ it('throws for unknown aliases and specs', function () {
     expect(fn () => Alias::makeEnvelope('v2line'))->toThrow(InvalidArgumentException::class);
     expect(fn () => Alias::makeWriter('pixelart(gif)'))->toThrow(InvalidArgumentException::class);
 });
+
+// --- Envelope overrides: URL ---
+it('makeEnvelope(url) accepts explicit prefix/version via opts', function () {
+    // When overrides are provided, the ctor should apply them and header()/parse() should reflect them.
+    $env = Alias::makeEnvelope('v1url', ['prefix' => 'BAL', 'version' => 'v1']);
+    expect($env)->toBeInstanceOf(EnvelopeV1Url::class);
+
+    $url = $env->header('CODE123', 1, 2, 'PAY');
+    // truth://v1/BAL/CODE123/1/2?c=PAY
+    expect($url)->toStartWith('truth://v1/BAL/');
+
+    [$code,$i,$n,$c] = $env->parse($url);
+    expect([$code,$i,$n,$c])->toEqual(['CODE123',1,2,'PAY']);
+});
+
+// --- Envelope overrides: LINE ---
+it('makeEnvelope(line) accepts explicit prefix/version via opts', function () {
+    $env = Alias::makeEnvelope('v1line', ['prefix' => 'TRUTH', 'version' => 'v1']);
+    expect($env)->toBeInstanceOf(EnvelopeV1Line::class);
+
+    $line = $env->header('L-CODE', 2, 3, 'P');
+    // TRUTH|v1|L-CODE|2/3|P
+    expect($line)->toStartWith('TRUTH|v1|');
+
+    [$code,$i,$n,$p] = $env->parse($line);
+    expect([$code,$i,$n,$p])->toEqual(['L-CODE',2,3,'P']);
+});
+
+// --- Envelope: no overrides still works (back-compat) ---
+it('makeEnvelope without opts falls back to ctor defaults/config/constants', function () {
+    $env1 = Alias::makeEnvelope('v1url');
+    $env2 = Alias::makeEnvelope('v1line');
+
+    expect($env1)->toBeInstanceOf(EnvelopeV1Url::class);
+    expect($env2)->toBeInstanceOf(EnvelopeV1Line::class);
+
+    // Smoke: both can header()/parse() round-trip using their internal prefix/version.
+    $u = $env1->header('A', 1, 1, 'X');
+    [$c1,$i1,$n1,$p1] = $env1->parse($u);
+    expect([$c1,$i1,$n1,$p1])->toEqual(['A',1,1,'X']);
+
+    $l = $env2->header('B', 1, 1, 'Y');
+    [$c2,$i2,$n2,$p2] = $env2->parse($l);
+    expect([$c2,$i2,$n2,$p2])->toEqual(['B',1,1,'Y']);
+});
+
+// --- Envelope: invalid alias still errors ---
+it('makeEnvelope throws on unknown alias (with or without opts)', function () {
+    expect(fn () => Alias::makeEnvelope('nope'))->toThrow(InvalidArgumentException::class);
+    expect(fn () => Alias::makeEnvelope('nope', ['prefix' => 'X']))->toThrow(InvalidArgumentException::class);
+});

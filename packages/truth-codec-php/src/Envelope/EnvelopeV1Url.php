@@ -7,41 +7,44 @@ use TruthCodec\Contracts\Envelope;
 /**
  * URL-based V1 envelope.
  *
- * Supports:
+ * Supported forms:
  *  • Deep link: truth://v1/<prefix>/<code>/<i>/<n>?c=<payload>
  *  • Web link : https://host/path?truth=v1&prefix=...&code=...&i=...&n=...&c=...
  *
- * Configuration (config/truth-codec.php):
+ * Effective prefix/version precedence (highest → lowest):
+ *  1) Runtime overrides supplied to the instance (e.g., via constructor or setters).
+ *  2) Class constants (PREFIX_OVERRIDE / VERSION_OVERRIDE), if present.
+ *  3) Laravel config: truth-codec.envelope.{prefix,version}.
+ *  4) This class' defaults from prefix() / version().
  *
- *  'envelope' => [
- *      'prefix'  => 'ER',        // used by both line + url variants (can be ER/BAL/TRUTH/etc.)
- *      'version' => 'v1',
- *  ],
- *  'url' => [
- *      'scheme'        => 'truth',                        // deep-link scheme
- *      'web_base'      => null,                           // if set, produce https URL instead of deep link
- *      'payload_param' => 'c',                            // query key for payload
- *      'version_param' => 'v',                            // alt key if "truth" not desired
- *  ],
+ * URL behavior is further controlled by config (truth-codec.url.*):
+ *  - scheme        : deep-link scheme (default "truth")
+ *  - web_base      : when non-null, emit https URL instead of deep link
+ *  - payload_param : query key for the payload (default "c")
+ *  - version_param : fallback query key for version when "truth" is not used (default "v")
  */
 final class EnvelopeV1Url implements Envelope
 {
     use EnvelopeV1Common;
 
-    /** Default logical family token (falls back if no config/override). */
+    /**
+     * Optional constructor to set runtime overrides explicitly (constructor-driven style).
+     * If nulls are passed, normal precedence applies.
+     */
+    public function __construct(?string $prefix = null, ?string $version = null)
+    {
+        if (is_string($prefix) && $prefix !== '') {
+            $this->prefixOverrideRuntime = $prefix;
+        }
+        if (is_string($version) && $version !== '') {
+            $this->versionOverrideRuntime = $version;
+        }
+    }
+
     public function prefix(): string { return 'ER'; }
-
-    /** Envelope semantic version token. */
     public function version(): string { return 'v1'; }
-
-    /** Human-friendly transport form. */
     public function transport(): string { return 'url'; }
 
-    /**
-     * Build a URL for one chunk.
-     * If 'url.web_base' is null → deep link (truth://…)
-     * else → web link (https://…?truth=v1&prefix=…&code=…&i=…&n=…&c=…)
-     */
     public function header(string $code, int $index, int $total, string $payloadPart): string
     {
         $this->assertIndexTotal($index, $total);
@@ -49,13 +52,10 @@ final class EnvelopeV1Url implements Envelope
         $pfx = $this->configuredPrefix();
         $ver = $this->configuredVersion();
 
-        // Resolve URL options with defaults
         $scheme       = $this->cfg('url.scheme', 'truth');
         $webBase      = $this->cfg('url.web_base', null);
         $payloadParam = $this->cfg('url.payload_param', 'c');
-        $versionParam = $this->cfg('url.version_param', 'v'); // used only as fallback reader in parse()
 
-        // Prefer deep-link when no web_base configured
         if ($webBase === null) {
             // truth://v1/<prefix>/<code>/<i>/<n>?c=payload
             $path = sprintf(
@@ -70,22 +70,19 @@ final class EnvelopeV1Url implements Envelope
             return sprintf('%s://%s?%s', $scheme, $path, $qs);
         }
 
-        // https://host/path?truth=v1&prefix=ER&code=XYZ&i=2&n=5&c=payload
+        // https://…?truth=v1&prefix=ER&code=…&i=…&n=…&c=…
         $q = [
-            'truth'      => $ver,
-            'prefix'     => $pfx,
-            'code'       => $code,
-            'i'          => $index,
-            'n'          => $total,
+            'truth'       => $ver,
+            'prefix'      => $pfx,
+            'code'        => $code,
+            'i'           => $index,
+            'n'           => $total,
             $payloadParam => $payloadPart,
         ];
         $qs = http_build_query($q, '', '&', PHP_QUERY_RFC3986);
         return rtrim($webBase, '/') . '?' . $qs;
     }
 
-    /**
-     * Parse a deep-link or web URL back to [code, index, total, payloadPart].
-     */
     public function parse(string $encoded): array
     {
         $pfx = $this->configuredPrefix();
@@ -102,7 +99,6 @@ final class EnvelopeV1Url implements Envelope
                 throw new \InvalidArgumentException('Invalid deep-link URL.');
             }
 
-            // host + path → "v1/<prefix>/<code>/<i>/<n>"
             $path = $u['host'] . ($u['path'] ?? '');
             $parts = array_values(array_filter(explode('/', $path), 'strlen'));
             if (count($parts) < 5) {
@@ -157,16 +153,11 @@ final class EnvelopeV1Url implements Envelope
         throw new \InvalidArgumentException('Unsupported envelope string (not a recognized URL).');
     }
 
-    /**
-     * Convenience config reader under the package namespace.
-     * @param mixed $default
-     * @return mixed
-     */
+    /** Convenience config reader under the package namespace. */
     private function cfg(string $key, $default = null)
     {
         if (function_exists('config')) {
-            $full = "truth-codec.$key";
-            return config($full, $default);
+            return config("truth-codec.$key", $default);
         }
         return $default;
     }

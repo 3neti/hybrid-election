@@ -138,3 +138,88 @@ it('supports FQCN-based encode → decode as well', function () {
     expect($dec['complete'] ?? null)->toBeTrue();
     expect($dec['payload']  ?? null)->toEqual($payload);
 });
+
+it('encode+decode honors envelope_prefix/version for URL envelopes', function () {
+    $payload = [
+        'type' => 'demo',
+        'code' => 'PG-URL-KNOBS-001',
+        'data' => ['hello' => 'world'],
+    ];
+
+    // Encode with alias + explicit prefix/version overrides
+    $enc = test()->postJson('/api/encode', [
+        'payload'          => $payload,
+        'code'             => $payload['code'],
+        'envelope'         => 'v1url',                 // alias path
+        'envelope_prefix'  => 'TRUTH',                 // override
+        'envelope_version' => 'v9',                    // override
+        'transport'        => 'base64url+deflate',
+        'serializer'       => 'json',
+        'by'               => 'size',
+        'size'             => 200,
+    ])->assertOk()->json();
+
+    // Extract lines/urls in a tolerant way
+    $urls = isset($enc['urls']) ? array_values($enc['urls']) : (isset($enc['lines']) ? array_values($enc['lines']) : []);
+    expect($urls)->toBeArray()->not->toBeEmpty();
+
+    // Must reflect the overridden version/prefix in the deep-link path
+    // truth://v9/TRUTH/<CODE>/<i>/<n>?c=...
+    expect($urls[0])->toStartWith('truth://v9/TRUTH/');
+
+    // Round-trip decode using the same alias + overrides
+    shuffle($urls);
+    $dec = test()->postJson('/api/decode', [
+        'lines'            => $urls,
+        'envelope'         => 'v1url',
+        'envelope_prefix'  => 'TRUTH',
+        'envelope_version' => 'v9',
+        'transport'        => 'base64url+deflate',
+        'serializer'       => 'json',
+    ])->assertOk()->json();
+
+    expect($dec['complete'] ?? null)->toBeTrue();
+    expect($dec['payload'] ?? null)->toEqual($payload);
+});
+
+it('encode+decode honors envelope_prefix/version for LINE envelopes', function () {
+    $payload = [
+        'type' => 'demo',
+        'code' => 'PG-LINE-KNOBS-001',
+        'data' => ['x' => 1],
+    ];
+
+    // Encode with alias + explicit prefix/version overrides
+    $enc = test()->postJson('/api/encode', [
+        'payload'          => $payload,
+        'code'             => $payload['code'],
+        'envelope'         => 'v1line',                // alias path
+        'envelope_prefix'  => 'BAL',                   // override
+        'envelope_version' => 'v2',                    // override
+        'transport'        => 'base64url+deflate',
+        'serializer'       => 'json',
+        'by'               => 'size',
+        'size'             => 120,
+    ])->assertOk()->json();
+
+    $lines = isset($enc['lines']) ? array_values($enc['lines']) : (isset($enc['urls']) ? array_values($enc['urls']) : []);
+    expect($lines)->toBeArray()->not->toBeEmpty();
+
+    // Must reflect the overridden tokens at the head of the line:
+    // BAL|v2|<CODE>|<i>/<n>|<payload>
+    expect($lines[0])->toStartWith('BAL|v2|');
+
+    // Round-trip decode using the same alias + overrides
+    shuffle($lines);
+    $dec = test()->postJson('/api/decode', [
+        'lines'            => $lines,
+        'envelope'         => 'v1line',
+        'envelope_prefix'  => 'BAL',
+        'envelope_version' => 'v2',
+        'transport'        => 'base64url+deflate',
+        'serializer'       => 'json',
+    ])->assertOk()->json();
+
+    expect($dec['complete'] ?? null)->toBeTrue();
+    expect($dec['payload'] ?? null)->toEqual($payload);
+});
