@@ -2,13 +2,16 @@
 import { ref } from 'vue'
 import { parseIndexTotal } from '../composables/MultiPartTools'
 
-// New composables (extracted)
+// Existing composables
 import usePayloadJson from '../composables/usePayloadJson'
 import useWriterSpec from '../composables/useWriterSpec'
 import useEncodeDecode from '../composables/useEncodeDecode'
 import usePartsList from '../composables/usePartsList'
 import useDownloads from '../composables/useDownloads'
 import useQrGallery from '../composables/useQrGallery'
+
+// NEW: scanner pieces
+import ScannerPanel from './ScannerPanel.vue'
 
 type AnyObject = Record<string, any>
 
@@ -34,7 +37,7 @@ const {
     payload,
     payloadError,
     onPayloadInput,
-    setPayload, // not used yet, but handy for presets
+    setPayload,
 } = usePayloadJson({ type: 'demo', code: 'DEMO-001', data: { hello: 'world' } })
 
 /** ------------------------------
@@ -123,6 +126,104 @@ function downloadQr() {
  * QR Gallery Pagination (default 3×3 → 9/page)
  * ------------------------------ */
 const { perPage, page, qrItems, totalPages, pagedQrs, prevPage, nextPage } = useQrGallery(encodeResult, 9)
+
+/** ------------------------------
+ * Scanner wiring (NEW)
+ * ------------------------------ */
+const scannerEl = ref<InstanceType<typeof ScannerPanel> | null>(null)
+const active = ref(false)            // reflect child's camera state
+const lastScan = ref('')             // latest decoded text from child
+const scannedLines = ref<string[]>([])
+const simulateMissing = ref(false)
+
+function startCamera() {
+    console.log('[TruthQrForm] startCamera() clicked')
+    scannerEl.value?.start?.()
+}
+
+function stopCamera() {
+    console.log('[TruthQrForm] stopCamera() clicked')
+    scannerEl.value?.stop?.()
+}
+
+function onDetected(s: string) {
+    console.log('[TruthQrForm] onDetected payload:', s)
+    lastScan.value = (s || '').trim()
+}
+
+function onStarted() {
+    console.log('[TruthQrForm] onStarted (camera active)')
+    active.value = true
+}
+
+function onStopped() {
+    console.log('[TruthQrForm] onStopped (camera inactive)')
+    active.value = false
+}
+
+
+
+
+function addLastScan() {
+    const s = lastScan.value?.trim()
+    if (!s) return
+    if (!scannedLines.value.includes(s)) scannedLines.value.push(s)
+}
+
+function clearScanned() {
+    scannedLines.value = []
+    resetScan()
+}
+
+function scannedProgress() {
+    // quick inferred progress from headers
+    let total = 0
+    let got = 0
+    for (const ln of scannedLines.value) {
+        const meta = parseIndexTotal(ln)
+        if (meta) {
+            total = Math.max(total, meta.n)
+            got += 1
+        }
+    }
+    return { received: got, total }
+}
+
+function decodeScanned() {
+    if (!scannedLines.value.length) return
+    let lines = [...scannedLines.value]
+    if (simulateMissing.value) {
+        const meta = parseIndexTotal(lines[0] || '')
+        if (meta && meta.n > 2) {
+            const miss = Math.ceil(meta.n / 2)
+            lines = lines.filter((ln) => parseIndexTotal(ln)?.i !== miss)
+        }
+    }
+
+    return decodeWith(
+        {
+            payload: null,
+            code: undefined,
+            envelope: form.value.envelope as any,
+            prefix: form.value.prefix,
+            version: form.value.version,
+            transport: form.value.transport,
+            serializer: form.value.serializer,
+        } as any,
+        lines,
+    )
+}
+
+// Provide ScannerPanel the decode args it needs (envelope/prefix/version/…)
+function getDecodeArgs() {
+    return {
+        envelope: form.value.envelope as 'v1url' | 'v1line',
+        prefix: form.value.prefix,
+        version: form.value.version,
+        transport: form.value.transport,
+        serializer: form.value.serializer,
+    }
+}
 </script>
 
 <template>
@@ -247,6 +348,7 @@ const { perPage, page, qrItems, totalPages, pagedQrs, prevPage, nextPage } = use
             </div>
         </div>
 
+        <!-- Payload -->
         <div>
             <label class="block text-sm font-medium">Payload (JSON)</label>
             <textarea
@@ -258,6 +360,7 @@ const { perPage, page, qrItems, totalPages, pagedQrs, prevPage, nextPage } = use
             <p v-if="payloadError" class="text-xs text-red-600 mt-1">{{ payloadError }}</p>
         </div>
 
+        <!-- Actions -->
         <div class="flex gap-3">
             <button @click="onEncode" :disabled="loading || !!payloadError" class="px-4 py-2 rounded bg-black text-white">
                 {{ loading ? 'Encoding…' : 'Encode' }}
@@ -278,7 +381,9 @@ const { perPage, page, qrItems, totalPages, pagedQrs, prevPage, nextPage } = use
             {{ error }}
         </div>
 
+        <!-- Results columns -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Left: Encode + QR gallery -->
             <div class="p-3 bg-gray-50 border rounded overflow-auto">
                 <div class="font-semibold mb-2">ENCODE RESULT</div>
                 <pre class="text-xs">{{ encodeResult }}</pre>
@@ -331,9 +436,71 @@ const { perPage, page, qrItems, totalPages, pagedQrs, prevPage, nextPage } = use
                 </div>
             </div>
 
-            <div class="p-3 bg-gray-50 border rounded overflow-auto">
+            <!-- Right: Decode result + Scanner (NEW) -->
+            <div class="p-3 bg-gray-50 border rounded overflow-auto space-y-4">
                 <div class="font-semibold mb-2">DECODE RESULT</div>
                 <pre class="text-xs">{{ decodeResult }}</pre>
+
+                <div class="space-y-2">
+                    <div class="flex items-center gap-2">
+                        <button class="px-3 py-1 rounded bg-gray-800 text-white text-sm"
+                                @click="startCamera" :disabled="active">Start camera</button>
+                        <button class="px-3 py-1 rounded bg-gray-200 text-sm"
+                                @click="stopCamera" :disabled="!active">Stop</button>
+                        <span class="text-xs text-gray-600">Status: {{ active ? 'Scanning…' : 'Idle' }}</span>
+                    </div>
+
+                    <ScannerPanel
+                        ref="scannerEl"
+                        class="border rounded"
+                        :get-decode-args="getDecodeArgs"
+                        @started="onStarted"
+                        @stopped="onStopped"
+                        @detected="onDetected"
+                        @decoded="(p: any) => {
+                    console.log('[TruthQrForm] @decoded received payload from ScannerPanel:', p);
+                    try {
+                    // push into JSON editor (updates raw + parsed + clears error)
+                    setPayload(p);
+                    } catch (e) {
+                    console.warn('[TruthQrForm] setPayload failed:', e);
+                    }
+                    }"
+                    />
+
+                    <div class="text-xs text-gray-600">
+                        Last scan:
+                        <span class="font-mono">{{ lastScan || '—' }}</span>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button class="px-3 py-1 rounded bg-gray-100 text-sm" @click="addLastScan" :disabled="!lastScan">Add line</button>
+                        <button class="px-3 py-1 rounded bg-gray-100 text-sm" @click="clearScanned" :disabled="scannedLines.length===0">Clear</button>
+                        <label class="inline-flex items-center gap-2 text-xs">
+                            <input type="checkbox" v-model="simulateMissing" />
+                            simulate missing (drop middle index)
+                        </label>
+                        <span v-if="scannedLines.length" class="text-xs text-gray-600">
+              Progress: {{ scannedProgress().received }}/{{ scannedProgress().total || '?' }}
+            </span>
+                    </div>
+
+                    <div v-if="scannedLines.length" class="space-y-1">
+                        <div class="font-semibold text-sm">Scanned lines ({{ scannedLines.length }})</div>
+                        <ul class="text-xs space-y-1">
+                            <li v-for="(ln, i) in scannedLines" :key="i" class="flex items-center gap-2">
+                <span class="inline-flex px-2 py-0.5 rounded bg-gray-200 text-gray-800">
+                  {{ parseIndexTotal(ln)?.i ?? '?' }}/{{ parseIndexTotal(ln)?.n ?? '?' }}
+                </span>
+                                <span class="truncate">{{ ln }}</span>
+                            </li>
+                        </ul>
+
+                        <button class="mt-2 px-3 py-1 rounded bg-black text-white text-sm" @click="decodeScanned">
+                            Decode scanned
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
