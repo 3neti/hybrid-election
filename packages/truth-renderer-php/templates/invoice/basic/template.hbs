@@ -1,0 +1,14 @@
+<h1>Invoice {{code}}</h1>
+<p>Date: {{date}}</p>
+<table>
+  <tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr>
+  {{#each items}}
+    <tr>
+      <td>{{name}}</td>
+      <td>{{qty}}</td>
+      <td>{{currency price}}</td>
+      <td>{{currency (multiply qty price)}}</td>
+    </tr>
+  {{/each}}
+</table>
+<p><strong>Total:</strong> {{currency total}}</p>
