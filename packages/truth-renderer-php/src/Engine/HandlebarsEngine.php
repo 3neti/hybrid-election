@@ -47,11 +47,17 @@ class HandlebarsEngine
 
         // Built-in helpers as FQN strings to satisfy LightnCandy’s exporter
         $compileOptions['helpers'] = array_merge([
-            'upper'    => HbsHelpers::class . '::upper',
-            'lower'    => HbsHelpers::class . '::lower',
-            'currency' => HbsHelpers::class . '::currency',
-            'date'     => HbsHelpers::class . '::date',
-            'multiply' => HbsHelpers::class . '::multiply',
+            'upper'     => HbsHelpers::class . '::upper',
+            'lower'     => HbsHelpers::class . '::lower',
+            'currency'  => HbsHelpers::class . '::currency',
+            'date'      => HbsHelpers::class . '::date',
+            'multiply'  => HbsHelpers::class . '::multiply',
+            'lineTotal' => HbsHelpers::class . '::lineTotal',
+            'calcTotal' => HbsHelpers::class . '::calcTotal',
+            'round2'    => HbsHelpers::class . '::round2',
+            'currencyISO'=> HbsHelpers::class . '::currencyISO',
+            'let'       => HbsHelpers::class . '::let',
+            'eq'        => HbsHelpers::class . '::eq',
         ], $normalizedHelpers);
 
         // --- Compile ---

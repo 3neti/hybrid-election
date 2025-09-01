@@ -7,6 +7,7 @@ use Illuminate\Support\ServiceProvider;
 use TruthRenderer\Contracts\RendererInterface;
 use TruthRenderer\Contracts\TemplateRegistryInterface;
 use TruthRenderer\Engine\HandlebarsEngine;
+use TruthRenderer\Template\TemplateAssetsLoader;
 use TruthRenderer\Template\TemplateRegistry;
 use TruthRenderer\Validation\Validator;
 
@@ -52,13 +53,7 @@ class TruthRendererServiceProvider extends ServiceProvider
 
             return new TemplateRegistry($paths);
         });
-//        $this->app->singleton(TemplateRegistry::class, function () {
-//            /** @var array<string, string> $paths */
-//            $paths = (array) config('truth-renderer.paths', [
-//                'core' => base_path('resources/truth-templates'),
-//            ]);
-//            return new TemplateRegistry($paths);
-//        });
+
         // Interface alias → concrete singleton
         $this->app->alias(TemplateRegistry::class, TemplateRegistryInterface::class);
 
@@ -80,6 +75,12 @@ class TruthRendererServiceProvider extends ServiceProvider
         });
         // Interface alias → concrete singleton
         $this->app->alias(Renderer::class, RendererInterface::class);
+
+        $this->app->singleton(TemplateAssetsLoader::class, function ($app) {
+            return new TemplateAssetsLoader(
+                $app->make(TemplateRegistryInterface::class)
+            );
+        });
     }
 
     /**

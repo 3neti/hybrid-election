@@ -22,4 +22,16 @@ interface TemplateRegistryInterface
      * @return string[]
      */
     public function list(): array;
+
+    /**
+     * Absolute path to the template file if resolvable (e.g. …/invoice/basic/template.hbs)
+     * or null when the template came from memory.
+     */
+    public function resolveFile(string $name): ?string;
+
+    /**
+     * Absolute directory that contains the template file (parent of resolveFile),
+     * or null for in-memory templates.
+     */
+    public function resolveDir(string $name): ?string;
 }

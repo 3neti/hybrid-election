@@ -236,35 +236,17 @@ class FakeRegistry implements TemplateRegistryInterface
     {
         // TODO: Implement set() method.
     }
-}
 
-//function rr_reg(array $overrides = []): RenderRequest {
-//    $base = [
-//        'template'      => '<h1>Hello, {{name}}!</h1>',
-//        'data'          => ['name' => 'World'],
-//        'schema'        => null,
-//        'partials'      => [],
-//        'engineFlags'   => [],
-//        'format'        => 'html',
-//        'paperSize'     => 'A4',
-//        'orientation'   => 'portrait',
-//        'assetsBaseUrl' => null,
-//    ];
-//
-//    $payload = array_replace($base, $overrides);
-//
-//    return new RenderRequest(
-//        template:      $payload['template'],
-//        data:          $payload['data'],
-//        schema:        $payload['schema'],
-//        partials:      $payload['partials'],
-//        engineFlags:   $payload['engineFlags'],
-//        format:        $payload['format'],
-//        paperSize:     $payload['paperSize'],
-//        orientation:   $payload['orientation'],
-//        assetsBaseUrl: $payload['assetsBaseUrl'],
-//    );
-//}
+    public function resolveFile(string $name): ?string
+    {
+        // TODO: Implement resolveFile() method.
+    }
+
+    public function resolveDir(string $name): ?string
+    {
+        // TODO: Implement resolveDir() method.
+    }
+}
 
 it('uses a registry template when the template name matches', function () {
     $registry = new FakeRegistry([

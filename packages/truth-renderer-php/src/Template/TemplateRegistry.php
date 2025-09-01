@@ -68,6 +68,10 @@ class TemplateRegistry implements TemplateRegistryInterface
             }
             $found = $this->scanTemplatesRecursively($root);
             foreach ($found as $relNoExt) {
+                // NEW: skip anything inside a "partials" folder
+                if ($this->isPartialPath($relNoExt)) {
+                    continue;
+                }
                 $names[] = $ns ? ($ns . ':' . $relNoExt) : $relNoExt;
             }
         }
@@ -139,5 +143,42 @@ class TemplateRegistry implements TemplateRegistryInterface
             return isset($this->paths[$ns]) ? [$this->paths[$ns]] : [];
         }
         return array_values($this->paths);
+    }
+
+    public function resolveFile(string $name): ?string
+    {
+        // memory first
+        if (isset($this->memory[$name])) {
+            return null; // in-memory; no file
+        }
+
+        [$ns, $basename] = $this->splitName($name);
+        foreach ($this->candidateDirs($ns) as $dir) {
+            foreach (['.hbs', '.html'] as $ext) {
+                $file = rtrim($dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $basename . $ext;
+                if (is_file($file)) {
+                    return realpath($file) ?: $file;
+                }
+            }
+        }
+        return null;
+    }
+
+    public function resolveDir(string $name): ?string
+    {
+        $file = $this->resolveFile($name);
+        return $file ? dirname($file) : null;
+    }
+
+    /**
+     * A path is considered a "partial" when any segment is literally "partials".
+     * Matches:
+     *  - partials/foo
+     *  - invoice/basic/partials/itemRow
+     *  - partials
+     */
+    private function isPartialPath(string $relNoExt): bool
+    {
+        return (bool) preg_match('~(^|/)partials(/|$)~i', $relNoExt);
     }
 }
