@@ -11,10 +11,12 @@
     "repositories": [
         { "type": "path", "url": "packages/truth-qr-php" },
         { "type": "path", "url": "packages/truth-codec-php" },
-        { "type": "path", "url": "packages/truth-qr-ui" }
+        { "type": "path", "url": "packages/truth-qr-ui" },
+        { "type": "path", "url": "packages/truth-renderer-php" }
     ],
     "require": {
         "php": "^8.2",
+        "ext-zip": "*",
         "endroid/qr-code": "^6.0",
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/framework": "^12.0",
@@ -23,12 +25,12 @@
         "laravel/tinker": "^2.10.1",
         "lbhurtado/truth-qr-php": "dev-main",
         "lbhurtado/truth-qr-ui": "dev-main",
+        "lbhurtado/truth-renderer-php": "dev-main",
         "lorisleiva/laravel-actions": "^2.9",
         "spatie/browsershot": "^5.0",
         "spatie/laravel-data": "^4.17",
         "spatie/laravel-schemaless-attributes": "^2.5",
-        "tightenco/ziggy": "^2.4",
-        "ext-zip": "*"
+        "tightenco/ziggy": "^2.4"
     },
     "require-dev": {
         "ext-zlib": "*",

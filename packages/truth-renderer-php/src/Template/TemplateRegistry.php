@@ -12,7 +12,8 @@ class TemplateRegistry implements TemplateRegistryInterface
     private array $memory = [];
 
     /**
-     * @var array<string, string> namespace => directory (e.g. ['core' => '/.../templates'])
+     * @var array<string, string> namespace => directory
+     * Example: ['core' => '/.../resources/truth-templates', 'pkg' => '/.../stubs/templates']
      * Files expected to end with ".hbs" (Handlebars) or ".html"
      */
     private array $paths;
@@ -27,28 +28,23 @@ class TemplateRegistry implements TemplateRegistryInterface
 
     public function set(string $name, string $source): void
     {
-        // normalize name to "ns:name" or just "name"
         $this->memory[$name] = $source;
     }
 
     public function get(string $name): string
     {
-        // 1) check memory
+        // 1) in-memory
         if (isset($this->memory[$name])) {
             return $this->memory[$name];
         }
 
-        // 2) check filesystem paths (support "ns:name" or default namespace)
+        // 2) filesystem (supports subpaths like "invoice/basic/template")
         [$ns, $basename] = $this->splitName($name);
-
-        if (str_contains($basename, '..') || strpbrk($basename, "/\\") !== false) {
-            throw new \RuntimeException("Illegal template name: {$name}");
-        }
-
         $dirs = $this->candidateDirs($ns);
-        foreach ($dirs as $dir) {
+
+        foreach ($dirs as $root) {
             foreach (['.hbs', '.html'] as $ext) {
-                $file = rtrim($dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $basename . $ext;
+                $file = rtrim($root, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $basename . $ext;
                 if (is_file($file)) {
                     $src = file_get_contents($file);
                     if ($src === false) {
@@ -66,27 +62,59 @@ class TemplateRegistry implements TemplateRegistryInterface
     {
         $names = array_keys($this->memory);
 
-        foreach ($this->paths as $ns => $dir) {
-            if (!is_dir($dir)) {
+        foreach ($this->paths as $ns => $root) {
+            if (!is_dir($root)) {
                 continue;
             }
-            $dh = opendir($dir);
-            if (!$dh) {
-                continue;
+            $found = $this->scanTemplatesRecursively($root);
+            foreach ($found as $relNoExt) {
+                $names[] = $ns ? ($ns . ':' . $relNoExt) : $relNoExt;
             }
-            while (($f = readdir($dh)) !== false) {
-                if ($f === '.' || $f === '..') continue;
-                if (preg_match('/^(?<name>.+)\.(hbs|html)$/i', $f, $m)) {
-                    $names[] = $ns ? ($ns . ':' . $m['name']) : $m['name'];
-                }
-            }
-            closedir($dh);
         }
 
         // unique + natural sort
         $names = array_values(array_unique($names));
         natcasesort($names);
         return array_values($names);
+    }
+
+    /**
+     * Recursively collect relative template names (without extension) under $root.
+     * @return string[] e.g. ['invoice/basic/template', 'ballot/simple']
+     */
+    private function scanTemplatesRecursively(string $root): array
+    {
+        $root = rtrim($root, DIRECTORY_SEPARATOR);
+        $out = [];
+
+        $it = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator(
+                $root,
+                \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::FOLLOW_SYMLINKS
+            ),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($it as $fileInfo) {
+            /** @var \SplFileInfo $fileInfo */
+            if (!$fileInfo->isFile()) continue;
+
+            $ext = strtolower($fileInfo->getExtension());
+            if ($ext !== 'hbs' && $ext !== 'html') continue;
+
+            $absPath = $fileInfo->getPathname();
+            // relative path without extension
+            $rel = substr($absPath, strlen($root) + 1); // +1 for '/'
+            $relNoExt = preg_replace('/\.(hbs|html)$/i', '', $rel);
+            // normalize directory separators to '/'
+            $relNoExt = str_replace(DIRECTORY_SEPARATOR, '/', $relNoExt);
+
+            if ($relNoExt !== '') {
+                $out[] = $relNoExt;
+            }
+        }
+
+        return $out;
     }
 
     /**
@@ -107,11 +135,9 @@ class TemplateRegistry implements TemplateRegistryInterface
      */
     private function candidateDirs(?string $ns): array
     {
-        // specific namespace
         if ($ns !== null) {
             return isset($this->paths[$ns]) ? [$this->paths[$ns]] : [];
         }
-        // all namespaces (for un-namespaced names)
         return array_values($this->paths);
     }
 }

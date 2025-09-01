@@ -2,55 +2,122 @@
 
 namespace TruthRenderer;
 
+use Dompdf\Options;
+use Illuminate\Support\ServiceProvider;
 use TruthRenderer\Contracts\RendererInterface;
 use TruthRenderer\Contracts\TemplateRegistryInterface;
+use TruthRenderer\Engine\HandlebarsEngine;
 use TruthRenderer\Template\TemplateRegistry;
-use Illuminate\Support\ServiceProvider;
+use TruthRenderer\Validation\Validator;
 
+/**
+ * Service provider for the TruthRenderer package.
+ *
+ * Responsibilities:
+ * - Registers singletons and interface bindings (Renderer, TemplateRegistry, Dompdf Options).
+ * - Merges package config with the host application's config.
+ * - Publishes config, template stubs, and Vue components (when running in console).
+ * - Loads package routes (if present).
+ */
 class TruthRendererServiceProvider extends ServiceProvider
 {
     /**
-     * Bootstrap services.
-     */
-    public function boot(): void
-    {
-        // If you ship a config file, allow publishing:
-        $configPath = __DIR__ . '/../config/truth-renderer.php';
-        if (file_exists($configPath)) {
-            $this->publishes([
-                $configPath => config_path('truth-renderer.php'),
-            ], 'truth-renderer-config');
-
-            $this->mergeConfigFrom($configPath, 'truth-renderer');
-
-            // publish a default templates folder, if desired
-            $this->publishes([
-                __DIR__ . '/../stubs/templates' => base_path('resources/templates/core'),
-            ], 'truth-renderer-templates');
-        }
-    }
-
-    /**
-     * Register services.
+     * Register container bindings and merge configuration.
      */
     public function register(): void
     {
-        // Bind the interface to the concrete implementation
-        $this->app->bind(RendererInterface::class, Renderer::class);
+        // 1) Merge package config (if present) so app config can override defaults.
+        $configPath = __DIR__ . '/../config/truth-renderer.php';
+        if (file_exists($configPath)) {
+            $this->mergeConfigFrom($configPath, 'truth-renderer');
+        }
 
-        // Optionally allow resolution via the container by class name as well:
-        $this->app->singleton(Renderer::class, function () {
-            return new Renderer();
-        });
+        // 2) TemplateRegistry singleton (reads namespace=>path map from config with a safe default).
+        $this->app->singleton(\TruthRenderer\Template\TemplateRegistry::class, function ($app) {
+            // App-level dir (published / user-added)
+            $appDir   = base_path('resources/truth-templates');
 
-        // TemplateRegistry binding with a default templates directory
-        $this->app->singleton(TemplateRegistryInterface::class, function ($app) {
-            $paths = [
-                // namespace => directory
-                'core' => base_path('resources/templates/core'),
-                // add more as needed
-            ];
+            // Package stubs dir (shipped with the package)
+            $stubDir  = __DIR__ . '/../stubs/templates';
+
+            // Merge with config override (if provided)
+            $configPaths = (array) config('truth-renderer.paths', []);
+
+            // Final search paths (namespace => directory)
+            $paths = array_merge(
+                ['core' => $appDir],
+                ['pkg'  => $stubDir],
+                $configPaths,
+            );
+
             return new TemplateRegistry($paths);
         });
+//        $this->app->singleton(TemplateRegistry::class, function () {
+//            /** @var array<string, string> $paths */
+//            $paths = (array) config('truth-renderer.paths', [
+//                'core' => base_path('resources/truth-templates'),
+//            ]);
+//            return new TemplateRegistry($paths);
+//        });
+        // Interface alias → concrete singleton
+        $this->app->alias(TemplateRegistry::class, TemplateRegistryInterface::class);
+
+        // 3) Dompdf Options singleton (sane defaults; callers may override via config if needed).
+        $this->app->singleton(Options::class, function () {
+            return (new Options())
+                ->set('isRemoteEnabled', true)
+                ->set('isHtml5ParserEnabled', true)
+                ->set('defaultFont', 'DejaVu Sans');
+        });
+
+        // 4) Renderer singleton (engine + validator + dompdf options).
+        $this->app->singleton(Renderer::class, function ($app) {
+            return new Renderer(
+                engine: new HandlebarsEngine(),
+                validator: new Validator(),
+                dompdfOptions: $app->make(Options::class),
+            );
+        });
+        // Interface alias → concrete singleton
+        $this->app->alias(Renderer::class, RendererInterface::class);
+    }
+
+    /**
+     * Bootstrap package services: publish assets and load routes.
+     */
+    public function boot(): void
+    {
+        // Publish only when running artisan commands.
+        if ($this->app->runningInConsole()) {
+            // Publish config (if the package ships one).
+            $configPath = __DIR__ . '/../config/truth-renderer.php';
+            if (file_exists($configPath)) {
+                $this->publishes([
+                    $configPath => config_path('truth-renderer.php'),
+                ], 'truth-renderer-config');
+            }
+
+            // Publish a default templates folder (optional).
+            $stubTemplates = __DIR__ . '/../stubs/templates';
+            if (is_dir($stubTemplates)) {
+                $this->publishes([
+                    $stubTemplates => base_path('resources/truth-templates'),
+                ], 'truth-renderer-templates');
+            }
+
+            // Publish Vue/Inertia component stubs to a conventional components folder.
+            $stubVue = __DIR__ . '/../stubs/inertia/components';
+            if (is_dir($stubVue)) {
+                $this->publishes([
+                    $stubVue => resource_path('js/Pages/TruthRenderer/components/'),
+                ], 'truth-renderer-vue');
+            }
+        }
+
+        // Load package routes if present (kept outside runningInConsole so routes are active at runtime).
+        $routes = __DIR__ . '/../routes/api.php';
+        if (file_exists($routes)) {
+            $this->loadRoutesFrom($routes);
+        }
     }
 }
