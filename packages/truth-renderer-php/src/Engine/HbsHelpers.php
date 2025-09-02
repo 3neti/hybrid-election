@@ -108,4 +108,35 @@ final class HbsHelpers
         if (is_string($v) && is_numeric($v)) return (float)$v;
         return 0.0;
     }
+
+
+    public static function groupBy($context, array $options): string
+    {
+        $hash = $options['hash'] ?? [];
+        $groupKey = $hash['key'] ?? null;
+
+        if (!$groupKey || !is_array($context)) {
+            return '';
+        }
+
+        $grouped = [];
+
+        foreach ($context as $item) {
+            $key = \TruthRenderer\Engine\HbsHelpers::getField($item, $groupKey);
+            $grouped[$key][] = $item;
+        }
+
+        $output = '';
+        foreach ($grouped as $key => $groupItems) {
+            $ctx = [
+                'key'   => $key,
+                'items' => $groupItems,
+            ];
+            $output .= (isset($options['fn']) && is_callable($options['fn']))
+                ? $options['fn']($ctx)
+                : '';
+        }
+
+        return $output;
+    }
 }

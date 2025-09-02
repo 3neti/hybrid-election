@@ -335,3 +335,36 @@ it('resolves relative CSS under assetsBaseUrl with registry template', function 
     @unlink($dir . '/style.css');
     @rmdir($dir);
 });
+
+it('renders grouped items using groupBy helper', function () {
+    $req = rr([
+        'template' => <<<HBS
+{{#groupBy items key="category"}}
+<h3>Category: {{key}}</h3>
+<ul>
+{{#each items}}
+  <li>{{name}} ({{category}})</li>
+{{/each}}
+</ul>
+{{/groupBy}}
+HBS,
+        'data' => [
+            'items' => [
+                ['name' => 'Apple', 'category' => 'Fruit'],
+                ['name' => 'Banana', 'category' => 'Fruit'],
+                ['name' => 'Carrot', 'category' => 'Vegetable'],
+                ['name' => 'Broccoli', 'category' => 'Vegetable'],
+            ],
+        ],
+        'format' => 'html',
+    ]);
+
+    $res = $this->renderer->render($req);
+
+    expect($res)->toBeInstanceOf(RenderResult::class);
+    expect($res->format)->toBe('html');
+    expect($res->content)->toContain('Category: Fruit');
+    expect($res->content)->toContain('Apple (Fruit)');
+    expect($res->content)->toContain('Category: Vegetable');
+    expect($res->content)->toContain('Broccoli (Vegetable)');
+});

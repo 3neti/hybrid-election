@@ -58,6 +58,7 @@ class HandlebarsEngine
             'currencyISO'=> HbsHelpers::class . '::currencyISO',
             'let'       => HbsHelpers::class . '::let',
             'eq'        => HbsHelpers::class . '::eq',
+            'groupBy'   => HbsHelpers::class . '::groupBy',
         ], $normalizedHelpers);
 
         // --- Compile ---
