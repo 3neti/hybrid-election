@@ -107,18 +107,20 @@ class TruthRendererServiceProvider extends ServiceProvider
             }
 
             // Publish Vue/Inertia component stubs to a conventional components folder.
-            $stubVue = __DIR__ . '/../stubs/inertia/components';
+            $stubVue = __DIR__ . '/../stubs/inertia';
             if (is_dir($stubVue)) {
                 $this->publishes([
-                    $stubVue => resource_path('js/Pages/TruthRenderer/components/'),
+                    $stubVue => resource_path('js/Pages/TruthRenderer/'),
                 ], 'truth-renderer-vue');
             }
         }
 
         // Load package routes if present (kept outside runningInConsole so routes are active at runtime).
-        $routes = __DIR__ . '/../routes/api.php';
-        if (file_exists($routes)) {
-            $this->loadRoutesFrom($routes);
+        foreach (['api.php', 'web.php'] as $file) {
+            $path = __DIR__ . "/../routes/{$file}";
+            if (file_exists($path)) {
+                $this->loadRoutesFrom($path);
+            }
         }
     }
 }
