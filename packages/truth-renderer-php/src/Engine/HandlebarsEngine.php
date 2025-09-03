@@ -59,6 +59,9 @@ class HandlebarsEngine
             'let'       => HbsHelpers::class . '::let',
             'eq'        => HbsHelpers::class . '::eq',
             'groupBy'   => HbsHelpers::class . '::groupBy',
+            'inc'       => HbsHelpers::class . '::inc',
+            'startsWith' => HbsHelpers::class . '::startsWith',
+            'includes'  => HbsHelpers::class . '::includes',
         ], $normalizedHelpers);
 
         // --- Compile ---

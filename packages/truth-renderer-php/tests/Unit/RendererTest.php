@@ -368,3 +368,124 @@ HBS,
     expect($res->content)->toContain('Category: Vegetable');
     expect($res->content)->toContain('Broccoli (Vegetable)');
 });
+
+it('renders QR codes independently', function () {
+    $tpl = <<<HBS
+<h2>QR Code Sheet</h2>
+
+<p>Code: {{qrMeta.code}}</p>
+<p>Split By: {{qrMeta.by}}</p>
+
+<div style="display: flex; flex-wrap: wrap; gap: 2em; margin-top: 1em;">
+  {{#each qrMeta.qr}}
+    <div style="text-align: center;">
+      <div style="width: 256px; height: 256px;">
+        {{{this}}}
+      </div>
+      <p>QR {{inc @index}}</p>
+    </div>
+  {{/each}}
+</div>
+HBS;
+
+    $data = [
+        'qrMeta' => [
+            'code' => 'DEMO-001',
+            'by'   => 'count',
+            'urls' => [
+                'https://example.com/1',
+                'https://example.com/2',
+                'https://example.com/3',
+            ],
+            'qr' => [
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#000"/></svg>',
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#000"/></svg>',
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="10" y="50" font-size="12" fill="#000">QR 3</text></svg>',
+            ],
+        ],
+    ];
+
+    $html = (new \TruthRenderer\Engine\HandlebarsEngine())->render($tpl, $data);
+    expect($html)->toContain('<svg');
+    expect($html)->toContain('QR 1');
+});
+
+it('renders the top-level format variable outside of the qrMeta block', function () {
+    $tpl = <<<HBS
+<h2>QR Format Debug</h2>
+
+<p><strong>Format:</strong> {{format}}</p>
+
+<div>
+  {{#each qrMeta.qr}}
+    <div>QR: {{this}}</div>
+  {{/each}}
+</div>
+HBS;
+
+    $data = [
+        'format' => 'png',
+        'qrMeta' => [
+            'qr' => ['One', 'Two', 'Three'],
+        ],
+    ];
+
+    $html = (new \TruthRenderer\Engine\HandlebarsEngine())->render($tpl, $data);
+    $normalized = trim(preg_replace('/\s+/', ' ', $html));
+
+    expect($normalized)->toContain('<strong>Format:</strong> png');
+    expect($normalized)->toContain('QR: One');
+    expect($normalized)->toContain('QR: Two');
+});
+
+it('renders format nested under qrMeta', function () {
+    $tpl = <<<HBS
+<h2>QR Code Format Test</h2>
+
+<p>Top-Level Format: {{format}}</p>
+<p>Nested Format: {{qrMeta.format}}</p>
+
+<div>
+  {{#each qrMeta.qr}}
+    <div>QR: {{this}}</div>
+  {{/each}}
+</div>
+HBS;
+
+    $data = [
+        'format' => 'html', // intentionally different to confirm scoping
+        'qrMeta' => [
+            'format' => 'png',
+            'by'     => 'size',
+            'urls'   => [
+                'truth://v1/TRUTH/DEMO-001/1/1?c=xyz'
+            ],
+            'qr' => [
+                'QR-IMAGE-1',
+                'QR-IMAGE-2',
+                'QR-IMAGE-3',
+            ],
+        ],
+    ];
+
+    $html = (new \TruthRenderer\Engine\HandlebarsEngine())->render($tpl, $data);
+    $normalized = trim(preg_replace('/\s+/', ' ', $html));
+
+    expect($normalized)->toContain('Top-Level Format: html');
+    expect($normalized)->toContain('Nested Format: png');
+    expect($normalized)->toContain('QR: QR-IMAGE-1');
+    expect($normalized)->toContain('QR: QR-IMAGE-3');
+});
+
+test('Handlebars startsWith and includes helpers work', function () {
+    $tpl = <<<HBS
+        {{#if (startsWith value "hello")}}startsWith: Yes{{else}}startsWith: No{{/if}}
+        {{#if (includes value "world")}}includes: Yes{{else}}includes: No{{/if}}
+    HBS;
+
+    $engine = new HandlebarsEngine();
+    $html = $engine->render($tpl, ['value' => 'hello world']);
+
+    expect($html)->toContain('startsWith: Yes');
+    expect($html)->toContain('includes: Yes');
+});

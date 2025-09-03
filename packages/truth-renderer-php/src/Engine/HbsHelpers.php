@@ -139,4 +139,20 @@ final class HbsHelpers
 
         return $output;
     }
+
+    // Inside HbsHelpers.php
+    public static function inc($value, array $options = []): int
+    {
+        return (int)$value + 1;
+    }
+
+    public static function startsWith($string, $prefix): bool
+    {
+        return str_starts_with((string)$string, (string)$prefix);
+    }
+
+    public static function includes($string, $needle): bool
+    {
+        return str_contains((string)$string, (string)$needle);
+    }
 }
