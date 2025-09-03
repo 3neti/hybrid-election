@@ -11,4 +11,7 @@ return [
         'allow_overwrite' => false,
         'default_namespace' => 'core',
     ],
+    'render' => [
+        'qr_size' => 300, // default QR code size in pixels
+    ],
 ];

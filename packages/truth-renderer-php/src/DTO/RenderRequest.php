@@ -8,14 +8,16 @@ namespace TruthRenderer\DTO;
 final class RenderRequest
 {
     /**
-     * @param array<string,mixed>|object      $data
+     * @param string $template
+     * @param array<string,mixed>|object $data
      * @param array<string,mixed>|object|null $schema JSON Schema (optional)
-     * @param array<string,string>|null       $partials keyed partials (optional)
-     * @param array<string,mixed>             $engineFlags LightnCandy compile/runtime options
-     * @param 'pdf'|'html'|'md'               $format
-     * @param 'A4'|'Letter'|string|null       $paperSize
-     * @param 'portrait'|'landscape'|null     $orientation
-     * @param string|null                     $assetsBaseUrl used by Dompdf to resolve relative assets
+     * @param array<string,string>|null $partials keyed partials (optional)
+     * @param array<string,mixed> $engineFlags LightnCandy compile/runtime options
+     * @param 'pdf'|'html'|'md' $format
+     * @param 'A4'|'Letter'|string|null $paperSize
+     * @param 'portrait'|'landscape'|null $orientation
+     * @param string|null $assetsBaseUrl used by Dompdf to resolve relative assets
+     * @param int|null $qrSize Optional QR image size in pixels (width and height)
      */
     public function __construct(
         public readonly string $template,
@@ -27,6 +29,7 @@ final class RenderRequest
         public readonly ?string $paperSize = 'A4',
         public readonly ?string $orientation = 'portrait',
         public readonly ?string $assetsBaseUrl = null,
+        public readonly ?int $qrSize = null, // ✅ New field
     ) {}
 
     /**

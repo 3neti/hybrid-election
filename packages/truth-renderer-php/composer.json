@@ -25,7 +25,8 @@
         "symfony/yaml": "^7.3",
         "dompdf/dompdf": "^3.1",
         "justinrainbow/json-schema": "^6.5",
-        "zordius/lightncandy": "^1.2"
+        "zordius/lightncandy": "^1.2",
+        "spatie/browsershot": "^5.0"
     },
     "require-dev": {
         "orchestra/testbench": "^10.3",

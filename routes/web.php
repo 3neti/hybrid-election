@@ -54,5 +54,41 @@ Route::get('/demo-publish', function (TruthQrPublisher $publisher) {
     return response()->json($images);
 });
 
+use Dompdf\Dompdf;
+
+Route::get('/test-svg-pdf', function () {
+    // Load your SVG content from file
+    $svg = file_get_contents(storage_path('app/public/qr.svg'));
+
+    // Encode as base64 for image src
+    $svgBase64 = base64_encode($svg);
+    $imageTag = '<img src="data:image/svg+xml;base64,' . $svgBase64 . '" width="200" height="200" />';
+
+    $html = <<<HTML
+    <html>
+        <head>
+            <style>
+                body { font-family: DejaVu Sans, sans-serif; }
+                img { display: block; margin-top: 20px; }
+            </style>
+        </head>
+        <body>
+            <h1>Hello World with QR Code</h1>
+            $imageTag
+        </body>
+    </html>
+    HTML;
+
+    $dompdf = new Dompdf([
+        'enable_remote' => true,
+    ]);
+
+    $dompdf->loadHtml($html);
+    $dompdf->setPaper('A4', 'portrait');
+    $dompdf->render();
+
+    $dompdf->stream('qr-code.pdf');
+});
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
