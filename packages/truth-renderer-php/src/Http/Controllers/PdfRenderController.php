@@ -29,6 +29,7 @@ use TruthRenderer\Renderer;
  *   "orientation": "portrait",                 // Optional orientation
  *   "assetsBaseUrl": "https://example.com"     // Optional asset prefix
  * }
+ * @deprecated
  */
 class PdfRenderController extends Controller
 {

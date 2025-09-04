@@ -13,6 +13,8 @@ import useQrGallery from '../composables/useQrGallery'
 // NEW: scanner pieces
 import ScannerPanel from './ScannerPanel.vue'
 
+import { useRenderer } from '../composables/useRenderer'
+
 type AnyObject = Record<string, any>
 
 /** ------------------------------
@@ -222,34 +224,60 @@ function getDecodeArgs() {
     }
 }
 
-async function downloadPdf() {
-    const res = await fetch('/api/render-pdf', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            template: 'tally-with-qr-sheet', // or inline template string
-            format: 'pdf',
-            data: {
-                tallyMeta: decodeResult.value,
-                qrMeta: {
-                    code: encodeResult.value?.code,
-                    by: form.value.by,
-                    qr: encodeResult.value?.qr,
-                },
-                qrSize: writerSize.value || 200, // 👈 dynamic
-            },
-        }),
-    });
+const { render } = useRenderer()
 
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'truth-result.pdf';
-    link.click();
-    window.URL.revokeObjectURL(url);
+async function handleDownload() {
+    if (!rawPayload.value?.trim()) {
+        alert('❌ Payload is empty or invalid.')
+        return
+    }
+
+    let parsed
+    try {
+        parsed = JSON.parse(rawPayload.value)
+    } catch (err) {
+        console.error('❌ Failed to parse payload:', err)
+        alert('❌ Invalid JSON payload.')
+        return
+    }
+
+    await render({
+        templateName: 'core:precinct/er_qr/template',
+        format: 'pdf',
+        filename: 'truth-result',
+        download: true,
+        data: parsed,
+        engineFlags: {
+            strict: true,
+        },
+    })
+}
+
+async function handlePreview() {
+    if (!rawPayload.value?.trim()) {
+        alert('❌ Payload is empty or invalid.')
+        return
+    }
+
+    let parsed
+    try {
+        parsed = JSON.parse(rawPayload.value)
+    } catch (err) {
+        console.error('❌ Failed to parse payload:', err)
+        alert('❌ Invalid JSON payload.')
+        return
+    }
+
+    await render({
+        templateName: 'core:precinct/er_qr/template',
+        format: 'html',
+        filename: 'truth-result',
+        openInNewTab: true,
+        data: parsed,
+        engineFlags: {
+            strict: true,
+        },
+    })
 }
 </script>
 
@@ -404,7 +432,7 @@ async function downloadPdf() {
             </button>
             <button
                 v-if="encodeResult?.qr"
-                @click="downloadPdf"
+                @click="handleDownload"
                 class="px-4 py-2 rounded bg-blue-600 text-white"
             >
                 Download PDF

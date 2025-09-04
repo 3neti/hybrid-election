@@ -7,6 +7,7 @@ use TruthRenderer\Template\TemplateAssetsLoader;
 use TruthRenderer\Contracts\RendererInterface;
 use Illuminate\Http\{Request, Response};
 use TruthRenderer\DTO\RenderRequest;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Routing\Controller;
 
 /**
@@ -64,7 +65,11 @@ class TruthRenderController extends Controller
      */
     public function render(Request $req): Response
     {
-        // Resolve template from name or inline
+        Log::info('[TruthRenderController] Incoming render request', [
+            'templateName' => $req->get('templateName'),
+            'format'       => $req->get('format', 'pdf'),
+        ]);
+
         $templateName = $req->has('templateName')
             ? $req->string('templateName')->toString()
             : null;
@@ -73,21 +78,20 @@ class TruthRenderController extends Controller
             ? $req->string('template')->toString()
             : null;
 
-        // Will be filled if templateName is provided
         $autoPartials = [];
         $autoSchema = null;
         $assetsBaseFromTemplateDir = null;
 
         if ($templateName && !$template) {
-            // Get template source
+            Log::info('[TruthRenderController] Resolving named template', ['templateName' => $templateName]);
+
             $template = $this->registry->get($templateName);
 
-            // Find the directory that contains this template
             $tplDir = $this->registry->resolveDir($templateName);
             if ($tplDir && is_dir($tplDir)) {
-                // 1) Auto-load partials: {tplDir}/partials/*.hbs|*.html
                 $partialsDir = $tplDir . DIRECTORY_SEPARATOR . 'partials';
                 if (is_dir($partialsDir)) {
+                    Log::info('[TruthRenderController] Looking for partials in', ['partialsDir' => $partialsDir]);
                     $dh = opendir($partialsDir);
                     if ($dh) {
                         while (($f = readdir($dh)) !== false) {
@@ -98,16 +102,15 @@ class TruthRenderController extends Controller
                             $abs = $partialsDir . DIRECTORY_SEPARATOR . $f;
                             $src = file_get_contents($abs);
                             if ($src !== false) {
-                                // partial name is filename (no extension), e.g. "itemRow"
                                 $name = pathinfo($f, PATHINFO_FILENAME);
                                 $autoPartials[$name] = $src;
                             }
                         }
                         closedir($dh);
                     }
+                    Log::debug('[TruthRenderController] Loaded partials', ['count' => count($autoPartials)]);
                 }
 
-                // 2) Auto-load schema: {tplDir}/schema.json (if present)
                 $schemaFile = $tplDir . DIRECTORY_SEPARATOR . 'schema.json';
                 if (is_file($schemaFile)) {
                     $json = file_get_contents($schemaFile);
@@ -115,23 +118,23 @@ class TruthRenderController extends Controller
                         $decoded = json_decode($json, true);
                         if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                             $autoSchema = $decoded;
+                            Log::info('[TruthRenderController] Loaded schema for template', ['schemaFile' => $schemaFile]);
                         }
                     }
                 }
 
-                // 3) Nice default for Dompdf assets: allow relative CSS/images next to template
                 $assetsBaseFromTemplateDir = $tplDir;
             }
         }
 
         if (!$template) {
+            Log::warning('[TruthRenderController] Missing template or templateName in request');
             return response(['error' => 'Missing template or templateName'], 422);
         }
 
-        // Collect render parameters from request (manual overrides still allowed)
         $data        = $req->input('data', []);
-        $schema      = $req->input('schema');          // optional override
-        $partials    = $req->input('partials', []);    // optional override/extra
+        $schema      = $req->input('schema');
+        $partials    = $req->input('partials', []);
         $engineFlags = $req->input('engineFlags', []);
         $format      = (string) $req->string('format', 'pdf');
         $paper       = (string) $req->string('paperSize', 'A4');
@@ -139,17 +142,15 @@ class TruthRenderController extends Controller
 
         $assetsBase = $req->has('assetsBaseUrl')
             ? $req->string('assetsBaseUrl')->toString()
-            : $assetsBaseFromTemplateDir; // default to template directory if not provided
+            : $assetsBaseFromTemplateDir;
 
         $filename = $req->has('filename')
             ? $req->string('filename')->toString()
             : 'render';
 
-        // Merge auto-discovered with explicitly provided (explicit wins on same key)
         $partialsFinal = array_merge($autoPartials, is_array($partials) ? $partials : []);
         $schemaFinal   = (is_array($schema) || is_object($schema)) ? $schema : $autoSchema;
 
-        // Build render request DTO
         $renderReq = new RenderRequest(
             template:      (string) $template,
             data:          is_array($data) || is_object($data) ? $data : [],
@@ -162,18 +163,24 @@ class TruthRenderController extends Controller
             assetsBaseUrl: $assetsBase,
         );
 
+        Log::info('[TruthRenderController] Invoking renderer', [
+            'format' => $renderReq->format,
+            'partials' => count($partialsFinal),
+            'hasSchema' => !is_null($schemaFinal),
+            'assetsBase' => $assetsBase,
+        ]);
+
         $res = $this->renderer->render($renderReq);
 
-        // Stream with proper content type & disposition
         return match ($res->format) {
-            'pdf'  => response($res->content, 200, [
+            'pdf' => response($res->content, 200, [
                 'Content-Type'        => 'application/pdf',
                 'Content-Disposition' => "inline; filename=\"{$filename}.pdf\"",
             ]),
             'html' => response($res->content, 200, [
                 'Content-Type' => 'text/html; charset=UTF-8',
             ]),
-            'md'   => response($res->content, 200, [
+            'md' => response($res->content, 200, [
                 'Content-Type' => 'text/markdown; charset=UTF-8',
             ]),
             default => response(['error' => 'Unsupported format'], 415),
