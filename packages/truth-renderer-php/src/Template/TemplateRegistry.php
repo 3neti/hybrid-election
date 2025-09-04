@@ -170,6 +170,26 @@ class TemplateRegistry implements TemplateRegistryInterface
         return $file ? dirname($file) : null;
     }
 
+    public function has(string $name): bool
+    {
+        if (isset($this->memory[$name])) {
+            return true;
+        }
+
+        [$ns, $basename] = $this->splitName($name);
+
+        foreach ($this->candidateDirs($ns) as $dir) {
+            foreach (['.hbs', '.html'] as $ext) {
+                $file = rtrim($dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $basename . $ext;
+                if (is_file($file)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     /**
      * A path is considered a "partial" when any segment is literally "partials".
      * Matches:

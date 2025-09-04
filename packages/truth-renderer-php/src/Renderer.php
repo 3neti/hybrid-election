@@ -154,26 +154,4 @@ class Renderer implements RendererInterface
 
         return $data;
     }
-//    private function base64EncodeSvgQRCodes(array $data, ?int $size = null): array
-//    {
-//        if (!isset($data['qrMeta']['qr']) || !is_array($data['qrMeta']['qr'])) {
-//            return $data;
-//        }
-//
-//        $size ??= 200;
-//
-//        $data['qrMeta']['qr'] = array_map(function ($qr) use ($size) {
-//            if (
-//                str_starts_with($qr, '<svg') ||
-//                str_contains($qr, '<svg')
-//            ) {
-//                $svgBase64 = base64_encode($qr);
-//                return '<img src="data:image/svg+xml;base64,' . $svgBase64 . "\" width=\"{$size}\" height=\"{$size}\" />";
-//            }
-//
-//            return $qr;
-//        }, $data['qrMeta']['qr']);
-//
-//        return $data;
-//    }
 }

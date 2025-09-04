@@ -161,9 +161,6 @@ function onStopped() {
     active.value = false
 }
 
-
-
-
 function addLastScan() {
     const s = lastScan.value?.trim()
     if (!s) return
@@ -223,6 +220,36 @@ function getDecodeArgs() {
         transport: form.value.transport,
         serializer: form.value.serializer,
     }
+}
+
+async function downloadPdf() {
+    const res = await fetch('/api/render-pdf', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            template: 'tally-with-qr-sheet', // or inline template string
+            format: 'pdf',
+            data: {
+                tallyMeta: decodeResult.value,
+                qrMeta: {
+                    code: encodeResult.value?.code,
+                    by: form.value.by,
+                    qr: encodeResult.value?.qr,
+                },
+                qrSize: writerSize.value || 200, // 👈 dynamic
+            },
+        }),
+    });
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'truth-result.pdf';
+    link.click();
+    window.URL.revokeObjectURL(url);
 }
 </script>
 
@@ -374,6 +401,13 @@ function getDecodeArgs() {
             </button>
             <button v-if="encodeResult?.qr" @click="downloadQr" class="px-4 py-2 rounded bg-gray-100">
                 Download QR images
+            </button>
+            <button
+                v-if="encodeResult?.qr"
+                @click="downloadPdf"
+                class="px-4 py-2 rounded bg-blue-600 text-white"
+            >
+                Download PDF
             </button>
         </div>
 

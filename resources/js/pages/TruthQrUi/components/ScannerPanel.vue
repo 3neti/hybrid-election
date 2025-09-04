@@ -164,7 +164,7 @@ function short(line: string) {
                     type="button"
                     class="px-3 py-2 rounded bg-black text-white ml-auto"
                     :title="inferredStatus.complete ? 'Ready to decode' : `Need ${Math.max(inferredStatus.total - inferredStatus.received, 1)} more chunk(s)`"
-                    :disabled="Boolean(!inferredStatus.complete)"
+                    :disabled="Boolean(!inferredStatus.complete || sess.loading)"
                     @click="onDecode"
                 >
                     Decode
