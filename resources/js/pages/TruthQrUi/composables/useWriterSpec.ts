@@ -5,7 +5,7 @@ export type WriterFmt = 'svg' | 'png' | 'eps'
 
 export default function useWriterSpec() {
     const include_qr = ref(false)
-    const writer = ref<WriterKind>('none')
+    const writer = ref<WriterKind>('bacon')
     const writerFmt = ref<WriterFmt>('svg')
     const writerSize = ref(256)
     const writerMargin = ref(16)

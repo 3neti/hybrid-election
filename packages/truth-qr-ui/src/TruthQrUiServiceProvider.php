@@ -46,6 +46,8 @@ final class TruthQrUiServiceProvider extends ServiceProvider
             => resource_path('js/Pages/TruthQrUi/composables/useZxingVideo.ts'),
             __DIR__ . '/../stubs/inertia/composables/useRenderer.ts'
             => resource_path('js/Pages/TruthQrUi/composables/useRenderer.ts'),
+            __DIR__ . '/../stubs/inertia/composables/useTemplateRegistry.ts'
+            => resource_path('js/Pages/TruthQrUi/composables/useTemplateRegistry.ts'),
         ], 'truth-qr-ui-stubs');
 
         // Optional: load routes if you decide to ship default routes

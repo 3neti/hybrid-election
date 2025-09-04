@@ -5,7 +5,7 @@ use TruthRenderer\Http\Controllers\TruthRenderController;
 use TruthRenderer\Http\Controllers\PdfRenderController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/truth/templates', [TruthRenderController::class, 'listTemplates']);
+Route::get('/truth/templates', [TruthRenderController::class, 'listTemplates'])->name('truth.templates');
 Route::post('/truth/render',  [TruthRenderController::class, 'render'])->name('truth-render');
 
 

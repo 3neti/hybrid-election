@@ -14,6 +14,7 @@ import useQrGallery from '../composables/useQrGallery'
 import ScannerPanel from './ScannerPanel.vue'
 
 import { useRenderer } from '../composables/useRenderer'
+import { useTemplateRegistry } from '../composables/useTemplateRegistry'
 
 type AnyObject = Record<string, any>
 
@@ -29,6 +30,7 @@ const form = ref({
     by: 'size' as 'size' | 'count',
     size: 120,
     count: 3,
+    templateName: 'core:invoice/basic/template'
 })
 
 /** ------------------------------
@@ -243,7 +245,7 @@ async function handleDownload() {
     }
 
     await render({
-        templateName: selectedTemplate.value,
+        templateName: form.value.templateName,
         format: 'pdf',
         filename: 'truth-result',
         download: true,
@@ -270,7 +272,7 @@ async function handlePreview() {
     }
 
     await render({
-        templateName: selectedTemplate.value,
+        templateName: form.value.templateName,
         format: 'html',
         filename: 'truth-result',
         openInNewTab: true,
@@ -280,6 +282,9 @@ async function handlePreview() {
         },
     })
 }
+
+const { templates } = useTemplateRegistry()
+
 </script>
 
 <template>
@@ -404,9 +409,11 @@ async function handlePreview() {
             </div>
             <div>
                 <label class="block text-sm font-medium">Template</label>
-                <select v-model="selectedTemplate" class="w-full p-2 border rounded">
-                    <option value="core:precinct/er_qr/template">ER QR</option>
-                    <option value="core:invoice/basic/template">Invoice</option>
+                <select v-model="form.templateName" class="...">
+                    <option disabled value="">Select a template</option>
+                    <option v-for="tpl in templates" :key="tpl" :value="tpl">
+                        {{ tpl }}
+                    </option>
                 </select>
             </div>
         </div>
