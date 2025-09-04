@@ -40,7 +40,7 @@ const {
     payloadError,
     onPayloadInput,
     setPayload,
-} = usePayloadJson({ type: 'demo', code: 'DEMO-001', data: { hello: 'world' } })
+} = usePayloadJson({"code":"INV-20250904-001","date":"2025-09-04","items":[{"name":"USB-C Charging Cable","qty":2,"price":450.75},{"name":"Wireless Mouse","qty":1,"price":799.5},{"name":"Bluetooth Headphones","qty":1,"price":2399.99}],"total":4100.99} )
 
 /** ------------------------------
  * Writer controls & spec builder
@@ -225,6 +225,7 @@ function getDecodeArgs() {
 }
 
 const { render } = useRenderer()
+const selectedTemplate = ref('core:invoice/basic/template')
 
 async function handleDownload() {
     if (!rawPayload.value?.trim()) {
@@ -242,7 +243,7 @@ async function handleDownload() {
     }
 
     await render({
-        templateName: 'core:precinct/er_qr/template',
+        templateName: selectedTemplate.value,
         format: 'pdf',
         filename: 'truth-result',
         download: true,
@@ -269,7 +270,7 @@ async function handlePreview() {
     }
 
     await render({
-        templateName: 'core:precinct/er_qr/template',
+        templateName: selectedTemplate.value,
         format: 'html',
         filename: 'truth-result',
         openInNewTab: true,
@@ -400,6 +401,13 @@ async function handlePreview() {
                     class="w-full border rounded p-2"
                     :disabled="!include_qr || writer==='none'"
                 />
+            </div>
+            <div>
+                <label class="block text-sm font-medium">Template</label>
+                <select v-model="selectedTemplate" class="w-full p-2 border rounded">
+                    <option value="core:precinct/er_qr/template">ER QR</option>
+                    <option value="core:invoice/basic/template">Invoice</option>
+                </select>
             </div>
         </div>
 
