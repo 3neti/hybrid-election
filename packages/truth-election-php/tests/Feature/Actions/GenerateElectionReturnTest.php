@@ -1,0 +1,159 @@
+<?php
+
+use TruthElection\Actions\{GenerateElectionReturn, SubmitBallot};
+use TruthElection\Tests\ResetsInMemoryElectionStore;
+use TruthElection\Support\InMemoryElectionStore;
+use Spatie\LaravelData\DataCollection;
+use TruthElection\Enums\Level;
+use TruthElection\Data\{
+    ElectionReturnData,
+    CandidateData,
+    PrecinctData,
+    PositionData,
+    VoteData
+};
+
+uses(ResetsInMemoryElectionStore::class)->beforeEach(function () {
+    $this->resetElectionStore();
+
+    $this->store = InMemoryElectionStore::instance();
+
+    $this->precinct = PrecinctData::from([
+        'id' => 'PR001',
+        'code' => 'PRECINCT-01',
+        'location_name' => 'City Hall',
+        'latitude' => 14.5995,
+        'longitude' => 120.9842,
+        'electoral_inspectors' => [],
+    ]);
+
+    $this->store->putPrecinct($this->precinct);
+
+    $votes1 = collect([
+        new VoteData(
+            position: new PositionData(
+                code: 'PRESIDENT',
+                name: 'President of the Philippines',
+                level: Level::NATIONAL,
+                count: 1
+            ),
+            candidates: new DataCollection(CandidateData::class, [
+                new CandidateData(code: 'CANDIDATE-001', name: 'Juan Dela Cruz', alias: 'JUAN'),
+            ])
+        ),
+        new VoteData(
+            position: new PositionData(
+                code: 'SENATOR',
+                name: 'Senator',
+                level: Level::NATIONAL,
+                count: 12
+            ),
+            candidates: new DataCollection(CandidateData::class, [
+                new CandidateData(code: 'CANDIDATE-002', name: 'Maria Santos', alias: 'MARIA'),
+                new CandidateData(code: 'CANDIDATE-003', name: 'Pedro Reyes', alias: 'PEDRO'),
+            ])
+        ),
+    ]);
+
+    $votes2 = collect([
+        new VoteData(
+            position: new PositionData(
+                code: 'PRESIDENT',
+                name: 'President of the Philippines',
+                level: Level::NATIONAL,
+                count: 1
+            ),
+            candidates: new DataCollection(CandidateData::class, [
+                new CandidateData(code: 'CANDIDATE-004', name: 'Jose Rizal', alias: 'JOSE'),
+            ])
+        ),
+        new VoteData(
+            position: new PositionData(
+                code: 'SENATOR',
+                name: 'Senator',
+                level: Level::NATIONAL,
+                count: 12
+            ),
+            candidates: new DataCollection(CandidateData::class, [
+                new CandidateData(code: 'CANDIDATE-002', name: 'Maria Santos', alias: 'MARIA'),
+                new CandidateData(code: 'CANDIDATE-005', name: 'Andres Bonifacio', alias: 'ANDRES'),
+            ])
+        ),
+    ]);
+
+    $votes3 = collect([
+        new VoteData(
+            position: new PositionData(
+                code: 'SENATOR',
+                name: 'Senator',
+                level: Level::NATIONAL,
+                count: 12
+            ),
+            candidates: new DataCollection(CandidateData::class, [
+                new CandidateData(code: 'CANDIDATE-006', name: 'Emilio Aguinaldo', alias: 'EMILIO'),
+                new CandidateData(code: 'CANDIDATE-007', name: 'Apolinario Mabini', alias: 'APO'),
+                new CandidateData(code: 'CANDIDATE-008', name: 'Gregorio del Pilar', alias: 'GREG'),
+                new CandidateData(code: 'CANDIDATE-009', name: 'Melchora Aquino', alias: 'TANDANG'),
+                new CandidateData(code: 'CANDIDATE-010', name: 'Antonio Luna', alias: 'TONIO'),
+                new CandidateData(code: 'CANDIDATE-011', name: 'Marcelo del Pilar', alias: 'CEL'),
+                new CandidateData(code: 'CANDIDATE-012', name: 'Diego Silang', alias: 'DIEGO'),
+                new CandidateData(code: 'CANDIDATE-013', name: 'Gabriela Silang', alias: 'GABRIELA'),
+                new CandidateData(code: 'CANDIDATE-014', name: 'Francisco Baltazar', alias: 'BALTAZAR'),
+                new CandidateData(code: 'CANDIDATE-015', name: 'Leona Florentino', alias: 'LEONA'),
+                new CandidateData(code: 'CANDIDATE-016', name: 'Josefa Llanes Escoda', alias: 'JOSEFA'),
+                new CandidateData(code: 'CANDIDATE-017', name: 'Manuel Quezon', alias: 'QUEZON'),
+                new CandidateData(code: 'CANDIDATE-018', name: 'Sergio Osmeña', alias: 'OSMENA'),
+            ])
+        ),
+    ]);
+
+    SubmitBallot::run('BAL-001', 'PRECINCT-01', $votes1); // valid
+    SubmitBallot::run('BAL-002', 'PRECINCT-01', $votes2); // valid
+    SubmitBallot::run('BAL-003', 'PRECINCT-01', $votes3); // overvote (13 senators), should be rejected
+});
+
+it('generates an election return from in-memory data', function () {
+    $return = GenerateElectionReturn::run('PRECINCT-01');
+    expect($return)->toBeInstanceOf(ElectionReturnData::class)
+        ->and($return->precinct->code)->toBe('PRECINCT-01')
+        ->and($return->ballots)->toHaveCount(3)
+        ->and($return->tallies)->toBeInstanceOf(DataCollection::class)
+    ;
+    $return->tallies->each(fn ($tally) => expect($tally->count)->toBeGreaterThan(0));
+});
+
+it('generates an election return with correct tallies', function () {
+    $return = GenerateElectionReturn::run('PRECINCT-01');
+
+    expect($return)->toBeInstanceOf(ElectionReturnData::class)
+        ->and($return->precinct->code)->toBe('PRECINCT-01')
+        ->and($return->ballots)->toHaveCount(3) // 3 ballots submitted
+        ->and($return->tallies)->toBeInstanceOf(DataCollection::class);
+
+    // Convert tallies to base Laravel collection
+    $tallies = $return->tallies->toCollection();
+
+    // ✅ PRESIDENT tallies (2 ballots voted for president)
+    $presidentTallies = $tallies->where('position_code', 'PRESIDENT');
+
+    expect($presidentTallies)->toHaveCount(2); // 2 valid votes for PRESIDENT
+
+    $presidentVotes = $presidentTallies->keyBy('candidate_code')->map->count;
+
+    expect($presidentVotes->get('CANDIDATE-001'))->toBe(1); // Juan Dela Cruz (BAL-001)
+    expect($presidentVotes->get('CANDIDATE-004'))->toBe(1); // Jose Rizal (BAL-002)
+
+    // ✅ SENATOR tallies (BAL-001 and BAL-002 only — BAL-003 is overvote and ignored)
+    $senatorTallies = $tallies->where('position_code', 'SENATOR');
+
+    expect($senatorTallies)->toHaveCount(3); // Only 3 valid senator votes from 2 ballots
+
+    $senatorVotes = $senatorTallies->keyBy('candidate_code')->map->count;
+
+    expect($senatorVotes->get('CANDIDATE-002'))->toBe(2); // Maria Santos (BAL-001 and BAL-002)
+    expect($senatorVotes->get('CANDIDATE-003'))->toBe(1); // Pedro Reyes (BAL-001)
+    expect($senatorVotes->get('CANDIDATE-005'))->toBe(1); // Andres Bonifacio (BAL-002)
+
+    // 🚫 Ensure over voted senators from BAL-003 are excluded
+    expect($senatorVotes->has('CANDIDATE-006'))->toBeFalse(); // Emilio Aguinaldo (BAL-003 only)
+});
