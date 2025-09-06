@@ -2,6 +2,8 @@
 
 namespace TruthElection;
 
+use TruthElection\Policies\Signatures\ChairPlusMemberPolicy;
+use TruthElection\Policies\Signatures\SignaturePolicy;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Route;
 
@@ -10,6 +12,8 @@ final class TruthElectionServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/truth-election.php', 'truth-election');
+
+        $this->app->bind(SignaturePolicy::class, ChairPlusMemberPolicy::class);
     }
 
     public function boot(): void

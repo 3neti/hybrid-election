@@ -1,0 +1,175 @@
+<?php
+
+use TruthElection\Data\{CandidateData, PositionData, PrecinctData, SignPayloadData, VoteData};
+use TruthElection\Actions\{GenerateElectionReturn, SignElectionReturn, SubmitBallot};
+use TruthElection\Policies\Signatures\ChairPlusMemberPolicy;
+use TruthElection\Tests\ResetsInMemoryElectionStore;
+use Spatie\LaravelData\{DataCollection, Optional};
+use TruthElection\Support\InMemoryElectionStore;
+use TruthElection\Enums\ElectoralInspectorRole;
+use TruthElection\Enums\Level;
+
+uses(ResetsInMemoryElectionStore::class)->beforeEach(function () {
+
+    $this->store = InMemoryElectionStore::instance();
+    $this->store->reset();
+
+    $this->precinct = PrecinctData::from([
+        'id' => 'PR001',
+        'code' => 'PRECINCT-01',
+        'location_name' => 'City Hall',
+        'latitude' => 14.5995,
+        'longitude' => 120.9842,
+        'electoral_inspectors' => [
+            [
+                'id' => 'A1',
+                'name' => 'Alice',
+                'role' => ElectoralInspectorRole::CHAIRPERSON,
+            ],
+            [
+                'id' => 'B2',
+                'name' => 'Bob',
+                'role' => ElectoralInspectorRole::MEMBER,
+            ],
+        ]
+    ]);
+
+    $this->store->putPrecinct($this->precinct);
+
+    $votes1 = collect([
+        new VoteData(
+            position: new PositionData(
+                code: 'PRESIDENT',
+                name: 'President of the Philippines',
+                level: Level::NATIONAL,
+                count: 1
+            ),
+            candidates: new DataCollection(CandidateData::class, [
+                new CandidateData(code: 'CANDIDATE-001', name: 'Juan Dela Cruz', alias: 'JUAN'),
+            ])
+        ),
+        new VoteData(
+            position: new PositionData(
+                code: 'SENATOR',
+                name: 'Senator',
+                level: Level::NATIONAL,
+                count: 12
+            ),
+            candidates: new DataCollection(CandidateData::class, [
+                new CandidateData(code: 'CANDIDATE-002', name: 'Maria Santos', alias: 'MARIA'),
+                new CandidateData(code: 'CANDIDATE-003', name: 'Pedro Reyes', alias: 'PEDRO'),
+            ])
+        ),
+    ]);
+
+    $votes2 = collect([
+        new VoteData(
+            position: new PositionData(
+                code: 'PRESIDENT',
+                name: 'President of the Philippines',
+                level: Level::NATIONAL,
+                count: 1
+            ),
+            candidates: new DataCollection(CandidateData::class, [
+                new CandidateData(code: 'CANDIDATE-004', name: 'Jose Rizal', alias: 'JOSE'),
+            ])
+        ),
+        new VoteData(
+            position: new PositionData(
+                code: 'SENATOR',
+                name: 'Senator',
+                level: Level::NATIONAL,
+                count: 12
+            ),
+            candidates: new DataCollection(CandidateData::class, [
+                new CandidateData(code: 'CANDIDATE-002', name: 'Maria Santos', alias: 'MARIA'),
+                new CandidateData(code: 'CANDIDATE-005', name: 'Andres Bonifacio', alias: 'ANDRES'),
+            ])
+        ),
+    ]);
+
+    SubmitBallot::run('BAL-001', 'PRECINCT-01', $votes1);
+    SubmitBallot::run('BAL-001', 'PRECINCT-01', $votes2);
+
+    $this->return = GenerateElectionReturn::run('PRECINCT-01');
+});
+
+
+test('successfully signs as chairperson', function () {
+    // 🧪 Ensure initial state
+    $original = $this->store->getElectionReturn($this->return->code);
+    expect($original)->not->toBeNull();
+
+    // ✅ Initialize action with policy
+    $action = new SignElectionReturn(new ChairPlusMemberPolicy());
+
+    // 📝 Prepare payload: Alice = A1, chairperson
+    $payload = SignPayloadData::fromQrString('BEI:A1:base64signature');
+
+    // 🚀 Perform signature
+    $result = $action->handle($payload, $this->return->code);
+
+    // 🔍 Assert result structure
+    expect($result)
+        ->message->toBe('Signature saved successfully.')
+        ->id->toBe('A1')
+        ->name->toBe('Alice')
+        ->role->toBe('chairperson')
+        ->signed_at->toBeString()
+    ;
+
+    // 🗃 Confirm election return has been updated in memory
+    $updatedReturn = $this->store->getElectionReturn($this->return->code);
+
+    expect($updatedReturn)->not->toBeNull();
+
+    expect($updatedReturn->signedInspectors())->toHaveCount(1);
+
+    // Find signatures by ID for clear assertions
+    $bob = $this->store->findSignatory($updatedReturn, 'B2');
+    $alice = $this->store->findSignatory($updatedReturn, 'A1');
+
+    expect($bob)
+        ->not->toBeNull()
+        ->name->toBe('Bob')
+        ->role->value->toBe('member')
+        ->signature->toBeInstanceOf(Optional::class)
+        ->and($alice)
+        ->not->toBeNull()
+        ->name->toBe('Alice')
+        ->role->value->toBe('chairperson')
+        ->signature->toBe('base64signature'); // signed in previous setup
+
+    // just signed in this test
+});
+
+test('appends signature when second inspector signs', function () {
+    $action = new SignElectionReturn(new ChairPlusMemberPolicy());
+
+    // First: Alice (A1, chairperson)
+    $action->handle(SignPayloadData::fromQrString('BEI:A1:sig1'), $this->return->code);
+
+    // Second: Bob (B2, member)
+    $action->handle(SignPayloadData::fromQrString('BEI:B2:sig2'), $this->return->code);
+
+    $updated = $this->store->getElectionReturn($this->return->code);
+
+    // Use signedInspectors() to confirm both signed
+    $signed = $updated->signedInspectors();
+    expect($signed)->toHaveCount(2);
+
+    // Optional: assert individual signatures
+    $ids = $signed->pluck('id');
+    expect($ids)->toContain('A1')->toContain('B2');
+
+    $bob = $this->store->findSignatory($updated, 'B2');
+    expect($bob->signature)->toBe('sig2');
+});
+
+test('fails if inspector ID is not found in roster', function () {
+    $action = new SignElectionReturn(new ChairPlusMemberPolicy());
+
+    $payload = SignPayloadData::fromQrString('BEI:Z9:sig');
+
+    $action->handle($payload, $this->return->code);
+})->throws(Exception::class, "Could not create `TruthElection\Data\ElectoralInspectorData`: the constructor requires 5 parameters, 2 given. Parameters given: signature, signed_at. Parameters missing: id, name, role.");

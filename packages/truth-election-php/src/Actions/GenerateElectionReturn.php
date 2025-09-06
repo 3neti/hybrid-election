@@ -103,7 +103,7 @@ class GenerateElectionReturn
         $electionReturnCode = strtoupper(Str::random(12));
         $timestamp = Carbon::now();
 
-        return new ElectionReturnData(
+        $electionReturn =  new ElectionReturnData(
             id: $electionReturnId,
             code: $electionReturnCode,
             precinct: PrecinctData::from($precinct),
@@ -113,5 +113,9 @@ class GenerateElectionReturn
             created_at: $timestamp,
             updated_at: $timestamp,
         );
+
+        $store->putElectionReturn($electionReturn);
+
+        return $electionReturn;
     }
 }

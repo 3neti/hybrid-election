@@ -3,6 +3,7 @@
 namespace TruthElection\Support;
 
 use TruthElection\Data\BallotData;
+use TruthElection\Data\ElectoralInspectorData;
 use TruthElection\Data\PrecinctData;
 use TruthElection\Data\ElectionReturnData;
 
@@ -76,5 +77,47 @@ class InMemoryElectionStore
         $this->ballots = [];
         $this->precincts = [];
         $this->electionReturns = [];
+    }
+
+    /**
+     * Retrieve election return by its unique code.
+     */
+    public function getElectionReturn(string $code): ?ElectionReturnData
+    {
+        foreach ($this->electionReturns as $er) {
+            if ($er->code === $code) {
+                return $er;
+            }
+        }
+
+        return null;
+    }
+
+    function findInspector(ElectionReturnData $er, string $id): ElectoralInspectorData {
+        $raw = collect($er->precinct->electoral_inspectors)->firstWhere('id', $id);
+
+        return ElectoralInspectorData::from($raw);
+    }
+
+    function findPrecinctInspector(ElectionReturnData $er, string $id): ElectoralInspectorData {
+        $raw = collect($er->precinct->electoral_inspectors)->firstWhere('id', $id);
+
+        return ElectoralInspectorData::from($raw);
+    }
+
+    function findSignatory(ElectionReturnData $er, string $id): ElectoralInspectorData {
+        $raw = collect($er->signatures)->firstWhere('id', $id);
+
+        return ElectoralInspectorData::from($raw);
+    }
+
+    public function replaceElectionReturn(ElectionReturnData $er): void
+    {
+        foreach ($this->electionReturns as $i => $e) {
+            if ($e->code === $er->code) {
+                $this->electionReturns[$i] = $er;
+                return;
+            }
+        }
     }
 }

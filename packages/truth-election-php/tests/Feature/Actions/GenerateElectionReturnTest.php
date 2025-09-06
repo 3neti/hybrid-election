@@ -157,3 +157,21 @@ it('generates an election return with correct tallies', function () {
     // 🚫 Ensure over voted senators from BAL-003 are excluded
     expect($senatorVotes->has('CANDIDATE-006'))->toBeFalse(); // Emilio Aguinaldo (BAL-003 only)
 });
+
+it('stores election return in the election store', function () {
+    expect($this->store->electionReturns)->toBeEmpty();
+
+    $return = GenerateElectionReturn::run('PRECINCT-01');
+
+    expect($return)->toBeInstanceOf(ElectionReturnData::class)
+        ->and($return->ballots)->toHaveCount(3)
+        ->and($return->tallies)->toBeInstanceOf(DataCollection::class)
+        ->and($return->code)->toBeString();
+
+    // 🧠 Confirm it was saved into the store
+    $stored = $this->store->getElectionReturn($return->code);
+
+    expect($stored)->not->toBeNull()
+        ->and($stored->code)->toBe($return->code)
+        ->and($stored->precinct->code)->toBe('PRECINCT-01');
+});

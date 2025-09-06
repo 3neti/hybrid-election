@@ -3,10 +3,10 @@
 namespace TruthElection\Data;
 
 use Spatie\LaravelData\Casts\DateTimeInterfaceCast;
+use Illuminate\Support\{Carbon, Collection};
 use Spatie\LaravelData\Attributes\WithCast;
+use Spatie\LaravelData\{Data, Optional};
 use Spatie\LaravelData\DataCollection;
-use Illuminate\Support\Carbon;
-use Spatie\LaravelData\Data;
 
 /**
  * ElectionReturnData represents a full, persisted election return record,
@@ -46,5 +46,46 @@ class ElectionReturnData extends Data
         return [
             'last_ballot' => $last ? BallotData::from($last) : null,
         ];
+    }
+
+    public function signedInspectors(): Collection
+    {
+        return $this->signatures->toCollection()->filter(function (ElectoralInspectorData $inspector) {
+            return !($inspector->signature instanceof Optional)
+                && !empty($inspector->signature);
+        });
+    }
+
+    public function withUpdatedSignatures(DataCollection $signatures): self
+    {
+        return self::from([
+            ...$this->toArray(),
+            'signatures' => $signatures->toArray(),
+        ]);
+    }
+
+    public function withInspectorSignature(SignPayloadData $payload, ?ElectoralInspectorData $inspector): self
+    {
+        if (! $inspector) {
+            abort(404, "Inspector with ID [{$payload->id}] not found.");
+        }
+
+        $remaining = $this->signatures->toCollection()
+            ->reject(fn(ElectoralInspectorData $s) => $s->id === $payload->id);
+
+        $signed = new ElectoralInspectorData(
+            id: $inspector->id,
+            name: $inspector->name,
+            role: $inspector->role,
+            signature: $payload->signature,
+            signed_at: Carbon::now()
+        );
+
+        $signatures = new DataCollection(
+            ElectoralInspectorData::class,
+            $remaining->push($signed)->all()
+        );
+
+        return $this->withUpdatedSignatures($signatures);
     }
 }
