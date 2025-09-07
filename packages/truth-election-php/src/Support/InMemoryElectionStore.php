@@ -11,7 +11,7 @@ use TruthElection\Data\PrecinctData;
 use TruthElection\Data\BallotData;
 use TruthElection\Data\VoteData;
 
-class InMemoryElectionStore
+class InMemoryElectionStore implements ElectionStoreInterface
 {
     /** @var array<string, PositionData> */ // key: position_code => PositionData
     public array $positions = [];
@@ -49,6 +49,11 @@ class InMemoryElectionStore
     public function putBallot(BallotData $ballot): void
     {
         $this->ballots[$ballot->code] = $ballot;
+    }
+
+    public function getPrecinct(string $code): ?PrecinctData
+    {
+        return $this->precincts[$code] ?? null;
     }
 
     /**
@@ -184,5 +189,10 @@ class InMemoryElectionStore
     public function allCandidates(): array
     {
         return $this->candidates;
+    }
+
+    public function getElectionReturnByPrecinct(string $precinctCode): ?ElectionReturnData
+    {
+        return $this->electionReturns[$precinctCode] ?? null;
     }
 }

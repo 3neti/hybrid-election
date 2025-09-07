@@ -1,8 +1,9 @@
 <?php
 
-use TruthElection\Data\ElectoralInspectorData;
 use TruthElection\Tests\ResetsInMemoryElectionStore;
 use TruthElection\Support\InMemoryElectionStore;
+use TruthElection\Data\ElectoralInspectorData;
+use TruthElection\Data\PrecinctData;
 use TruthElection\Data\BallotData;
 
 uses(ResetsInMemoryElectionStore::class)->beforeEach(fn () => $this->resetElectionStore());
@@ -198,4 +199,84 @@ it('can update election return signatures and replace it in the store', function
         ->and($fetched->signatures[0]->name)->toBe('Bob')
         ->and($fetched->signatures[0]->role->value)->toBe('member')
         ->and($fetched->signatures[0]->signature)->toBe('data:image/png;base64,FAKESIGNATURE==');
+});
+
+it('can retrieve a precinct by code', function () {
+    $store = InMemoryElectionStore::instance();
+    $store->reset();
+
+    $precinct = [
+        'id' => 'precinct-42',
+        'code' => 'PRECINCT-42',
+        'location_name' => 'Barangay Hall',
+        'latitude' => 15.0,
+        'longitude' => 120.7,
+        'electoral_inspectors' => [],
+    ];
+
+    $store->putPrecinct(PrecinctData::from($precinct));
+
+    $fetched = $store->getPrecinct('PRECINCT-42');
+
+    expect($fetched)->not->toBeNull()
+        ->and($fetched->code)->toBe('PRECINCT-42')
+        ->and($fetched->location_name)->toBe('Barangay Hall');
+});
+
+
+it('returns election return by precinct code', function () {
+    $store = InMemoryElectionStore::instance();
+    $store->reset();
+
+    $precinct = PrecinctData::from([
+        'id' => 'precinct-1',
+        'code' => 'P-123',
+        'location_name' => 'Gymnasium',
+        'latitude' => 14.6,
+        'longitude' => 121.0,
+        'electoral_inspectors' => [
+            [
+                'id' => 'A1',
+                'name' => 'Alice',
+                'role' => 'chairperson',
+            ],
+            [
+                'id' => 'B2',
+                'name' => 'Bob',
+                'role' => 'member',
+            ],
+        ],
+    ]);
+
+    $er = $original = ElectionReturnData::from([
+        'id' => 'er-id-001',
+        'code' => 'ER-001',
+        'precinct' => $precinct->toArray(),
+        'tallies' => [
+            [
+                'position_code' => 'PRESIDENT',
+                'candidate_code' => 'CAND-A',
+                'candidate_name' => 'Candidate A',
+                'count' => 123,
+            ],
+        ],
+        'signatures' => [],
+        'ballots' => [],
+        'created_at' => Carbon::now(),
+        'updated_at' => Carbon::now(),
+    ]);
+
+    $store->putPrecinct($precinct);
+    $store->putElectionReturn($er);
+
+    $found = $store->getElectionReturnByPrecinct('P-123');
+
+    expect($found)->toEqual($er);
+});
+
+it('returns null if precinct has no election return', function () {
+    $store = InMemoryElectionStore::instance();
+    $store->reset();
+
+    expect($store->getElectionReturnByPrecinct('P-999'))->toBeNull();
 });
