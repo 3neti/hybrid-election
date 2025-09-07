@@ -173,3 +173,33 @@ test('ignores invalid keys in payload', function () {
     expect($updated->watchers_count)->toBe(7);
     expect(isset($updated->invalid_key))->toBeFalse();
 });
+
+test('sets the closed_at timestamp properly', function () {
+    $now = now()->toIso8601String();
+
+    $updated = InputPrecinctStatistics::run($this->precinct->code, [
+        'closed_at' => $now,
+    ]);
+
+    expect($updated->closed_at)->toBe($now);
+
+    $stored = $this->store->precincts[$this->precinct->code];
+    expect($stored->closed_at)->toBe($now);
+});
+
+test('allows closed_at to be set to null', function () {
+    // First set it to a value
+    InputPrecinctStatistics::run($this->precinct->code, [
+        'closed_at' => now()->toIso8601String(),
+    ]);
+
+    // Then set it to null
+    $updated = InputPrecinctStatistics::run($this->precinct->code, [
+        'closed_at' => null,
+    ]);
+
+    expect($updated->closed_at)->toBeNull();
+
+    $stored = $this->store->precincts[$this->precinct->code];
+    expect($stored->closed_at)->toBeNull();
+});

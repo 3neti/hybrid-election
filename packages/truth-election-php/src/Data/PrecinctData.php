@@ -35,5 +35,6 @@ class PrecinctData extends Data
         public ?int $unused_ballots_count = null,
         public ?int $spoiled_ballots_count = null,
         public ?int $void_ballots_count = null,
+        public ?string $closed_at = null,
     ) {}
 }

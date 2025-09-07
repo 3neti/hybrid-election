@@ -257,3 +257,21 @@ test('finalize fails when balloting is already closed and not forced', function 
         force: false
     );
 })->throws(RuntimeException::class, 'Balloting already closed. Nothing to do.');
+
+test('finalize election return sets closed_at timestamp', function () {
+    $code = $this->precinct->code;
+
+    $result = FinalizeElectionReturn::run(
+        precinctCode: $code,
+        disk: 'local',
+        payload: 'minimal',
+        maxChars: 1200,
+        dir: 'final',
+        force: false
+    );
+
+    $precinct = $this->store->precincts[$code];
+
+    expect($precinct->closed_at)->not->toBeNull()
+        ->and(strtotime($precinct->closed_at))->toBeGreaterThan(0);
+});

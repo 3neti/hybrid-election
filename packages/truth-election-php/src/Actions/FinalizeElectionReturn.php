@@ -2,6 +2,7 @@
 
 namespace TruthElection\Actions;
 
+use TruthElection\Pipes\CloseBalloting;
 use TruthElection\Support\InMemoryElectionStore;
 use TruthElection\Data\FinalizeErContext;
 use TruthElection\Data\ElectionReturnData;
@@ -56,7 +57,7 @@ class FinalizeElectionReturn
                 // ExportErJson::class,
                 // PerformQrExport::class,
                 // MirrorQrArtifacts::class,
-                // CloseBalloting::class,
+                 CloseBalloting::class,
             ])
             ->thenReturn();
 

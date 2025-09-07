@@ -37,6 +37,7 @@ class InputPrecinctStatistics
             'unused_ballots_count',
             'spoiled_ballots_count',
             'void_ballots_count',
+            'closed_at',
         ];
 
         $data = $precinct->toArray();
@@ -85,6 +86,7 @@ class InputPrecinctStatistics
             'unused_ballots_count'       => ['sometimes', 'nullable', 'integer', 'min:0'],
             'spoiled_ballots_count'      => ['sometimes', 'nullable', 'integer', 'min:0'],
             'void_ballots_count'         => ['sometimes', 'nullable', 'integer', 'min:0'],
+            'closed_at'                  => ['sometimes', 'nullable', 'date'],
         ];
     }
 }
