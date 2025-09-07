@@ -29,7 +29,7 @@ uses(ResetsInMemoryElectionStore::class)->beforeEach(function () {
 
     $this->votes = collect([
         new VoteData(
-            position: new PositionData(
+            position: $position = new PositionData(
                 code: 'PRESIDENT',
                 name: 'President of the Philippines',
                 level: Level::NATIONAL,
@@ -39,12 +39,13 @@ uses(ResetsInMemoryElectionStore::class)->beforeEach(function () {
                 new CandidateData(
                     code: 'CANDIDATE-001',
                     name: 'Juan Dela Cruz',
-                    alias: 'JUAN'
+                    alias: 'JUAN',
+                    position: $position
                 ),
             ])
         ),
         new VoteData(
-            position: new PositionData(
+            position: $position = new PositionData(
                 code: 'SENATOR',
                 name: 'Senator',
                 level: Level::NATIONAL,
@@ -54,12 +55,14 @@ uses(ResetsInMemoryElectionStore::class)->beforeEach(function () {
                 new CandidateData(
                     code: 'CANDIDATE-002',
                     name: 'Maria Santos',
-                    alias: 'MARIA'
+                    alias: 'MARIA',
+                    position: $position
                 ),
                 new CandidateData(
                     code: 'CANDIDATE-003',
                     name: 'Pedro Reyes',
-                    alias: 'PEDRO'
+                    alias: 'PEDRO',
+                    position: $position
                 ),
             ])
         ),

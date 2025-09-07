@@ -27,7 +27,7 @@ class SubmitBallot
         }
 
         $ballot = new BallotData(
-            id: $ballotCode, // In production, replace with ULID/UUID
+//            id: $ballotCode, // In production, replace with ULID/UUID
             code: $ballotCode,
             votes: new DataCollection(VoteData::class, $votes->all()),
             precinct: $precinct

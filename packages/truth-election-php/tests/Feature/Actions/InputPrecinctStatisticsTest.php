@@ -38,52 +38,52 @@ uses(ResetsInMemoryElectionStore::class)->beforeEach(function () {
 
     $votes1 = collect([
         new VoteData(
-            position: new PositionData(
+            position: $position = new PositionData(
                 code: 'PRESIDENT',
                 name: 'President of the Philippines',
                 level: Level::NATIONAL,
                 count: 1
             ),
             candidates: new DataCollection(CandidateData::class, [
-                new CandidateData(code: 'CANDIDATE-001', name: 'Juan Dela Cruz', alias: 'JUAN'),
+                new CandidateData(code: 'CANDIDATE-001', name: 'Juan Dela Cruz', alias: 'JUAN', position: $position),
             ])
         ),
         new VoteData(
-            position: new PositionData(
+            position: $position = new PositionData(
                 code: 'SENATOR',
                 name: 'Senator',
                 level: Level::NATIONAL,
                 count: 12
             ),
             candidates: new DataCollection(CandidateData::class, [
-                new CandidateData(code: 'CANDIDATE-002', name: 'Maria Santos', alias: 'MARIA'),
-                new CandidateData(code: 'CANDIDATE-003', name: 'Pedro Reyes', alias: 'PEDRO'),
+                new CandidateData(code: 'CANDIDATE-002', name: 'Maria Santos', alias: 'MARIA', position: $position),
+                new CandidateData(code: 'CANDIDATE-003', name: 'Pedro Reyes', alias: 'PEDRO', position: $position),
             ])
         ),
     ]);
 
     $votes2 = collect([
         new VoteData(
-            position: new PositionData(
+            position: $position = new PositionData(
                 code: 'PRESIDENT',
                 name: 'President of the Philippines',
                 level: Level::NATIONAL,
                 count: 1
             ),
             candidates: new DataCollection(CandidateData::class, [
-                new CandidateData(code: 'CANDIDATE-004', name: 'Jose Rizal', alias: 'JOSE'),
+                new CandidateData(code: 'CANDIDATE-004', name: 'Jose Rizal', alias: 'JOSE', position: $position),
             ])
         ),
         new VoteData(
-            position: new PositionData(
+            position: $position = new PositionData(
                 code: 'SENATOR',
                 name: 'Senator',
                 level: Level::NATIONAL,
                 count: 12
             ),
             candidates: new DataCollection(CandidateData::class, [
-                new CandidateData(code: 'CANDIDATE-002', name: 'Maria Santos', alias: 'MARIA'),
-                new CandidateData(code: 'CANDIDATE-005', name: 'Andres Bonifacio', alias: 'ANDRES'),
+                new CandidateData(code: 'CANDIDATE-002', name: 'Maria Santos', alias: 'MARIA', position: $position),
+                new CandidateData(code: 'CANDIDATE-005', name: 'Andres Bonifacio', alias: 'ANDRES', position: $position),
             ])
         ),
     ]);

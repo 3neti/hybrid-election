@@ -22,6 +22,11 @@ final class TruthElectionServiceProvider extends ServiceProvider
             __DIR__.'/../config/truth-election.php' => config_path('truth-election.php'),
         ], 'truth-election-config');
 
+        $this->publishes([
+            __DIR__ . '/../config/election.json' => config_path('election.json'),
+            __DIR__ . '/../config/precinct.yaml' => config_path('precinct.yaml'),
+        ], 'truth-election-config');
+
         $this->registerRoutes();
     }
 

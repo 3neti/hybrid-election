@@ -27,6 +27,12 @@ it('creates a BallotData object from nested array', function () {
                         'code' => 'uuid-bbm-1234',
                         'name' => 'Ferdinand Marcos Jr.',
                         'alias' => 'BBM',
+                        'position' => [
+                            'code' => 'PRESIDENT',
+                            'name' => 'President of the Philippines',
+                            'level' => 'national',
+                            'count' => 1,
+                        ],
                     ],
                 ],
             ],
@@ -42,11 +48,23 @@ it('creates a BallotData object from nested array', function () {
                         'code' => 'uuid-jdc-001',
                         'name' => 'Juan Dela Cruz',
                         'alias' => 'JDC',
+                        'position' => [
+                            'code' => 'SENATOR',
+                            'name' => 'Senator of the Philippines',
+                            'level' => 'national',
+                            'count' => 12,
+                        ],
                     ],
                     [
                         'code' => 'uuid-mrp-002',
                         'name' => 'Maria Rosario P.',
                         'alias' => 'MRP',
+                        'position' => [
+                            'code' => 'SENATOR',
+                            'name' => 'Senator of the Philippines',
+                            'level' => 'national',
+                            'count' => 12,
+                        ],
                     ],
                 ],
             ],
@@ -70,7 +88,7 @@ it('creates a BallotData object from nested array', function () {
     ]);
 
     expect($ballot)->toBeInstanceOf(BallotData::class)
-        ->and($ballot->id)->toBe('ballot-uuid-1234')
+//        ->and($ballot->id)->toBe('ballot-uuid-1234')
         ->and($ballot->code)->toBe('BALLOT-001')
         ->and($ballot->votes)->toBeInstanceOf(DataCollection::class)
         ->and($ballot->votes)->toHaveCount(2);
@@ -99,7 +117,7 @@ it('creates a BallotData object from nested array', function () {
 
 it('requires latitude and longitude to be non-null when provided', function () {
     $precinct = PrecinctData::from([
-        'id' => 'precinct-uuid-777',
+//        'id' => 'precinct-uuid-777',
         'code' => 'SAN NICOLAS-001',
         'location_name' => 'San Nicolas Elementary School',
         'latitude' => 18.18077,

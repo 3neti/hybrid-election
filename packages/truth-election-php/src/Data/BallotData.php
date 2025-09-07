@@ -14,7 +14,6 @@ class BallotData extends Data
      * @param PrecinctData|null $precinct
      */
     public function __construct(
-        public string $id,
         public string $code,
         public DataCollection $votes,
         public ?PrecinctData $precinct = null,

@@ -115,6 +115,12 @@ it('hydrates ElectionReturnData from JSON and exports to array', function () {
                                 'code' => 'uuid-bbm',
                                 'name' => 'Ferdinand Marcos Jr.',
                                 'alias' => 'BBM',
+                                'position' => [
+                                    'code' => 'PRESIDENT',
+                                    'name' => 'President of the Philippines',
+                                    'level' => 'national',
+                                    'count' => 1,
+                                ],
                             ],
                         ],
                     ],
@@ -150,7 +156,6 @@ it('hydrates ElectionReturnData from JSON and exports to array', function () {
         'updated_at',
     ])
         ->and($array['precinct'])->toHaveKeys([
-            'id',
             'code',
             'location_name',
             'latitude',

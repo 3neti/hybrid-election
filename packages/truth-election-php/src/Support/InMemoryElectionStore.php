@@ -2,13 +2,23 @@
 
 namespace TruthElection\Support;
 
-use TruthElection\Data\BallotData;
 use TruthElection\Data\ElectoralInspectorData;
-use TruthElection\Data\PrecinctData;
 use TruthElection\Data\ElectionReturnData;
+use Spatie\LaravelData\DataCollection;
+use TruthElection\Data\CandidateData;
+use TruthElection\Data\PositionData;
+use TruthElection\Data\PrecinctData;
+use TruthElection\Data\BallotData;
+use TruthElection\Data\VoteData;
 
 class InMemoryElectionStore
 {
+    /** @var array<string, PositionData> */ // key: position_code => PositionData
+    public array $positions = [];
+
+    /** @var array<string, CandidateData> */ // key: candidate_code => CandidateData
+    public array $candidates = [];
+
     /** @var array<string, BallotData> */
     public array $ballots = [];
 
@@ -119,5 +129,60 @@ class InMemoryElectionStore
                 return;
             }
         }
+    }
+
+    public function load(array $positions, PrecinctData $precinct): void
+    {
+        $this->putPrecinct($precinct);
+
+        foreach ($positions as $position) {
+            $this->positions[$position['code']] = $position;
+
+            // Optionally flatten candidates
+            foreach ($position['candidates'] as $candidate) {
+                $this->candidates[$candidate['id']] = $candidate;
+            }
+
+            // Preload empty ballot template per position
+            $this->putBallot(new BallotData(
+                code: $position['code'],
+                votes: new DataCollection(VoteData::class, []),
+                precinct: $precinct,
+            ));
+        }
+    }
+
+    public function setPositions(array $positionMap): void
+    {
+        foreach ($positionMap as $code => $position) {
+            $this->positions[$code] = $position;
+        }
+    }
+
+    public function getPosition(string $code): ?PositionData
+    {
+        return $this->positions[$code] ?? null;
+    }
+
+    public function setCandidates(array $candidateMap): void
+    {
+        foreach ($candidateMap as $code => $candidate) {
+            $this->candidates[$code] = $candidate;
+        }
+    }
+
+    public function getCandidate(string $code): ?CandidateData
+    {
+        return $this->candidates[$code] ?? null;
+    }
+
+    public function allPositions(): array
+    {
+        return $this->positions;
+    }
+
+    public function allCandidates(): array
+    {
+        return $this->candidates;
     }
 }

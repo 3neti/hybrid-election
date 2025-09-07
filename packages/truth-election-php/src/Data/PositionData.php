@@ -4,8 +4,8 @@ namespace TruthElection\Data;
 
 use Spatie\LaravelData\Attributes\WithCast;
 use Spatie\LaravelData\Casts\EnumCast;
-use Spatie\LaravelData\Data;
 use TruthElection\Enums\Level;
+use Spatie\LaravelData\Data;
 
 class PositionData extends Data
 {

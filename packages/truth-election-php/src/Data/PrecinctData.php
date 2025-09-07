@@ -7,7 +7,6 @@ use Spatie\LaravelData\{Data, DataCollection};
 class PrecinctData extends Data
 {
     /**
-     * @param string $id
      * @param string $code
      * @param string $location_name
      * @param float $latitude
@@ -23,7 +22,6 @@ class PrecinctData extends Data
      * @param int|null $void_ballots_count
      */
     public function __construct(
-        public string $id,
         public string $code,
         public string $location_name,
         public float $latitude,
