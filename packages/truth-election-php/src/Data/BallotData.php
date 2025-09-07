@@ -2,8 +2,7 @@
 
 namespace TruthElection\Data;
 
-use Spatie\LaravelData\Data;
-use Spatie\LaravelData\DataCollection;
+use Spatie\LaravelData\{Data, DataCollection};
 
 class BallotData extends Data
 {

@@ -2,15 +2,13 @@
 
 namespace TruthElection\Actions;
 
-use TruthElection\Pipes\CloseBalloting;
+use TruthElection\Data\{ElectionReturnData, FinalizeErContext, PrecinctData};
 use TruthElection\Support\InMemoryElectionStore;
-use TruthElection\Data\FinalizeErContext;
-use TruthElection\Data\ElectionReturnData;
-use TruthElection\Data\PrecinctData;
-use Illuminate\Pipeline\Pipeline;
-use Lorisleiva\Actions\Concerns\AsAction;
-use RuntimeException;
 use TruthElection\Pipes\ValidateSignatures;
+use Lorisleiva\Actions\Concerns\AsAction;
+use TruthElection\Pipes\CloseBalloting;
+use Illuminate\Pipeline\Pipeline;
+use RuntimeException;
 
 class FinalizeElectionReturn
 {
@@ -50,15 +48,15 @@ class FinalizeElectionReturn
             force: $force,
         );
 
+        $configuredPipes = config('truth-election.finalize_election_return.pipes', []);
+
         app(Pipeline::class)
             ->send($ctx)
-            ->through([
-                ValidateSignatures::class,
-                // ExportErJson::class,
-                // PerformQrExport::class,
-                // MirrorQrArtifacts::class,
-                 CloseBalloting::class,
-            ])
+            ->through(array_merge(
+                [ValidateSignatures::class],
+                $configuredPipes,
+                [CloseBalloting::class]
+            ))
             ->thenReturn();
 
         return $ctx->er;

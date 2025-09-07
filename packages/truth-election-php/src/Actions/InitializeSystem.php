@@ -2,15 +2,13 @@
 
 namespace TruthElection\Actions;
 
-use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\File;
-use Lorisleiva\Actions\Concerns\AsAction;
-use Symfony\Component\Yaml\Yaml;
-use TruthElection\Data\CandidateData;
-use TruthElection\Data\PositionData;
-use TruthElection\Data\PrecinctData;
-use TruthElection\Enums\Level;
+use TruthElection\Data\{CandidateData, PositionData, PrecinctData};
 use TruthElection\Support\InMemoryElectionStore;
+use Lorisleiva\Actions\Concerns\AsAction;
+use Illuminate\Support\Facades\File;
+use Symfony\Component\Yaml\Yaml;
+use TruthElection\Enums\Level;
+use Illuminate\Support\Arr;
 
 class InitializeSystem
 {

@@ -3,10 +3,10 @@
 namespace TruthElection\Data;
 
 use Spatie\LaravelData\Casts\DateTimeInterfaceCast;
+use TruthElection\Enums\ElectoralInspectorRole;
 use Spatie\LaravelData\Attributes\WithCast;
 use Spatie\LaravelData\{Data, Optional};
 use Spatie\LaravelData\Casts\EnumCast;
-use TruthElection\Enums\ElectoralInspectorRole;
 use Carbon\Carbon;
 
 class ElectoralInspectorData extends Data
