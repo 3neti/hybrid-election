@@ -3,12 +3,6 @@
     "description": "TRUTH Election: Ballot data structures and election logic (no database required).",
     "type": "library",
     "license": "proprietary",
-    "repositories": [
-        {
-            "type": "path",
-            "url": "./../truth-renderer-php"
-        }
-    ],
     "autoload": {
         "psr-4": {
             "TruthElection\\": "src/"

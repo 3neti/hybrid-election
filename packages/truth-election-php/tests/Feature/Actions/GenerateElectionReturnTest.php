@@ -113,7 +113,9 @@ uses(ResetsInMemoryElectionStore::class)->beforeEach(function () {
 });
 
 it('generates an election return from in-memory data', function () {
+
     $return = GenerateElectionReturn::run('PRECINCT-01');
+
     expect($return)->toBeInstanceOf(ElectionReturnData::class)
         ->and($return->precinct->code)->toBe('PRECINCT-01')
         ->and($return->ballots)->toHaveCount(3)

@@ -13,7 +13,7 @@ interface ElectionStoreInterface
 {
     public function getBallotsForPrecinct(string $precinctCode): array;
 
-    public function putBallot(BallotData $ballot): void;
+    public function putBallot(BallotData $ballot, string $precinctCode): void;
 
     public function getPrecinct(string $code): ?PrecinctData;
 

@@ -7,7 +7,6 @@ use Spatie\LaravelData\{Data, DataCollection};
 class BallotData extends Data
 {
     /**
-     * @param string $id
      * @param string $code
      * @param DataCollection<VoteData> $votes
      * @param PrecinctData|null $precinct
@@ -15,6 +14,6 @@ class BallotData extends Data
     public function __construct(
         public string $code,
         public DataCollection $votes,
-        public ?PrecinctData $precinct = null,
+//        public ?PrecinctData $precinct = null,
     ) {}
 }

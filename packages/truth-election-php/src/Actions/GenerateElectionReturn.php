@@ -29,8 +29,9 @@ class GenerateElectionReturn
 
         $precinct = $store->precincts[$precinctCode];
 
-        $ballots = collect($store->ballots)
-            ->filter(fn(BallotData $ballot) => $ballot->precinct->code === $precinctCode);
+        $ballots = $precinct->ballots instanceof DataCollection
+            ? $precinct->ballots
+            : new DataCollection(BallotData::class, $precinct->ballots ?? []);
 
         // 🗳️ Tally votes
         $tallies = [];
@@ -63,28 +64,6 @@ class GenerateElectionReturn
                 }
             }
         }
-
-//        foreach ($ballots as $ballot) {
-//            foreach ($ballot->votes as $vote) {
-//                $positionCode = $vote->position->code;
-//
-//                foreach ($vote->candidates as $candidate) {
-//                    $candidateCode = $candidate->code;
-//                    $key = "{$positionCode}_{$candidateCode}";
-//
-//                    if (!isset($tallies[$key])) {
-//                        $tallies[$key] = [
-//                            'position_code'   => $positionCode,
-//                            'candidate_code'  => $candidate->code,
-//                            'candidate_name'  => $candidate->name,
-//                            'count'           => 0,
-//                        ];
-//                    }
-//
-//                    $tallies[$key]['count']++;
-//                }
-//            }
-//        }
 
         $voteCounts = collect($tallies)
             ->values()

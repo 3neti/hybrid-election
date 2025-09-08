@@ -46,9 +46,35 @@ class InMemoryElectionStore implements ElectionStoreInterface
     /**
      * Add or replace a ballot.
      */
-    public function putBallot(BallotData $ballot): void
+    public function putBallot(BallotData $ballot, string $precinctCode): void
     {
         $this->ballots[$ballot->code] = $ballot;
+
+        $precinct = $this->getPrecinct($precinctCode);
+
+        if (! $precinct) {
+            throw new \RuntimeException("Precinct [$precinctCode] not found.");
+        }
+
+        $existingBallots = $precinct->ballots ?? new DataCollection(BallotData::class, []);
+
+        // 🛡️ Check if ballot already exists (by code)
+        $alreadyExists = $existingBallots
+            ->toCollection()
+            ->contains(fn (BallotData $b) => $b->code === $ballot->code);
+
+        if ($alreadyExists) {
+            return; // Do nothing — avoid duplication
+        }
+
+        $updatedBallots = new DataCollection(
+            BallotData::class,
+            [...$existingBallots->toCollection(), $ballot],
+        );
+
+        $this->precincts[$precinctCode] = $precinct->copyWith([
+            'ballots' => $updatedBallots,
+        ]);
     }
 
     public function getPrecinct(string $code): ?PrecinctData
@@ -72,16 +98,15 @@ class InMemoryElectionStore implements ElectionStoreInterface
         $this->electionReturns[$er->precinct->code] = $er;
     }
 
-    /**
-     * Retrieve ballots by precinct code.
-     *
-     * @return BallotData[]
-     */
     public function getBallotsForPrecinct(string $precinctCode): array
     {
-        return array_filter($this->ballots, fn (BallotData $ballot) =>
-            $ballot->precinct->code === $precinctCode
-        );
+        $precinct = $this->getPrecinct($precinctCode);
+
+        if (! $precinct || ! $precinct->ballots) {
+            return [];
+        }
+
+        return $precinct->ballots->toArray();
     }
 
     /**
@@ -152,8 +177,7 @@ class InMemoryElectionStore implements ElectionStoreInterface
             $this->putBallot(new BallotData(
                 code: $position['code'],
                 votes: new DataCollection(VoteData::class, []),
-                precinct: $precinct,
-            ));
+            ), $precinct->code); // 🔁 new signature
         }
     }
 

@@ -20,6 +20,8 @@ class PrecinctData extends Data
      * @param int|null $unused_ballots_count
      * @param int|null $spoiled_ballots_count
      * @param int|null $void_ballots_count
+     * @param string|null $closed_at
+     * @param DataCollection<BallotData>|null $ballots
      */
     public function __construct(
         public string $code,
@@ -36,5 +38,18 @@ class PrecinctData extends Data
         public ?int $spoiled_ballots_count = null,
         public ?int $void_ballots_count = null,
         public ?string $closed_at = null,
+        public DataCollection|null $ballots = null,
     ) {}
+
+    public function copyWith(array $overrides): self
+    {
+        return new self(
+            code: $overrides['code'] ?? $this->code,
+            location_name: $overrides['location_name'] ?? $this->location_name,
+            latitude: $overrides['latitude'] ?? $this->latitude,
+            longitude: $overrides['longitude'] ?? $this->longitude,
+            electoral_inspectors: $overrides['electoral_inspectors'] ?? $this->electoral_inspectors,
+            ballots: $overrides['ballots'] ?? $this->ballots,
+        );
+    }
 }

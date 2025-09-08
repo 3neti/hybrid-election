@@ -12,58 +12,61 @@ it('can store and retrieve ballots and precincts in memory', function () {
     $store = InMemoryElectionStore::instance();
     $store->reset();
 
-    $ballot = BallotData::from([
-        'id' => '123',
-        'code' => 'BAL-001',
-        'precinct' => [
-            'id' => '123',
-            'code' => 'PRECINCT-01',
-            'location_name' => 'City Hall',
-            'latitude' => 18.2,
-            'longitude' => 120.5,
-            'electoral_inspectors' => [],
-        ],
-        'votes' => [],
-        'signature' => null,
+    $precinct = PrecinctData::from([
+        'code' => 'PRECINCT-01',
+        'location_name' => 'City Hall',
+        'latitude' => 18.2,
+        'longitude' => 120.5,
+        'electoral_inspectors' => [],
+        'ballots' => [],
     ]);
 
-    $store->putPrecinct($ballot->precinct);
-    $store->putBallot($ballot);
+    $ballot = BallotData::from([
+        'code' => 'BAL-001',
+        'votes' => [],
+    ]);
+
+    $store->putPrecinct($precinct);
+    $store->putBallot($ballot, $precinct->code); // ✅ attach ballot to precinct by code
 
     $ballots = $store->getBallotsForPrecinct('PRECINCT-01');
 
     expect($store->precincts)->toHaveKey('PRECINCT-01')
         ->and($store->ballots)->toHaveKey('BAL-001')
         ->and($ballots)->toHaveCount(1)
-        ->and($ballots['BAL-001']->code)->toBe('BAL-001');
+        ->and($ballots[0]['code'])->toBe('BAL-001');
 });
 
 it('can store multiple ballots for the same precinct', function () {
     $store = InMemoryElectionStore::instance();
     $store->reset();
 
-    $precinctCode = 'PRECINCT-01';
+    $precinct = PrecinctData::from([
+        'code' => 'PRECINCT-01',
+        'location_name' => 'School',
+        'latitude' => 10.0,
+        'longitude' => 120.0,
+        'electoral_inspectors' => [],
+        'ballots' => [],
+    ]);
+
+    $store->putPrecinct($precinct);
 
     foreach (range(1, 3) as $i) {
-        $store->putBallot(BallotData::from([
-            'id' => "id-$i",
+        $ballot = BallotData::from([
             'code' => "BAL-00$i",
-            'precinct' => [
-                'id' => 'precinct-1',
-                'code' => $precinctCode,
-                'location_name' => 'School',
-                'latitude' => 10.0,
-                'longitude' => 120.0,
-                'electoral_inspectors' => [],
-            ],
             'votes' => [],
-            'signature' => null,
-        ]));
+        ]);
+
+        $store->putBallot($ballot, $precinct->code);
     }
 
-    $ballots = $store->getBallotsForPrecinct($precinctCode);
+    $ballots = $store->getBallotsForPrecinct($precinct->code);
 
-    expect($ballots)->toHaveCount(3);
+    expect($ballots)->toHaveCount(3)
+        ->and($ballots[0]['code'])->toBe('BAL-001')
+        ->and($ballots[1]['code'])->toBe('BAL-002')
+        ->and($ballots[2]['code'])->toBe('BAL-003');
 });
 
 it('resets the store correctly', function () {
@@ -124,7 +127,8 @@ it('can retrieve election return by code', function () {
         ->and($fetched->code)->toBe('ER-001')
         ->and($fetched->precinct->code)->toBe('PRECINCT-99')
         ->and($fetched->tallies)->toHaveCount(1)
-        ->and($fetched->tallies[0]->candidate_name)->toBe('Candidate A');
+        ->and($fetched->tallies[0]->candidate_name)->toBe('Candidate A')
+    ;
 });
 
 it('can update election return signatures and replace it in the store', function () {
@@ -153,6 +157,7 @@ it('can update election return signatures and replace it in the store', function
                     'role' => 'member',
                 ],
             ],
+            'ballots' => []
         ],
         'tallies' => [
             [
@@ -223,7 +228,6 @@ it('can retrieve a precinct by code', function () {
         ->and($fetched->location_name)->toBe('Barangay Hall');
 });
 
-
 it('returns election return by precinct code', function () {
     $store = InMemoryElectionStore::instance();
     $store->reset();
@@ -246,6 +250,7 @@ it('returns election return by precinct code', function () {
                 'role' => 'member',
             ],
         ],
+        'ballots' => [],
     ]);
 
     $er = $original = ElectionReturnData::from([
