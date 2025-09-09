@@ -1,14 +1,14 @@
 <?php
 
-namespace TruthElectionDb\Stores;
+namespace TruthElectionDb\Support;
 
 use TruthElection\Support\ElectionStoreInterface;
-use TruthElection\Data\BallotData;
-use TruthElection\Data\PrecinctData;
+use TruthElection\Data\ElectoralInspectorData;
 use TruthElection\Data\ElectionReturnData;
 use TruthElection\Data\CandidateData;
+use TruthElection\Data\PrecinctData;
 use TruthElection\Data\PositionData;
-use TruthElection\Data\ElectoralInspectorData;
+use TruthElection\Data\BallotData;
 
 class DatabaseElectionStore implements ElectionStoreInterface
 {

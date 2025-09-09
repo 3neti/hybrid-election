@@ -1,16 +1,15 @@
 <?php
 
-namespace App\Models;
+namespace TruthElectionDb\Models;
 
-use App\Traits\{HasAdditionalPrecinctAttributes, HasMeta};
+use TruthElectionDb\Traits\{HasAdditionalPrecinctAttributes, HasMeta};
+use TruthElectionDb\Database\Factories\PrecinctFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use App\Data\{BallotData, PrecinctData};
+use TruthElectionDb\Services\VoteTallyService;
 use Illuminate\Database\Eloquent\Model;
-use Spatie\LaravelData\DataCollection;
 use Illuminate\Support\Facades\Cache;
-use App\Data\ElectoralInspectorData;
-use App\Services\VoteTallyService;
+use TruthElection\Data\PrecinctData;
 use Spatie\LaravelData\WithData;
 
 /**
@@ -24,15 +23,13 @@ use Spatie\LaravelData\WithData;
  * @property string|null $location_name                  Optional human-readable name for the precinct location.
  * @property float|null $latitude                        Latitude coordinate of the precinct.
  * @property float|null $longitude                       Longitude coordinate of the precinct.
- * @property DataCollection<ElectoralInspectorData> $electoral_inspectors
- *                                                       JSON-cast collection of electoral inspector data.
+ * @property array $electoral_inspectors                 JSON-cast collection of electoral inspector data.
  * @property \Illuminate\Support\Carbon $created_at      Timestamp of when the record was created.
  * @property \Illuminate\Support\Carbon $updated_at      Timestamp of the last update.
  *
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Ballot[] $ballots
- *                                                       The ballots submitted in this precinct.
- * @property-read \Spatie\LaravelData\DataCollection|\App\Data\VoteCountData[] $tallies
- *                                                       Computed tallies of votes per candidate per position.
+ * @property-read array $ballots                         The ballots submitted in this precinct.
+ * @property-read array $tallies                         Computed tallies of votes per candidate per position.
+ *
  * @property int $watchers_count
  * @property int $precincts_count
  * @property int $registered_voters_count
@@ -44,23 +41,14 @@ use Spatie\LaravelData\WithData;
  */
 class Precinct extends Model
 {
-    /** @use HasFactory<\Database\Factories\PrecinctFactory> */
     use HasAdditionalPrecinctAttributes;
     use HasFactory;
     use HasUuids;
     use WithData;
     use HasMeta;
 
-    /**
-     * The associated data transfer class.
-     */
     protected string $dataClass = PrecinctData::class;
 
-    /**
-     * Attributes that are mass assignable.
-     *
-     * @var array<string>
-     */
     protected $fillable = [
         'id',
         'code',
@@ -70,48 +58,31 @@ class Precinct extends Model
         'electoral_inspectors',
     ];
 
-    /**
-     * Attribute casting definitions.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    protected $casts = [
+        'electoral_inspectors' => 'array',
+    ];
+
+    protected $appends = ['ballots', 'tallies'];
+
+    public static function newFactory(): PrecinctFactory
     {
-        return [
-            'electoral_inspectors' => DataCollection::class . ':' . ElectoralInspectorData::class,
-        ];
+        return PrecinctFactory::new();
     }
 
-    /**
-     * Remove from cache.
-     *
-     */
     protected static function booted() {
         static::saved(fn() => Cache::forget('shared.precinct'));
     }
 
-    /**
-     * Get the ballots cast in this precinct.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
-     */
-    public function ballots(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function getBallotsAttribute(): array
     {
-        return $this->hasMany(Ballot::class);
+        return $this->hasMany(Ballot::class, 'precinct_code', 'code')
+            ->getResults()
+            ->toArray();
     }
 
-    /**
-     * Compute the vote tallies for the precinct using the VoteTallyService.
-     *
-     * @return \Spatie\LaravelData\DataCollection|\App\Data\VoteCountData[]
-     */
-    public function getTallies(): DataCollection
+    public function getTalliesAttribute(): array
     {
-        return app(VoteTallyService::class)->fromPrecinct($this);
-    }
-
-    public function getBallots(): DataCollection
-    {
-        return new DataCollection(BallotData::class, $this->ballots);
+        return app(VoteTallyService::class)->fromPrecinct($this)
+            ->toArray();
     }
 }

@@ -1,17 +1,17 @@
 <?php
 
-namespace Database\Factories;
+namespace TruthElectionDb\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
-use App\Enums\ElectoralInspectorRole;
-use App\Data\ElectoralInspectorData;
+use TruthElection\Enums\ElectoralInspectorRole;
+use TruthElection\Data\ElectoralInspectorData;
+use TruthElectionDb\Models\Precinct;
 use Illuminate\Support\Str;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Precinct>
- */
 class PrecinctFactory extends Factory
 {
+    protected $model = Precinct::class;
+
     public function definition(): array
     {
         return [

@@ -11,11 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('ballots', function (Blueprint $table) {
+        Schema::create('election_returns', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('code')->unique();
-            $table->json('votes')->nullable();
-            $table->foreignUuid('precinct_code')->nullable();
+            $table->json('signatures')->nullable();
+            $table->foreignUuid('precinct_id')->nullable();//relaxed for testing, TODO: add unique
             $table->timestamps();
         });
     }
@@ -25,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('ballots');
+        Schema::dropIfExists('election_returns');
     }
 };

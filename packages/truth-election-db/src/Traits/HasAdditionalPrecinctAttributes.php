@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Traits;
+namespace TruthElectionDb\Traits;
 
 trait HasAdditionalPrecinctAttributes
 {
@@ -12,6 +12,7 @@ trait HasAdditionalPrecinctAttributes
     const UNUSED_BALLOTS_COUNT_FIELD      = 'unused_ballots_count';
     const SPOILED_BALLOTS_COUNT_FIELD     = 'spoiled_ballots_count';
     const VOID_BALLOTS_COUNT_FIELD        = 'void_ballots_count';
+    const CLOSED_AT                       = 'closed_at';
 
     public function initializeHasAdditionalPrecinctAttributes(): void
     {
@@ -24,6 +25,7 @@ trait HasAdditionalPrecinctAttributes
             self::UNUSED_BALLOTS_COUNT_FIELD,
             self::SPOILED_BALLOTS_COUNT_FIELD,
             self::VOID_BALLOTS_COUNT_FIELD,
+            self::CLOSED_AT,
         ]);
     }
 
@@ -130,5 +132,17 @@ trait HasAdditionalPrecinctAttributes
     public function getVoidBallotsCountAttribute(): ?int
     {
         return $this->getAttribute('meta')->get(self::VOID_BALLOTS_COUNT_FIELD) ?? null;
+    }
+
+    // Void Ballots
+    public function setClosedAtAttribute(?string $value): self
+    {
+        $this->getAttribute('meta')->set(self::CLOSED_AT, $value);
+        return $this;
+    }
+
+    public function getClosedAtAttribute(): ?string
+    {
+        return $this->getAttribute('meta')->get(self::CLOSED_AT) ?? null;
     }
 }

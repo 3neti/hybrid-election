@@ -12,7 +12,9 @@
         { "type": "path", "url": "packages/truth-qr-php" },
         { "type": "path", "url": "packages/truth-codec-php" },
         { "type": "path", "url": "packages/truth-qr-ui" },
-        { "type": "path", "url": "packages/truth-renderer-php" }
+        { "type": "path", "url": "packages/truth-renderer-php" },
+        { "type": "path", "url": "packages/truth-election-php" },
+        { "type": "path", "url": "packages/truth-election-db" }
     ],
     "require": {
         "php": "^8.2",
@@ -23,6 +25,7 @@
         "laravel/reverb": "^1.5",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
+        "lbhurtado/truth-election-db": "dev-main",
         "lbhurtado/truth-qr-php": "dev-main",
         "lbhurtado/truth-qr-ui": "dev-main",
         "lbhurtado/truth-renderer-php": "dev-main",

@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Models;
+namespace TruthElectionDb\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use TruthElectionDb\Database\Factories\BallotFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
-use Spatie\LaravelData\DataCollection;
-use App\Data\{BallotData, VoteData};
+use TruthElection\Data\BallotData;
 use Spatie\LaravelData\WithData;
-use App\Traits\HasPrecinct;
+use Illuminate\Support\Carbon;
 
 /**
  * Class Ballot
@@ -19,57 +19,36 @@ use App\Traits\HasPrecinct;
  *
  * @property string $id                            The UUID primary key.
  * @property string $code                          The unique identifier for this ballot.
- * @property DataCollection<VoteData> $votes       The set of votes cast within this ballot.
- * @property string $precinct_id                   Foreign key linking to the parent precinct.
- * @property \App\Models\Precinct $precinct        The precinct to which this ballot belongs.
- * @property \Illuminate\Support\Carbon $created_at
- * @property \Illuminate\Support\Carbon $updated_at
+ * @property array $votes                          The set of votes cast within this ballot.
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  *
  * @method string getKey()                         Get the primary key value for the model.
  */
 class Ballot extends Model
 {
-    use HasPrecinct;
     use HasFactory;
     use HasUuids;
     use WithData;
 
-    /**
-     * The data class used to represent this model as a DTO.
-     */
-    protected string $dataClass = BallotData::class;
-
-    /**
-     * Attributes that are mass assignable.
-     *
-     * @var array<string>
-     */
     protected $fillable = [
-        'id', //deprecated
         'code',
         'votes',
-        'precinct_id', //deprecated
         'payload_hash',
         'source_ip',
         'user_agent',
+        'precinct_code',
     ];
 
-    /**
-     * Relationships that should be eager-loaded.
-     *
-     * @var array<int, string>
-     */
-    protected $with = ['precinct'];
-
-    /**
-     * Attribute casting definitions.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    public static function newFactory(): BallotFactory
     {
-        return [
-            'votes' => DataCollection::class . ':' . VoteData::class,
-        ];
+        return BallotFactory::new();
+    }
+
+    protected $casts = ['votes' => 'array'];
+
+    public function dataClass(): BallotData
+    {
+        return BallotData::from($this);
     }
 }

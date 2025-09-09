@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Traits;
+namespace TruthElectionDb\Traits;
 
 use Spatie\SchemalessAttributes\Casts\SchemalessAttributes;
 use Illuminate\Database\Eloquent\Builder;

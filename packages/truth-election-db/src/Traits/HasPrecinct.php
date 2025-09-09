@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Traits;
+namespace TruthElectionDb\Traits;
 
-use App\Models\Precinct;
+use TruthElectionDb\Models\Precinct;
 
 trait HasPrecinct
 {
@@ -12,6 +12,10 @@ trait HasPrecinct
             'precinct_id',
             'precinct',
         ]);
+
+        $this->setAppends(
+            array_merge($this->appends, ['precinct'])
+        );
     }
 
     public function precinct(): \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -30,7 +34,7 @@ trait HasPrecinct
         return $this;
     }
 
-    public function getPrecinctAttribute(): Precinct
+    public function getPrecinctAttribute(): ?Precinct
     {
         return $this->getRelationValue('precinct');
     }
