@@ -28,25 +28,23 @@ uses(ResetsInMemoryElectionStore::class)->beforeEach(function () {
 
     $votes1 = collect([
         new VoteData(
-            position: $position = new PositionData(
-                code: 'PRESIDENT',
-                name: 'President of the Philippines',
-                level: Level::NATIONAL,
-                count: 1
-            ),
             candidates: new DataCollection(CandidateData::class, [
-                new CandidateData(code: 'CANDIDATE-001', name: 'Juan Dela Cruz', alias: 'JUAN', position: $position),
+                new CandidateData(code: 'CANDIDATE-001', name: 'Juan Dela Cruz', alias: 'JUAN', position: new PositionData(
+                    code: 'PRESIDENT',
+                    name: 'President of the Philippines',
+                    level: Level::NATIONAL,
+                    count: 1
+                )),
             ])
         ),
         new VoteData(
-            position: $position = new PositionData(
-                code: 'SENATOR',
-                name: 'Senator',
-                level: Level::NATIONAL,
-                count: 12
-            ),
             candidates: new DataCollection(CandidateData::class, [
-                new CandidateData(code: 'CANDIDATE-002', name: 'Maria Santos', alias: 'MARIA', position: $position),
+                new CandidateData(code: 'CANDIDATE-002', name: 'Maria Santos', alias: 'MARIA', position: $position = new PositionData(
+                    code: 'SENATOR',
+                    name: 'Senator',
+                    level: Level::NATIONAL,
+                    count: 12
+                )),
                 new CandidateData(code: 'CANDIDATE-003', name: 'Pedro Reyes', alias: 'PEDRO', position: $position),
             ])
         ),
@@ -54,25 +52,23 @@ uses(ResetsInMemoryElectionStore::class)->beforeEach(function () {
 
     $votes2 = collect([
         new VoteData(
-            position: $position = new PositionData(
-                code: 'PRESIDENT',
-                name: 'President of the Philippines',
-                level: Level::NATIONAL,
-                count: 1
-            ),
             candidates: new DataCollection(CandidateData::class, [
-                new CandidateData(code: 'CANDIDATE-004', name: 'Jose Rizal', alias: 'JOSE', position: $position),
+                new CandidateData(code: 'CANDIDATE-004', name: 'Jose Rizal', alias: 'JOSE', position: new PositionData(
+                    code: 'PRESIDENT',
+                    name: 'President of the Philippines',
+                    level: Level::NATIONAL,
+                    count: 1
+                )),
             ])
         ),
         new VoteData(
-            position: $position = new PositionData(
-                code: 'SENATOR',
-                name: 'Senator',
-                level: Level::NATIONAL,
-                count: 12
-            ),
             candidates: new DataCollection(CandidateData::class, [
-                new CandidateData(code: 'CANDIDATE-002', name: 'Maria Santos', alias: 'MARIA', position: $position),
+                new CandidateData(code: 'CANDIDATE-002', name: 'Maria Santos', alias: 'MARIA', position: $position = new PositionData(
+                    code: 'SENATOR',
+                    name: 'Senator',
+                    level: Level::NATIONAL,
+                    count: 12
+                )),
                 new CandidateData(code: 'CANDIDATE-005', name: 'Andres Bonifacio', alias: 'ANDRES', position: $position),
             ])
         ),
@@ -136,14 +132,13 @@ test('finalize election return fails without required signatures', function () {
 
     $votes = collect([
         new VoteData(
-            position: $position = new PositionData(
-                code: 'PRESIDENT',
-                name: 'President',
-                level: Level::NATIONAL,
-                count: 1
-            ),
             candidates: new DataCollection(CandidateData::class, [
-                new CandidateData(code: 'CANDIDATE-007', name: 'Luna Star', alias: 'LUNA', position: $position),
+                new CandidateData(code: 'CANDIDATE-007', name: 'Luna Star', alias: 'LUNA', position:  new PositionData(
+                    code: 'PRESIDENT',
+                    name: 'President',
+                    level: Level::NATIONAL,
+                    count: 1
+                )),
             ])
         )
     ]);
@@ -182,14 +177,13 @@ test('finalize can be forced to bypass signature check', function () {
 
     $votes = collect([
         new VoteData(
-            position: $position = new PositionData(
-                code: 'MAYOR',
-                name: 'Mayor',
-                level: Level::LOCAL,
-                count: 1
-            ),
             candidates: new DataCollection(CandidateData::class, [
-                new CandidateData(code: 'CANDIDATE-999', name: 'Gorio', alias: 'GORIO', position: $position),
+                new CandidateData(code: 'CANDIDATE-999', name: 'Gorio', alias: 'GORIO', position: new PositionData(
+                    code: 'MAYOR',
+                    name: 'Mayor',
+                    level: Level::LOCAL,
+                    count: 1
+                )),
             ])
         )
     ]);

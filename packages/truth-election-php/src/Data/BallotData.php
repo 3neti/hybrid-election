@@ -2,18 +2,20 @@
 
 namespace TruthElection\Data;
 
-use Spatie\LaravelData\{Data, DataCollection};
+use Spatie\LaravelData\Data;
+use Spatie\LaravelData\DataCollection;
 
+/**
+ * @property-read string $code
+ * @property-read DataCollection<VoteData> $votes
+ */
 class BallotData extends Data
 {
     /**
-     * @param string $code
      * @param DataCollection<VoteData> $votes
-     * @param PrecinctData|null $precinct
      */
     public function __construct(
         public string $code,
         public DataCollection $votes,
-//        public ?PrecinctData $precinct = null,
     ) {}
 }

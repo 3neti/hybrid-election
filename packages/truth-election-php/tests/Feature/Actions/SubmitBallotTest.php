@@ -29,34 +29,32 @@ uses(ResetsInMemoryElectionStore::class)->beforeEach(function () {
 
     $this->votes = collect([
         new VoteData(
-            position: $position = new PositionData(
-                code: 'PRESIDENT',
-                name: 'President of the Philippines',
-                level: Level::NATIONAL,
-                count: 1
-            ),
             candidates: new DataCollection(CandidateData::class, [
                 new CandidateData(
                     code: 'CANDIDATE-001',
                     name: 'Juan Dela Cruz',
                     alias: 'JUAN',
-                    position: $position
+                    position: new PositionData(
+                        code: 'PRESIDENT',
+                        name: 'President of the Philippines',
+                        level: Level::NATIONAL,
+                        count: 1
+                    )
                 ),
             ])
         ),
         new VoteData(
-            position: $position = new PositionData(
-                code: 'SENATOR',
-                name: 'Senator',
-                level: Level::NATIONAL,
-                count: 12
-            ),
             candidates: new DataCollection(CandidateData::class, [
                 new CandidateData(
                     code: 'CANDIDATE-002',
                     name: 'Maria Santos',
                     alias: 'MARIA',
-                    position: $position
+                    position: $position = new PositionData(
+                        code: 'SENATOR',
+                        name: 'Senator',
+                        level: Level::NATIONAL,
+                        count: 12
+                    )
                 ),
                 new CandidateData(
                     code: 'CANDIDATE-003',

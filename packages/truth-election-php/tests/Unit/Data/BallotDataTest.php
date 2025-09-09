@@ -69,26 +69,9 @@ it('creates a BallotData object from nested array', function () {
                 ],
             ],
         ],
-//        'precinct' => [
-//            'id' => 'precinct-uuid-999',
-//            'code' => 'CURRIMAO-001',
-//            'location_name' => 'Currimao Central School',
-//            'latitude' => 17.993217,
-//            'longitude' => 120.488902,
-//            'electoral_inspectors' => [],
-//            'watchers_count' => 2,
-//            'precincts_count' => 10,
-//            'registered_voters_count' => 250,
-//            'actual_voters_count' => 200,
-//            'ballots_in_box_count' => 198,
-//            'unused_ballots_count' => 52,
-//            'spoiled_ballots_count' => 3,
-//            'void_ballots_count' => 1,
-//        ],
     ]);
 
     expect($ballot)->toBeInstanceOf(BallotData::class)
-//        ->and($ballot->id)->toBe('ballot-uuid-1234')
         ->and($ballot->code)->toBe('BALLOT-001')
         ->and($ballot->votes)->toBeInstanceOf(DataCollection::class)
         ->and($ballot->votes)->toHaveCount(2);
@@ -102,17 +85,6 @@ it('creates a BallotData object from nested array', function () {
         ->and($firstVote->candidates)->toHaveCount(1)
         ->and($firstVote->candidates->first())->toBeInstanceOf(CandidateData::class)
         ->and($firstVote->candidates->first()->alias)->toBe('BBM');
-
-//    expect($ballot->precinct)->toBeInstanceOf(PrecinctData::class)
-//        ->and($ballot->precinct->code)->toBe('CURRIMAO-001')
-//        ->and($ballot->precinct->watchers_count)->toBe(2)
-//        ->and($ballot->precinct->precincts_count)->toBe(10)
-//        ->and($ballot->precinct->registered_voters_count)->toBe(250)
-//        ->and($ballot->precinct->actual_voters_count)->toBe(200)
-//        ->and($ballot->precinct->ballots_in_box_count)->toBe(198)
-//        ->and($ballot->precinct->unused_ballots_count)->toBe(52)
-//        ->and($ballot->precinct->spoiled_ballots_count)->toBe(3)
-//        ->and($ballot->precinct->void_ballots_count)->toBe(1);
 });
 
 it('requires latitude and longitude to be non-null when provided', function () {
@@ -168,4 +140,29 @@ it('maps precinct meta fields as null when omitted', function () {
         ->and($precinct->unused_ballots_count)->toBeNull()
         ->and($precinct->spoiled_ballots_count)->toBeNull()
         ->and($precinct->void_ballots_count)->toBeNull();
+});
+
+test('BallotData holds structured votes correctly', function () {
+    $president = new PositionData('PRESIDENT', 'President', Level::NATIONAL, 1);
+    $senator = new PositionData('SENATOR', 'Senator', Level::NATIONAL, 12);
+
+    $votePresident = new VoteData(new DataCollection(CandidateData::class, [
+        new CandidateData('CAND-001', 'Juan Dela Cruz', 'JUAN', $president),
+    ]));
+
+    $voteSenator = new VoteData(new DataCollection(CandidateData::class, [
+        new CandidateData('CAND-002', 'Maria Santos', 'MARIA', $senator),
+        new CandidateData('CAND-003', 'Pedro Reyes', 'PEDRO', $senator),
+    ]));
+
+    $ballot = new BallotData('BALLOT-123', new DataCollection(VoteData::class, [
+        $votePresident,
+        $voteSenator,
+    ]));
+
+    expect($ballot)->toBeInstanceOf(BallotData::class)
+        ->and($ballot->code)->toBe('BALLOT-123')
+        ->and($ballot->votes)->toHaveCount(2)
+        ->and($ballot->votes[0]->position->code)->toBe('PRESIDENT')
+        ->and($ballot->votes[1]->candidates[1]->alias)->toBe('PEDRO');
 });
