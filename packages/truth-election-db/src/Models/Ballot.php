@@ -45,7 +45,14 @@ class Ballot extends Model
         return BallotFactory::new();
     }
 
-    protected $casts = ['votes' => 'array'];
+    protected $casts = [
+        'votes' => 'array'
+    ];
+
+    public function precinct()
+    {
+        return $this->belongsTo(Precinct::class, 'precinct_code', 'code');
+    }
 
     public function dataClass(): BallotData
     {

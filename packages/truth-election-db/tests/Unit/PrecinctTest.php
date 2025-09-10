@@ -1,6 +1,9 @@
 <?php
 
 use TruthElection\Data\{ElectoralInspectorData, PrecinctData, BallotData};
+use TruthElectionDb\Database\Factories\BallotFactory;
+use TruthElectionDb\Database\Factories\PrecinctFactory;
+use Spatie\SchemalessAttributes\SchemalessAttributes;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use TruthElection\Enums\ElectoralInspectorRole;
 use TruthElectionDb\Models\{Precinct, Ballot};
@@ -124,3 +127,50 @@ it('can create a precinct with ballots and map to PrecinctData correctly', funct
         ->and($tallies[0]['candidate_name'])->toBe('Ferdinand Marcos Jr.')
         ->and($tallies[0]['count'])->toBe(2);
 });
+
+test('precinct has attributes', function () {
+   $precinct = Precinct::factory()->create();
+   expect($precinct)->toBeInstanceOf(Precinct::class)
+       ->and($precinct->id)->toBeUuid()
+       ->and($precinct->code)->toBe('CURRIMAO-001')
+       ->and($precinct->location_name)->toBe('Currimao Central School')
+       ->and($precinct->latitude)->toBe(17.993217)
+       ->and($precinct->longitude)->toBe(120.488902)
+       ->and($precinct->electoral_inspectors)->toBeArray()
+       ->and($precinct->electoral_inspectors)->toHaveCount(3)
+       ->and($precinct->electoral_inspectors)->toMatchArray(PrecinctFactory::electoral_inspectors())
+       ->and($precinct->meta)->toBeInstanceOf(SchemalessAttributes ::class)
+       ->and($precinct->meta)->toHaveCount(0)
+   ;
+});
+
+test('precinct has schemaless attributes', function () {
+    $precinct = Precinct::factory()->withPrecinctMeta()->create();
+    expect($precinct->meta)->toHaveCount(8)
+        ->and($precinct->meta->toArray())->toMatchArray(PrecinctFactory::precinct_meta());
+});
+
+dataset('precinct', function () {
+    return [
+        'precinct with ballots' => function () {
+            Ballot::factory(2)->forPrecinct(['code' => 'BALLOT-001'])->create();
+            return Precinct::where('code', 'BALLOT-001')->first();
+        }
+    ];
+});
+
+test('precinct has ballots and tallies attributes', function (Precinct $precinct) {
+    expect($precinct->ballots)->toBeArray();
+    expect($precinct->ballots)->toHaveCount(2);
+    expect($precinct->tallies)->toBeArray();
+})->with('precinct');
+
+test('precinct has dataClass', function (Precinct $precinct) {
+    $data = $precinct->getData();
+    expect($data)->toBeInstanceOf(PrecinctData::class);
+    expect($data->electoral_inspectors)->toBeInstanceOf(DataCollection::class);
+    expect($data->electoral_inspectors->toArray())->toMatchArray(PrecinctFactory::electoral_inspectors());
+    expect($data->ballots)->toBeInstanceOf(DataCollection::class);
+    expect($data->ballots->toArray())->toHaveCount(2);
+    expect($data->ballots->toArray()[0]['votes'])->toMatchArray(BallotFactory::votes());
+})->with('precinct');

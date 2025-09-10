@@ -5,6 +5,8 @@ namespace TruthElectionDb\Models;
 use TruthElectionDb\Database\Factories\PositionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use TruthElection\Data\PositionData;
+use Spatie\LaravelData\WithData;
 use TruthElection\Enums\Level;
 
 /**
@@ -24,6 +26,7 @@ use TruthElection\Enums\Level;
 class Position extends Model
 {
     use HasFactory;
+    use WithData;
 
     protected $primaryKey = 'code';
 
@@ -41,6 +44,8 @@ class Position extends Model
     protected $casts = [
         'level' => Level::class,
     ];
+
+    protected string $dataClass = PositionData::class;
 
     public static function newFactory(): PositionFactory
     {

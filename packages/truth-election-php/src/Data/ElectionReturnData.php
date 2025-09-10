@@ -2,9 +2,10 @@
 
 namespace TruthElection\Data;
 
+use Spatie\LaravelData\Transformers\DateTimeInterfaceTransformer;
+use Spatie\LaravelData\Attributes\{WithCast, WithTransformer};
 use Spatie\LaravelData\Casts\DateTimeInterfaceCast;
 use Illuminate\Support\{Carbon, Collection};
-use Spatie\LaravelData\Attributes\WithCast;
 use Spatie\LaravelData\{Data, Optional};
 use Spatie\LaravelData\DataCollection;
 
@@ -32,9 +33,11 @@ class ElectionReturnData extends Data
         /** @var DataCollection<BallotData> The ballots casted by voters  */
         public DataCollection $ballots,
 
+        #[WithTransformer(DateTimeInterfaceTransformer::class)]
         #[WithCast(DateTimeInterfaceCast::class, format: 'Y-m-d\TH:i:sP')]
         public Carbon $created_at,
 
+        #[WithTransformer(DateTimeInterfaceTransformer::class)]
         #[WithCast(DateTimeInterfaceCast::class, format: 'Y-m-d\TH:i:sP')]
         public Carbon $updated_at,
     ) {}
@@ -46,6 +49,17 @@ class ElectionReturnData extends Data
         return [
             'last_ballot' => $last ? BallotData::from($last) : null,
         ];
+    }
+
+    public function toArray(): array
+    {
+        $array = parent::toArray();
+        $last_ballot = $array['last_ballot'] ?? null;
+        if ($last_ballot instanceof Data) {
+            $array['last_ballot'] = $last_ballot->toArray();
+        }
+
+        return $array;
     }
 
     public function signedInspectors(): Collection

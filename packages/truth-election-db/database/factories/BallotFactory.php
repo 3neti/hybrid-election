@@ -13,65 +13,68 @@ class BallotFactory extends Factory
 
     public function definition(): array
     {
-        $votes = [
-        [
-            'position' => [
-                'code' => 'PRESIDENT',
-                'name' => 'President of the Philippines',
-                'level' => 'national',
-                'count' => 1,
-            ],
-            'candidates' => [
-                [
-                    'code' => 'uuid-bbm-1234',
-                    'name' => 'Ferdinand Marcos Jr.',
-                    'alias' => 'BBM',
-                    'position' => [
-                        'code' => 'PRESIDENT',
-                        'name' => 'President of the Philippines',
-                        'level' => 'national',
-                        'count' => 1,
-                    ],
-                ],
-            ],
-        ],
-        [
-            'position' => [
-                'code' => 'SENATOR',
-                'name' => 'Senator of the Philippines',
-                'level' => 'national',
-                'count' => 12,
-            ],
-            'candidates' => [
-                [
-                    'code' => 'uuid-jdc-001',
-                    'name' => 'Juan Dela Cruz',
-                    'alias' => 'JDC',
-                    'position' => [
-                        'code' => 'SENATOR',
-                        'name' => 'Senator of the Philippines',
-                        'level' => 'national',
-                        'count' => 12,
-                    ],
-                ],
-                [
-                    'code' => 'uuid-mrp-002',
-                    'name' => 'Maria Rosario P.',
-                    'alias' => 'MRP',
-                    'position' => [
-                        'code' => 'SENATOR',
-                        'name' => 'Senator of the Philippines',
-                        'level' => 'national',
-                        'count' => 12,
-                    ],
-                ],
-            ],
-        ],
-    ];
-
         return [
             'code' => 'BALLOT-' . Str::uuid()->toString(),
-            'votes' => $votes
+            'votes' => self::votes()
+        ];
+    }
+
+    public static function votes(): array
+    {
+        return [
+            [
+                'position' => [
+                    'code' => 'PRESIDENT',
+                    'name' => 'President of the Philippines',
+                    'level' => 'national',
+                    'count' => 1,
+                ],
+                'candidates' => [
+                    [
+                        'code' => 'uuid-bbm-1234',
+                        'name' => 'Ferdinand Marcos Jr.',
+                        'alias' => 'BBM',
+                        'position' => [
+                            'code' => 'PRESIDENT',
+                            'name' => 'President of the Philippines',
+                            'level' => 'national',
+                            'count' => 1,
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'position' => [
+                    'code' => 'SENATOR',
+                    'name' => 'Senator of the Philippines',
+                    'level' => 'national',
+                    'count' => 12,
+                ],
+                'candidates' => [
+                    [
+                        'code' => 'uuid-jdc-001',
+                        'name' => 'Juan Dela Cruz',
+                        'alias' => 'JDC',
+                        'position' => [
+                            'code' => 'SENATOR',
+                            'name' => 'Senator of the Philippines',
+                            'level' => 'national',
+                            'count' => 12,
+                        ],
+                    ],
+                    [
+                        'code' => 'uuid-mrp-002',
+                        'name' => 'Maria Rosario P.',
+                        'alias' => 'MRP',
+                        'position' => [
+                            'code' => 'SENATOR',
+                            'name' => 'Senator of the Philippines',
+                            'level' => 'national',
+                            'count' => 12,
+                        ],
+                    ],
+                ],
+            ],
         ];
     }
 }

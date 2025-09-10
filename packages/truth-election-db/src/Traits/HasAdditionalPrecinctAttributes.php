@@ -27,6 +27,18 @@ trait HasAdditionalPrecinctAttributes
             self::VOID_BALLOTS_COUNT_FIELD,
             self::CLOSED_AT,
         ]);
+
+        $this->mergeAppends([
+            self::WATCHERS_COUNT_FIELD,
+            self::PRECINCTS_COUNT_FIELD,
+            self::REGISTERED_VOTERS_COUNT_FIELD,
+            self::ACTUAL_VOTERS_COUNT_FIELD,
+            self::BALLOTS_IN_BOX_COUNT_FIELD,
+            self::UNUSED_BALLOTS_COUNT_FIELD,
+            self::SPOILED_BALLOTS_COUNT_FIELD,
+            self::VOID_BALLOTS_COUNT_FIELD,
+            self::CLOSED_AT,
+        ]);
     }
 
     // Setters and Getters for each field

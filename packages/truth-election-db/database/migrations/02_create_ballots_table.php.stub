@@ -15,7 +15,8 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('code')->unique();
             $table->json('votes')->nullable();
-            $table->foreignUuid('precinct_code')->nullable();
+            $table->string('precinct_code')->nullable();
+            $table->foreign('precinct_code')->references('code')->on('precincts');
             $table->timestamps();
         });
     }

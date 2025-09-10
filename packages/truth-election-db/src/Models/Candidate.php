@@ -5,7 +5,8 @@ namespace TruthElectionDb\Models;
 use TruthElectionDb\Database\Factories\CandidateFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use TruthElectionDb\Models\Position;
+use TruthElection\Data\CandidateData;
+use Spatie\LaravelData\WithData;
 
 /**
  * Class Candidate
@@ -25,6 +26,7 @@ use TruthElectionDb\Models\Position;
 class Candidate extends Model
 {
     use HasFactory;
+    use WithData;
 
     protected $primaryKey = 'code';
 
@@ -35,6 +37,8 @@ class Candidate extends Model
     protected $fillable = [
         'code', 'name', 'alias', 'position_code',
     ];
+
+    protected string $dataClass = CandidateData::class;
 
     public static function newFactory(): CandidateFactory
     {
@@ -55,5 +59,12 @@ class Candidate extends Model
         }
 
         return $this;
+    }
+
+    public function getPositionAttribute(): ?array
+    {
+        $position = $this->position()->getResults();
+
+        return $position ? $position->toArray() : null;
     }
 }

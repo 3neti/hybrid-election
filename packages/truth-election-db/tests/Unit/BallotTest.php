@@ -1,20 +1,24 @@
 <?php
 
+use TruthElection\Data\PrecinctData;
+use TruthElection\Data\VoteData;
+use TruthElectionDb\Database\Factories\BallotFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use TruthElectionDb\Models\{Ballot, Precinct};
 use Spatie\LaravelData\DataCollection;
 use TruthElection\Data\BallotData;
-use TruthElectionDb\Models\Ballot;
 
 uses(RefreshDatabase::class);
 
-it('can create a ballot using the factory', function () {
+test('ballot has factory', function () {
     $ballot = Ballot::factory()->create();
 
     expect($ballot)->toBeInstanceOf(Ballot::class)
         ->and($ballot->code)->toStartWith('BALLOT-')
         ->and($ballot->votes)->toBeArray()
         ->and($ballot->votes)->toHaveCount(2)
-        ->and($ballot->votes[0])->toBeArray();
+        ->and($ballot->votes)->toMatchArray(BallotFactory::votes())
+    ;
 
     $data = $ballot->getData();
 
@@ -23,6 +27,20 @@ it('can create a ballot using the factory', function () {
         ->and($data->votes)->toBeInstanceOf(DataCollection::class)
         ->and($data->votes)->toHaveCount(2)
         ->and($data->votes->first()->position->code)->toBe('PRESIDENT');
+});
+
+test('ballot has precinct relation', function () {
+    $ballot = Ballot::factory()->forPrecinct()->create();
+    expect($ballot->precinct)->toBeInstanceOf(Precinct::class);
+});
+
+test('ballot has data class', function () {
+    $ballot = Ballot::factory()->create();
+    $data = $ballot->getData();
+    expect($data)->toBeInstanceOf(BallotData::class);
+    expect($data->votes)->toBeInstanceOf(DataCollection::class);
+    expect($data->votes)->each->toBeInstanceOf(VoteData::class);
+    expect($data->votes->toArray())->toMatchArray(BallotFactory::votes());
 });
 
 it('persists a ballot and maps to BallotData correctly', function () {

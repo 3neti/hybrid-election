@@ -3,10 +3,11 @@
 namespace TruthElectionDb\Models;
 
 use TruthElection\Data\{BallotData, ElectionReturnData, ElectoralInspectorData};
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use TruthElectionDb\Database\Factories\ElectionReturnFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
-use TruthElectionDb\Traits\HasPrecinct;
 use Spatie\LaravelData\DataCollection;
 use Spatie\LaravelData\WithData;
 use DateTimeInterface;
@@ -19,20 +20,17 @@ use DateTimeInterface;
  *
  * @property string $id                                   The UUID primary key.
  * @property string $code                                 Unique code identifying this election return.
- * @property DataCollection<ElectoralInspectorData> $signatures
- *                                                        Digital signatures from electoral inspectors.
- * @property string $precinct_id                          Foreign key reference to the associated precinct.
+ * @property array $signatures                            Digital signatures from electoral inspectors.
+ * @property string $precinct_code                        Foreign key reference to the associated precinct.
  * @property \Illuminate\Support\Carbon $created_at       Timestamp when the record was created.
  * @property \Illuminate\Support\Carbon $updated_at       Timestamp when the record was last updated.
  *
- * @property-read \App\Models\Precinct $precinct          The associated precinct that submitted ballots.
- * @property-read DataCollection<BallotData> $ballots     (Virtual) JSON-cast ballots data [unused unless hydrated manually].
- * @property-read DataCollection|\App\Data\VoteCountData[] $tallies
- *                                                        Computed vote tallies per candidate per position (accessor).
+ * @property-read array $precinct                         Hydrated precinct data as array (custom accessor).
+ * @property-read DataCollection<BallotData> $ballots     JSON-cast ballots data (from precinct).
+ * @property-read array $tallies                          Vote tallies from precinct.
  */
 class ElectionReturn extends Model
 {
-    use HasPrecinct;
     use HasFactory;
     use HasUuids;
     use WithData;
@@ -43,33 +41,58 @@ class ElectionReturn extends Model
         'id',
         'code',
         'signatures',
+        'precinct_code',
     ];
-
-    protected $with = ['precinct'];
 
     protected $appends = ['tallies'];
 
-    protected $casts = ['signatures' => 'array'];
+    protected $casts = [
+        'signatures' => 'array',
+        'ballots' => 'array',
+    ];
 
-//    protected function casts(): array
+    public static function newFactory(): ElectionReturnFactory
+    {
+        return ElectionReturnFactory::new();
+    }
+
+//    protected function serializeDate(DateTimeInterface $date): string
 //    {
-//        return [
-//            'signatures' => DataCollection::class . ':' . ElectoralInspectorData::class,
-//        ];
+//        return $date->format('Y-m-d\TH:i:sP');
 //    }
 
-    protected function serializeDate(DateTimeInterface $date): string
+    public function setPrecinctAttribute(Precinct|string $precinct): static
     {
-        return $date->format('Y-m-d\TH:i:sP');
+        if (is_string($precinct)) {
+            $this->precinct_code = $precinct;
+        } elseif ($precinct instanceof Precinct) {
+            $this->precinct_code = $precinct->code;
+        }
+
+        return $this;
+    }
+
+    protected function signatures(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => json_decode($value, true) ?? [],
+        );
+    }
+
+    public function getPrecinctAttribute(): array
+    {
+        return $this->belongsTo(Precinct::class, 'precinct_code', 'code')
+            ->getResults()
+            ?->toArray() ?? [];
     }
 
     public function getTalliesAttribute(): array
     {
-        return $this->precinct->getTallies()->toArray();
+        return $this->precinct['tallies'] ?? [];
     }
 
-    public function getBallotsAttribute(): DataCollection
+    public function getBallotsAttribute(): array
     {
-        return $this->precinct->getBallots();
+        return $this->precinct['ballots'] ?? [];
     }
 }

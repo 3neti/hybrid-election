@@ -34,6 +34,7 @@ abstract class TestCase extends BaseTestCase
             \Spatie\LaravelData\Normalizers\ArrayNormalizer::class,
             \Spatie\LaravelData\Normalizers\JsonNormalizer::class,
         ]);
+        config()->set('data.date_format', "Y-m-d\TH:i:sP");
     }
 
     protected function loadConfig()

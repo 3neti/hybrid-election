@@ -15,28 +15,11 @@ class PrecinctFactory extends Factory
     public function definition(): array
     {
         return [
-            'id' => (string) Str::uuid(),
             'code' => 'CURRIMAO-001',
             'location_name' => 'Currimao Central School',
             'latitude' => 17.993217,
             'longitude' => 120.488902,
-            'electoral_inspectors' => collect([
-                new ElectoralInspectorData(
-                    id: (string) Str::uuid(),
-                    name: 'Juan dela Cruz',
-                    role: ElectoralInspectorRole::CHAIRPERSON,
-                ),
-                new ElectoralInspectorData(
-                    id: (string) Str::uuid(),
-                    name: 'Maria Santos',
-                    role: ElectoralInspectorRole::MEMBER,
-                ),
-                new ElectoralInspectorData(
-                    id: (string) Str::uuid(),
-                    name: 'Pedro Reyes',
-                    role: ElectoralInspectorRole::MEMBER,
-                ),
-            ]),
+            'electoral_inspectors' => self::electoral_inspectors()
         ];
     }
 
@@ -49,7 +32,21 @@ class PrecinctFactory extends Factory
      */
     public function withPrecinctMeta(array $overrides = []): static
     {
-        $defaults = [
+        return $this->state(fn () => array_merge(self::precinct_meta(), $overrides));
+    }
+
+    public static function electoral_inspectors(): array
+    {
+        return [
+            ['id' => 'uuid-juan',  'name' => 'Juan dela Cruz', 'role' => 'chairperson'],
+            ['id' => 'uuid-maria', 'name' => 'Maria Santos',   'role' => 'member'     ],
+            ['id' => 'uuid-pedro', 'name' => 'Pedro Reyes',    'role' => 'member'     ],
+        ];
+    }
+
+    public static function precinct_meta(): array
+    {
+        return [
             'watchers_count'            => 2,
             'precincts_count'           => 10,
             'registered_voters_count'   => 250,
@@ -59,7 +56,5 @@ class PrecinctFactory extends Factory
             'spoiled_ballots_count'     => 5,
             'void_ballots_count'        => 3,
         ];
-
-        return $this->state(fn () => array_merge($defaults, $overrides));
     }
 }
