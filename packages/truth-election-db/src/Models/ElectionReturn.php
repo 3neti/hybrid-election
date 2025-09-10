@@ -56,6 +56,41 @@ class ElectionReturn extends Model
         return ElectionReturnFactory::new();
     }
 
+    public static function fromData(ElectionReturnData $data): self
+    {
+        $model = self::updateOrCreate(
+            ['code' => $data->code], // use code, not id, to allow syncing from external
+            [
+                'signatures' => $data->signatures->toArray(),
+                'precinct_code' => $data->precinct->code,
+            ]
+        );
+
+        // 🔁 Sync ballots (create/update them)
+        foreach ($data->ballots as $ballotData) {
+            // Assign precinct code to each ballot (needed for fromData)
+            $ballotData->setPrecinctCode($data->precinct->code);
+
+            Ballot::fromData($ballotData);
+        }
+
+        return $model;
+    }
+
+//    public static function fromData(ElectionReturnData $data): self
+//    {
+//        $model = self::updateOrCreate(
+//            ['id' => $data->id],
+//            [
+//                'code' => $data->code,
+//                'signatures' => $data->signatures->toArray(),
+//                'precinct_code' => $data->precinct->code,
+//            ]
+//        );
+//
+//        return $model;
+//    }
+
 //    protected function serializeDate(DateTimeInterface $date): string
 //    {
 //        return $date->format('Y-m-d\TH:i:sP');

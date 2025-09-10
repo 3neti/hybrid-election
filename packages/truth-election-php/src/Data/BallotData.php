@@ -2,8 +2,8 @@
 
 namespace TruthElection\Data;
 
-use Spatie\LaravelData\Data;
 use Spatie\LaravelData\DataCollection;
+use Spatie\LaravelData\Data;
 
 /**
  * @property-read string $code
@@ -11,6 +11,20 @@ use Spatie\LaravelData\DataCollection;
  */
 class BallotData extends Data
 {
+    protected string $precinct_code;
+
+    public function getPrecinctCode(): string
+    {
+        return $this->precinct_code;
+    }
+
+    public function setPrecinctCode(string $precinct_code): static
+    {
+        $this->precinct_code = $precinct_code;
+
+        return $this;
+    }
+
     /**
      * @param DataCollection<VoteData> $votes
      */

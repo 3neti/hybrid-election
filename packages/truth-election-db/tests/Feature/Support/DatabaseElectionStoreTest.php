@@ -1,0 +1,341 @@
+<?php
+
+use TruthElection\Enums\{ElectoralInspectorRole, Level};
+use TruthElection\Data\{CandidateData, PositionData};
+use TruthElectionDb\Database\Factories\BallotFactory;
+use TruthElectionDb\Models\Ballot;
+use TruthElectionDb\Models\ElectionReturn;
+use TruthElectionDb\Support\DatabaseElectionStore;
+use TruthElection\Data\{BallotData, PrecinctData};
+use TruthElection\Data\{VoteData, VoteCountData};
+use TruthElection\Data\ElectoralInspectorData;
+use TruthElection\Data\ElectionReturnData;
+use Spatie\LaravelData\DataCollection;
+use TruthElectionDb\Models\Precinct;
+
+uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+
+it('can store and retrieve precincts from database', function () {
+    $store = new DatabaseElectionStore();
+
+    $precinct = PrecinctData::from([
+        'code' => 'PRECINCT-01',
+        'location_name' => 'City Hall',
+        'latitude' => 18.2,
+        'longitude' => 120.5,
+        'electoral_inspectors' => [],
+        'ballots' => [],
+    ]);
+
+    $store->putPrecinct($precinct);
+
+    $retrieved = $store->getPrecinct('PRECINCT-01');
+
+    expect($retrieved)->not->toBeNull()
+        ->and($retrieved->code)->toBe('PRECINCT-01')
+        ->and($retrieved->location_name)->toBe('City Hall');
+});
+
+it('can attach and retrieve ballots to a precinct', function () {
+    $store = new DatabaseElectionStore();
+
+    $precinct = PrecinctData::from([
+        'code' => 'PRECINCT-02',
+        'location_name' => 'Barangay Hall',
+        'latitude' => 10.5,
+        'longitude' => 122.0,
+        'electoral_inspectors' => [],
+        'ballots' => [],
+    ]);
+
+    $store->putPrecinct($precinct);
+
+    foreach (range(1, 3) as $i) {
+        $ballot = BallotData::from([
+            'code' => "BAL-00$i",
+            'votes' => [],
+        ]);
+
+        $store->putBallot($ballot, $precinct->code);
+    }
+
+    $ballots = $store->getBallotsForPrecinct($precinct->code);
+
+    expect($ballots)->toHaveCount(3)
+        ->and($ballots[0]['code'])->toBe('BAL-001')
+        ->and($ballots[2]['code'])->toBe('BAL-003');
+});
+
+it('can store and retrieve election return (tallies are computed from ballots)', function () {
+    $store = new DatabaseElectionStore();
+
+    // 1. Create and store the precinct
+    $precinct = PrecinctData::from([
+        'code' => 'P-001',
+        'location_name' => 'Gymnasium',
+        'latitude' => 14.6,
+        'longitude' => 121.0,
+        'electoral_inspectors' => [],
+        'ballots' => [],
+    ]);
+
+    $store->putPrecinct($precinct);
+
+    // 2. Create election return data with ballots and votes
+    $data = new ElectionReturnData(
+        id: 'AA-537',
+        code: 'ER-001',
+        precinct: PrecinctData::from($precinct->toArray()),
+        tallies: new DataCollection(VoteCountData::class, []), // this will be ignored and computed from ballots
+        signatures: new DataCollection(ElectoralInspectorData::class, []),
+        ballots: new DataCollection(BallotData::class, [
+            new BallotData(
+                code: 'BALLOT-001',
+                votes: new DataCollection(VoteData::class, [
+                    new VoteData(
+                        candidates: new DataCollection(CandidateData::class, [
+                            new CandidateData(
+                                code: 'CAND-1',
+                                name: 'Candidate One',
+                                alias: 'One',
+                                position: new PositionData(
+                                    code: 'PRESIDENT',
+                                    name: 'President',
+                                    level: Level::NATIONAL,
+                                    count: 1
+                                )
+                            )
+                        ])
+                    )
+                ])
+            ),
+            new BallotData(
+                code: 'BALLOT-002',
+                votes: new DataCollection(VoteData::class, [
+                    new VoteData(
+                        candidates: new DataCollection(CandidateData::class, [
+                            new CandidateData(
+                                code: 'CAND-1',
+                                name: 'Candidate One',
+                                alias: 'One',
+                                position: new PositionData(
+                                    code: 'PRESIDENT',
+                                    name: 'President',
+                                    level: Level::NATIONAL,
+                                    count: 1
+                                )
+                            )
+                        ])
+                    )
+                ])
+            )
+        ]),
+        created_at: now(),
+        updated_at: now()
+    );
+
+    // 3. Store using the store class
+    $store->putElectionReturn($data);
+
+    // 4. Retrieve and verify computed tally
+    $fetched = $store->getElectionReturn('ER-001');
+
+    expect($fetched)->not->toBeNull()
+        ->and($fetched->code)->toBe('ER-001')
+        ->and($fetched->ballots)->toHaveCount(2)
+        ->and($fetched->tallies)->toHaveCount(1)
+        ->and($fetched->tallies[0]->candidate_code)->toBe('CAND-1')
+        ->and($fetched->tallies[0]->count)->toBe(2); // 2 ballots voted for CAND-1
+});
+
+it('can update election return signatures', function () {
+    $store = new DatabaseElectionStore();
+
+    // 1. Prepare inspectors and ballots
+    $inspectors = collect([
+        new ElectoralInspectorData(
+            id: 'ei-100',
+            name: 'Inspector One',
+            role: ElectoralInspectorRole::CHAIRPERSON,
+        ),
+        new ElectoralInspectorData(
+            id: 'ei-101',
+            name: 'Inspector Two',
+            role: ElectoralInspectorRole::MEMBER,
+        ),
+    ]);
+
+    $ballots = collect([
+        BallotData::from([
+            'code' => 'BAL-100',
+            'precinct_code' => 'PX-001',
+            'votes' => BallotFactory::votes(),
+        ]),
+        BallotData::from([
+            'code' => 'BAL-101',
+            'precinct_code' => 'PX-001',
+            'votes' => BallotFactory::votes(),
+        ]),
+    ]);
+
+    // 2. Build PrecinctData and hydrate model
+    $data = new PrecinctData(
+        code: 'PX-001',
+        location_name: 'Sample Elementary School',
+        latitude: 10.123456,
+        longitude: 122.654321,
+        electoral_inspectors: new DataCollection(ElectoralInspectorData::class, $inspectors),
+        ballots: new DataCollection(BallotData::class, $ballots),
+    );
+
+    $precinct = Precinct::fromData($data);
+    $store->putPrecinct($data);
+
+    // 3. Create election return with no initial signatures
+    $er = new ElectionReturnData(
+        id: 'ER-002',
+        code: 'ER-002',
+        precinct: $data,
+        tallies: new DataCollection(VoteCountData::class, []),
+        signatures: new DataCollection(ElectoralInspectorData::class, []),
+        ballots: new DataCollection(BallotData::class, $ballots),
+        created_at: now(),
+        updated_at: now()
+    );
+
+    $store->putElectionReturn($er);
+
+    // 4. Simulate signing by Inspector Two
+    $signed = new ElectoralInspectorData(
+        id: 'ei-101',
+        name: 'Inspector Two',
+        role: ElectoralInspectorRole::MEMBER,
+        signature: 'data:image/png;base64,FAKESIGN==',
+        signed_at: now()
+    );
+
+// 5. Manually create updated ElectionReturnData with the new signature
+    $updated = new ElectionReturnData(
+        id: $er->id,
+        code: $er->code,
+        precinct: $er->precinct,
+        tallies: $er->tallies,
+        signatures: new DataCollection(ElectoralInspectorData::class, [$signed]),
+        ballots: $er->ballots,
+        created_at: $er->created_at,
+        updated_at: now(),
+    );
+
+    $store->replaceElectionReturn($updated);
+
+// 6. Retrieve and assert
+    $fetched = $store->getElectionReturn('ER-002');
+
+    expect($fetched->signatures)->toHaveCount(1)
+        ->and($fetched->signatures[0]->id)->toBe('ei-101')
+        ->and($fetched->signatures[0]->signature)->toBe('data:image/png;base64,FAKESIGN==')
+        ->and($fetched->signatures[0]->signed_at)->not->toBeNull();
+});
+
+it('returns election return by precinct code', function () {
+    $store = new DatabaseElectionStore();
+
+    // 1. Prepare inspectors
+    $inspectors = collect([
+        new ElectoralInspectorData(
+            id: 'ei-201',
+            name: 'Inspector Alpha',
+            role: ElectoralInspectorRole::CHAIRPERSON,
+        ),
+    ]);
+
+    // 2. Prepare ballots
+    $ballots = collect([
+        BallotData::from([
+            'code' => 'BAL-201',
+            'precinct_code' => 'P-999',
+            'votes' => BallotFactory::votes(),
+        ]),
+    ]);
+
+    // 3. Create PrecinctData
+    $precinctData = new PrecinctData(
+        code: 'P-999',
+        location_name: 'Basketball Court',
+        latitude: 15.5,
+        longitude: 120.9,
+        electoral_inspectors: new DataCollection(ElectoralInspectorData::class, $inspectors),
+        ballots: new DataCollection(BallotData::class, $ballots),
+    );
+
+    // 4. Store precinct
+    $precinct = Precinct::fromData($precinctData);
+    $store->putPrecinct($precinctData);
+
+    // 5. Create election return with this precinct
+    $er = new ElectionReturnData(
+        id: 'ER-ID-999',
+        code: 'ER-999',
+        precinct: $precinctData,
+        tallies: new DataCollection(VoteCountData::class, []),
+        signatures: new DataCollection(ElectoralInspectorData::class, []),
+        ballots: new DataCollection(BallotData::class, $ballots),
+        created_at: now(),
+        updated_at: now(),
+    );
+
+    $store->putElectionReturn($er);
+
+    // 6. Retrieve by precinct code
+    $fetched = $store->getElectionReturnByPrecinct('P-999');
+
+    expect($fetched)->not->toBeNull()
+        ->and($fetched->code)->toBe('ER-999');
+});
+
+it('resets all election-related tables', function () {
+    $store = new DatabaseElectionStore();
+
+    // Seed models
+    Precinct::factory()->create();
+    Ballot::factory()->create();
+    ElectionReturn::factory()->create();
+
+    $store->reset();
+
+    expect(Precinct::count())->toBe(0);
+    expect(Ballot::count())->toBe(0);
+    expect(ElectionReturn::count())->toBe(0);
+});
+
+it('loads positions and creates empty ballots', function () {
+    $store = new DatabaseElectionStore();
+
+    $precinct = Precinct::factory()->create(['code' => 'PX-003'])->getData();
+
+    $positions = [
+        PositionData::from([
+            'code' => 'MAYOR',
+            'name' => 'Municipal Mayor',
+            'level' => 'local',
+            'count' => 1,
+            'candidates' => [
+                new CandidateData(
+                    code: 'uuid-mayor1',
+                    name: 'Mayor One',
+                    alias: 'ONE',
+                    position: new PositionData('MAYOR', 'Municipal Mayor', Level::LOCAL, 1)
+                )
+            ],
+        ]),
+    ];
+
+    $store->load($positions, $precinct);
+
+    $ballots = $store->getBallotsForPrecinct('PX-003');
+
+    expect($ballots)->toHaveCount(1)
+        ->and($ballots[0]['code'])->toBe('MAYOR')
+        ->and($ballots[0]['votes'])->toBeArray()
+        ->and($ballots[0]['votes'])->toHaveCount(0);
+});

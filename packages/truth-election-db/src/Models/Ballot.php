@@ -31,6 +31,8 @@ class Ballot extends Model
     use HasUuids;
     use WithData;
 
+    protected string $dataClass = BallotData::class;
+
     protected $fillable = [
         'code',
         'votes',
@@ -49,13 +51,19 @@ class Ballot extends Model
         'votes' => 'array'
     ];
 
+    public static function fromData(BallotData $data): static
+    {
+        return static::updateOrCreate(
+            ['code' => $data->code],
+            [
+                'votes' => $data->votes->toCollection()->map->toArray()->all(),
+                'precinct_code' => $data->getPrecinctCode(),
+            ]
+        );
+    }
+
     public function precinct()
     {
         return $this->belongsTo(Precinct::class, 'precinct_code', 'code');
-    }
-
-    public function dataClass(): BallotData
-    {
-        return BallotData::from($this);
     }
 }

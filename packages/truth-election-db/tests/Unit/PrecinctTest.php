@@ -174,3 +174,64 @@ test('precinct has dataClass', function (Precinct $precinct) {
     expect($data->ballots->toArray())->toHaveCount(2);
     expect($data->ballots->toArray()[0]['votes'])->toMatchArray(BallotFactory::votes());
 })->with('precinct');
+
+use Illuminate\Support\Str;
+
+it('can persist a precinct and nested ballots from PrecinctData', function () {
+    // Arrange: Prepare ElectoralInspectors and Ballots
+    $inspectors = collect([
+        new ElectoralInspectorData(
+            id: 'ei-100',
+            name: 'Inspector One',
+            role: ElectoralInspectorRole::CHAIRPERSON,
+        ),
+        new ElectoralInspectorData(
+            id: 'ei-101',
+            name: 'Inspector Two',
+            role: ElectoralInspectorRole::MEMBER,
+        ),
+    ]);
+
+    $ballots = collect([
+        BallotData::from([
+            'code' => 'BAL-100',
+            'precinct_code' => 'PX-001',
+            'votes' => BallotFactory::votes(),
+        ]),
+        BallotData::from([
+            'code' => 'BAL-101',
+            'precinct_code' => 'PX-001',
+            'votes' => BallotFactory::votes(),
+        ]),
+    ]);
+
+    $data = new PrecinctData(
+        code: 'PX-001',
+        location_name: 'Sample Elementary School',
+        latitude: 10.123456,
+        longitude: 122.654321,
+        electoral_inspectors: new DataCollection(ElectoralInspectorData::class, $inspectors),
+        ballots: new DataCollection(BallotData::class, $ballots),
+    );
+
+    // Act: Hydrate the Precinct from Data
+    $precinct = Precinct::fromData($data);
+
+    // Assert: Model is persisted
+    expect($precinct)->toBeInstanceOf(Precinct::class)
+        ->and($precinct->exists)->toBeTrue()
+        ->and($precinct->ballots)->toHaveCount(2)
+        ->and($precinct->ballots[0]['votes'])->toMatchArray(BallotFactory::votes())
+        ->and($precinct->tallies)->toBeArray()
+        ->and($precinct->tallies[0]['candidate_name'])->toBe('Ferdinand Marcos Jr.')
+    ;
+
+    // Assert: Can serialize back to data and match
+    $round_trip = $precinct->getData();
+    expect($round_trip)->toBeInstanceOf(PrecinctData::class)
+        ->and($round_trip->code)->toBe('PX-001')
+        ->and($round_trip->ballots)->toHaveCount(2)
+        ->and($round_trip->electoral_inspectors)->toHaveCount(2)
+        ->and($round_trip->electoral_inspectors[0])->toBeInstanceOf(ElectoralInspectorData::class)
+    ;
+});

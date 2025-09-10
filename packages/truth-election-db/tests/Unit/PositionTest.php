@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use TruthElection\Data\PositionData;
 use TruthElectionDb\Models\Position;
 use TruthElection\Enums\Level;
 
@@ -57,4 +58,44 @@ test('it transforms to PositionData via getData', function () {
         ->and($data->name)->toBe('Representative')
         ->and($data->level)->toBe(Level::LOCAL)
         ->and($data->count)->toBe(1);
+});
+
+it('can create a position from PositionData DTO', function () {
+    $data = new PositionData(
+        code: 'PRESIDENT',
+        name: 'President of the Philippines',
+        level: Level::NATIONAL,
+        count: 1
+    );
+
+    $position = Position::fromData($data);
+
+    expect($position)->toBeInstanceOf(Position::class);
+    expect($position->code)->toBe('PRESIDENT');
+    expect($position->name)->toBe('President of the Philippines');
+    expect($position->level)->toBe(Level::NATIONAL);
+    expect($position->count)->toBe(1);
+});
+
+it('updates an existing position from PositionData DTO', function () {
+    // Create initial
+    Position::create([
+        'code' => 'MAYOR',
+        'name' => 'Municipal Mayor',
+        'level' => Level::LOCAL,
+        'count' => 1,
+    ]);
+
+    // Update using DTO
+    $data = new PositionData(
+        code: 'MAYOR',
+        name: 'City Mayor',
+        level: Level::LOCAL,
+        count: 2
+    );
+
+    $position = Position::fromData($data);
+
+    expect($position->name)->toBe('City Mayor');
+    expect($position->count)->toBe(2);
 });

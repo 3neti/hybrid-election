@@ -3,6 +3,8 @@
 namespace TruthElectionDb\Models;
 
 use TruthElectionDb\Traits\{HasAdditionalPrecinctAttributes, HasMeta};
+use Spatie\LaravelData\DataCollection;
+use TruthElection\Data\PositionData;
 use TruthElectionDb\Database\Factories\PrecinctFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -50,7 +52,6 @@ class Precinct extends Model
     protected string $dataClass = PrecinctData::class;
 
     protected $fillable = [
-        'id',
         'code',
         'location_name',
         'latitude',
@@ -71,6 +72,27 @@ class Precinct extends Model
 
     protected static function booted() {
         static::saved(fn() => Cache::forget('shared.precinct'));
+    }
+
+    public static function fromData(PrecinctData $data): static
+    {
+        // Extract only non-relational attributes
+        $attributes = $data->toArray();
+        unset($attributes['ballots']);
+
+        $precinct = static::updateOrCreate(
+            ['code' => $data->code],
+            $attributes
+        );
+
+        // Sync ballots separately
+        if (!empty($data->ballots) && $data->ballots instanceof DataCollection) {
+            foreach ($data->ballots as $ballotData) {
+                Ballot::fromData($ballotData->setPrecinctCode($precinct->code));
+            }
+        }
+
+        return $precinct;
     }
 
     public function getBallotsAttribute(): array

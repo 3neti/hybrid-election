@@ -2,125 +2,148 @@
 
 namespace TruthElectionDb\Support;
 
-use TruthElection\Support\ElectionStoreInterface;
-use TruthElection\Data\ElectoralInspectorData;
-use TruthElection\Data\ElectionReturnData;
-use TruthElection\Data\CandidateData;
-use TruthElection\Data\PrecinctData;
-use TruthElection\Data\PositionData;
+use Spatie\LaravelData\DataCollection;
 use TruthElection\Data\BallotData;
+use TruthElection\Data\CandidateData;
+use TruthElection\Data\ElectionReturnData;
+use TruthElection\Data\ElectoralInspectorData;
+use TruthElection\Data\PositionData;
+use TruthElection\Data\PrecinctData;
+use TruthElection\Data\VoteData;
+use TruthElection\Support\ElectionStoreInterface;
+
+use TruthElectionDb\Models\Ballot;
+use TruthElectionDb\Models\Candidate;
+use TruthElectionDb\Models\ElectionReturn;
+use TruthElectionDb\Models\Position;
+use TruthElectionDb\Models\Precinct;
 
 class DatabaseElectionStore implements ElectionStoreInterface
 {
+    /** @var array<string, PositionData> */
+    protected array $positions = [];
+
+    /** @var array<string, CandidateData> */
+    protected array $candidates = [];
+
     public function getBallotsForPrecinct(string $precinctCode): array
     {
-        // TODO: Retrieve BallotData[] from database
-        return [];
+        $precinct = Precinct::whereCode($precinctCode)->first();
+
+        return $precinct
+            ? $precinct->ballots
+            : [];
     }
 
-    public function putBallot(BallotData $ballot): void
+    public function putBallot(BallotData $ballot, string $precinctCode): void
     {
-        // TODO: Persist ballot to the database
+        $ballot->setPrecinctCode($precinctCode);
+        Ballot::fromData($ballot);
     }
 
     public function getPrecinct(string $code): ?PrecinctData
     {
-        // TODO: Retrieve PrecinctData from database
-        return null;
+        return Precinct::whereCode($code)->first()?->getData();
     }
 
     public function putPrecinct(PrecinctData $precinct): void
     {
-        // TODO: Persist precinct to the database
-    }
-
-    public function getElectionReturnByCode(string $code): ?ElectionReturnData
-    {
-        // TODO: Retrieve ElectionReturnData by code
-        return null;
-    }
-
-    public function getElectionReturnByPrecinct(string $precinctCode): ?ElectionReturnData
-    {
-        // TODO: Retrieve ElectionReturnData by precinct code
-        return null;
+        Precinct::fromData($precinct);
     }
 
     public function putElectionReturn(ElectionReturnData $er): void
     {
-        // TODO: Persist ER to the database (insert or update)
+        ElectionReturn::fromData($er);
     }
 
     public function getElectionReturn(string $code): ?ElectionReturnData
     {
-        // TODO: Alias for getElectionReturnByCode or add custom logic
-        return $this->getElectionReturnByCode($code);
+        return ElectionReturn::whereCode($code)->first()?->getData();
+    }
+
+    public function getElectionReturnByPrecinct(string $precinctCode): ?ElectionReturnData
+    {
+        return ElectionReturn::get()
+            ->first(fn ($er) =>
+                $er->belongsTo(Precinct::class, 'precinct_code', 'code')->getResults()?->code === $precinctCode
+            )?->getData();
     }
 
     public function replaceElectionReturn(ElectionReturnData $er): void
     {
-        // TODO: Replace the existing ER entirely (e.g., delete then insert)
+        $this->putElectionReturn($er);
     }
 
     public function load(array $positions, PrecinctData $precinct): void
     {
-        // TODO: Load initial context
+        Precinct::fromData($precinct);
+
+        foreach ($positions as $posArr) {
+            $position = PositionData::from($posArr);
+            $this->positions[$position->code] = $position;
+
+            $ballot = new BallotData(
+                code: $position->code,
+                votes: new DataCollection(VoteData::class, []) // ✅ empty collection
+            );
+            $ballot->setPrecinctCode($precinct->code);
+            Ballot::fromData($ballot);
+        }
     }
 
     public function setPositions(array $positionMap): void
     {
-        // TODO: Cache or persist position map
+        $this->positions = $positionMap;
     }
 
     public function getPosition(string $code): ?PositionData
     {
-        // TODO: Retrieve position by code
-        return null;
+        return $this->positions[$code] ?? null;
     }
 
     public function setCandidates(array $candidateMap): void
     {
-        // TODO: Cache or persist candidate map
+        $this->candidates = $candidateMap;
     }
 
     public function getCandidate(string $code): ?CandidateData
     {
-        // TODO: Retrieve candidate by code
-        return null;
+        return $this->candidates[$code] ?? null;
     }
 
     public function allPositions(): array
     {
-        // TODO: Return all positions
-        return [];
+        return $this->positions;
     }
 
     public function allCandidates(): array
     {
-        // TODO: Return all candidates
-        return [];
+        return $this->candidates;
     }
 
     public function findInspector(ElectionReturnData $er, string $id): ElectoralInspectorData
     {
-        // TODO: Retrieve ElectoralInspectorData by ID
-        throw new \RuntimeException('Not implemented');
+        return collect($er->precinct->electoral_inspectors)
+            ->firstWhere('id', $id);
     }
 
     public function findPrecinctInspector(ElectionReturnData $er, string $id): ElectoralInspectorData
     {
-        // TODO: Retrieve precinct-level inspector
-        throw new \RuntimeException('Not implemented');
+        return collect($er->precinct->electoral_inspectors)
+            ->firstWhere('id', $id);
     }
 
     public function findSignatory(ElectionReturnData $er, string $id): ElectoralInspectorData
     {
-        // TODO: Retrieve final signatory from ER
-        throw new \RuntimeException('Not implemented');
+        return collect($er->signatures)->firstWhere('id', $id);
     }
 
     public function reset(): void
     {
-        // TODO: Clear database for testing/debugging
+        Ballot::truncate();
+        ElectionReturn::truncate();
+        Precinct::truncate();
+        Position::truncate();
+        Candidate::truncate();
     }
 }

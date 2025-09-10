@@ -50,6 +50,27 @@ class Candidate extends Model
         return $this->belongsTo(Position::class, 'position_code', 'code');
     }
 
+    public static function fromData(CandidateData $data): static
+    {
+        // Recursively ensure the related Position exists
+        $position = Position::fromData($data->position);
+
+        // Prepare the candidate array
+        $attributes = $data->toArray();
+
+        // Inject foreign key
+        $attributes['position_code'] = $position->getKey();
+
+        // Remove nested position array if it exists
+        unset($attributes['position']);
+
+        // Create or update the candidate
+        return static::updateOrCreate(
+            ['code' => $data->code],
+            $attributes
+        );
+    }
+
     public function setPositionAttribute(Position|string $position): static
     {
         if (is_string($position)) {

@@ -51,4 +51,12 @@ class Position extends Model
     {
         return PositionFactory::new();
     }
+
+    public static function fromData(PositionData $data): static
+    {
+        return static::updateOrCreate(
+            ['code' => $data->code],
+            $data->toArray()
+        );
+    }
 }

@@ -1,7 +1,10 @@
 <?php
 
+use TruthElection\Data\CandidateData;
+use TruthElection\Data\PositionData;
 use TruthElection\Data\PrecinctData;
 use TruthElection\Data\VoteData;
+use TruthElection\Enums\Level;
 use TruthElectionDb\Database\Factories\BallotFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use TruthElectionDb\Models\{Ballot, Precinct};
@@ -140,4 +143,55 @@ it('persists a ballot and maps to BallotData correctly', function () {
         ->and($senatorialVote->position->count)->toBe(12)
         ->and($senatorialVote->candidates)->toHaveCount(2)
         ->and($senatorialVote->candidates[1]->name)->toBe('Maria Rosario P.');
+});
+
+it('creates or updates a ballot using fromData', function () {
+    // Arrange: Create the related precinct
+    $precinct = Precinct::factory()->create(['code' => 'P-001']);
+
+    // Arrange: Create position and vote data
+    $position = new PositionData(
+        code: 'PRESIDENT',
+        name: 'President',
+        level: Level::NATIONAL,
+        count: 1
+    );
+
+    $candidate = new CandidateData(
+        code: 'uuid-bbm-1234',
+        name: 'Ferdinand Marcos Jr.',
+        alias: 'BBM',
+        position: $position
+    );
+
+    $vote = new VoteData(
+        candidates: new DataCollection(CandidateData::class, [$candidate]),
+    );
+
+    $data = new BallotData(
+        code: 'BALLOT-XYZ',
+        votes: new DataCollection(VoteData::class, [$vote]),
+    );
+
+    $data->setPrecinctCode($precinct->code);
+
+    // Act: Persist the ballot using fromData
+    $ballot = Ballot::fromData($data);
+
+    // Assert: Eloquent model fields
+    expect($ballot)->toBeInstanceOf(Ballot::class)
+        ->and($ballot->code)->toBe('BALLOT-XYZ')
+        ->and($ballot->votes)->toBeArray()
+        ->and($ballot->votes)->toHaveCount(1)
+        ->and($ballot->votes[0]['candidates'][0]['alias'])->toBe('BBM')
+        ->and($ballot->precinct_code)->toBe('P-001');
+
+    // Assert: Round-trip DTO from saved model
+    $dto = $ballot->getData();
+
+    expect($dto)->toBeInstanceOf(BallotData::class)
+        ->and($dto->code)->toBe('BALLOT-XYZ')
+        ->and($dto->votes)->toHaveCount(1)
+        ->and($dto->votes[0]->position->code)->toBe('PRESIDENT')
+        ->and($dto->votes[0]->candidates[0]->alias)->toBe('BBM');
 });

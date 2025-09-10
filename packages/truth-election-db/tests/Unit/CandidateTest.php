@@ -1,8 +1,8 @@
 <?php
 
+use TruthElection\Data\{CandidateData, PositionData};
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use TruthElectionDb\Models\{Candidate, Position};
-use TruthElection\Data\CandidateData;
 use TruthElection\Enums\Level;
 
 
@@ -73,4 +73,67 @@ it('returns data object via getData()', function () {
     expect($data)->toBeInstanceOf(CandidateData::class);
     expect($data->code)->toEqual('CAND-123');
     expect($data->alias)->toEqual('VICE');
+});
+
+it('can create a candidate from CandidateData DTO', function () {
+    $positionData = new PositionData(
+        code: 'SENATOR',
+        name: 'Senator of the Republic',
+        level: Level::NATIONAL,
+        count: 12
+    );
+
+    $position = Position::fromData($positionData);
+
+    $candidateData = new CandidateData(
+        code: 'SEN001',
+        name: 'Juan Dela Cruz',
+        alias: 'JUAN',
+        position: $positionData
+    );
+
+    $candidate = Candidate::fromData($candidateData);
+
+    expect($candidate)->toBeInstanceOf(Candidate::class);
+    expect($candidate->code)->toBe('SEN001');
+    expect($candidate->name)->toBe('Juan Dela Cruz');
+    expect($candidate->alias)->toBe('JUAN');
+    expect($candidate->position_code)->toBe('SENATOR');
+    expect($candidate->position)->not()->toBeNull();
+    expect($candidate->position['name'])->toBe('Senator of the Republic');
+});
+
+it('updates an existing candidate from CandidateData DTO', function () {
+    Position::fromData(new PositionData(
+        code: 'MAYOR',
+        name: 'Municipal Mayor',
+        level: Level::LOCAL,
+        count: 1
+    ));
+
+    Candidate::create([
+        'code' => 'MAY001',
+        'name' => 'Jane Doe',
+        'alias' => 'JANE',
+        'position_code' => 'MAYOR',
+    ]);
+
+    $updatedData = new CandidateData(
+        code: 'MAY001',
+        name: 'Jane A. Doe',
+        alias: 'JANEY',
+        position: new PositionData(
+            code: 'MAYOR',
+            name: 'City Mayor',
+            level: Level::LOCAL,
+            count: 1
+        )
+    );
+
+    $updated = Candidate::fromData($updatedData);
+
+    expect($updated->name)->toBe('Jane A. Doe');
+    expect($updated->alias)->toBe('JANEY');
+    expect($updated->position_code)->toBe('MAYOR');
+    expect($updated->position['name'])->toBe('City Mayor'); // name updated in position
 });
