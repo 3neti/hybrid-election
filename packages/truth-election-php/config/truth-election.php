@@ -6,4 +6,5 @@ return [
             // any custom pipe
         ],
     ],
+    'store' => \TruthElection\Support\InMemoryElectionStore::class,
 ];

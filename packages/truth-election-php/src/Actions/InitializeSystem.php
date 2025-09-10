@@ -3,6 +3,7 @@
 namespace TruthElection\Actions;
 
 use TruthElection\Data\{CandidateData, PositionData, PrecinctData};
+use TruthElection\Support\ElectionStoreInterface;
 use TruthElection\Support\InMemoryElectionStore;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Illuminate\Support\Facades\File;
@@ -14,16 +15,18 @@ class InitializeSystem
 {
     use AsAction;
 
+    public function __construct(protected ElectionStoreInterface $store){}
+
     public function handle(?string $electionPath = null, ?string $precinctPath = null): array
     {
+        $store = $this->store;
+
         // 📄 Load files
         $electionPath ??= base_path('config/election.json');
         $precinctPath ??= base_path('config/precinct.yaml');
 
         $election = json_decode(File::get($electionPath), true);
         $precinct = Yaml::parse(File::get($precinctPath));
-
-        $store = InMemoryElectionStore::instance();
 
         // 🧮 Init summary counters
         $summary = [

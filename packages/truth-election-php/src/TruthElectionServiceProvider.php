@@ -4,6 +4,8 @@ namespace TruthElection;
 
 use TruthElection\Policies\Signatures\ChairPlusMemberPolicy;
 use TruthElection\Policies\Signatures\SignaturePolicy;
+use TruthElection\Support\ElectionStoreInterface;
+use TruthElection\Support\InMemoryElectionStore;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Route;
 
@@ -14,6 +16,13 @@ final class TruthElectionServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/truth-election.php', 'truth-election');
 
         $this->app->bind(SignaturePolicy::class, ChairPlusMemberPolicy::class);
+
+        $this->app->singleton(ElectionStoreInterface::class, function () {
+            /** @var class-string<\TruthElection\Support\ElectionStoreInterface> $store */
+            $store = config('truth-election.store', InMemoryElectionStore::class);
+
+            return $store::instance();
+        });
     }
 
     public function boot(): void

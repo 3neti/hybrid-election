@@ -1,10 +1,12 @@
 <?php
 
+use TruthElection\Data\{ElectionReturnData, PrecinctData};
 use TruthElection\Tests\ResetsInMemoryElectionStore;
+use TruthElection\Support\ElectionStoreInterface;
 use TruthElection\Support\InMemoryElectionStore;
 use TruthElection\Data\ElectoralInspectorData;
-use TruthElection\Data\PrecinctData;
 use TruthElection\Data\BallotData;
+use Illuminate\Support\Carbon;
 
 uses(ResetsInMemoryElectionStore::class)->beforeEach(fn () => $this->resetElectionStore());
 
@@ -85,9 +87,6 @@ it('returns empty array when no ballots exist for a precinct', function () {
 
     expect($ballots)->toBeArray()->toBeEmpty();
 });
-
-use Illuminate\Support\Carbon;
-use TruthElection\Data\ElectionReturnData;
 
 it('can retrieve election return by code', function () {
     $store = InMemoryElectionStore::instance();
@@ -284,4 +283,11 @@ it('returns null if precinct has no election return', function () {
     $store->reset();
 
     expect($store->getElectionReturnByPrecinct('P-999'))->toBeNull();
+});
+
+it('binds ElectionStoreInterface to InMemoryElectionStore singleton', function () {
+    $resolved = app(ElectionStoreInterface::class);
+
+    expect($resolved)->toBeInstanceOf(InMemoryElectionStore::class)
+        ->and($resolved)->toBe(InMemoryElectionStore::instance());
 });
