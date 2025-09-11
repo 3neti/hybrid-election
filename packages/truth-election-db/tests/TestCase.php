@@ -4,8 +4,11 @@ namespace TruthElectionDb\Tests;
 
 use Spatie\SchemalessAttributes\SchemalessAttributesServiceProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use TruthElectionDb\Actions\SetupElection;
 use TruthElectionDb\TruthElectionDbServiceProvider;
 use Orchestra\Testbench\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Artisan;
+use Lorisleiva\Actions\Facades\Actions;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -14,6 +17,12 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
 
         $this->loadConfig();
+
+//        if ($this->app->runningInConsole()) {
+//            Actions::registerCommands([
+//                __DIR__ . '/../src/Actions', // or wherever SetupElectionFromFiles.php lives
+//            ]);
+//        }
 
         Factory::guessFactoryNamesUsing(
             fn (string $modelName) => 'TruthElectionDb\\Database\\Factories\\'.class_basename($modelName).'Factory'
@@ -56,6 +65,10 @@ abstract class TestCase extends BaseTestCase
 
     protected function loadConfig()
     {
+        $this->app['config']->set(
+            'truth-election',
+            require __DIR__ . '/../config/truth-election.php'
+        );
         $this->app['config']->set(
             'truth-election-db',
             require __DIR__ . '/../config/truth-election-db.php'

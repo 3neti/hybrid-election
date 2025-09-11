@@ -4,7 +4,9 @@ use TruthElection\Enums\{ElectoralInspectorRole, Level};
 use TruthElection\Data\{CandidateData, PositionData};
 use TruthElectionDb\Database\Factories\BallotFactory;
 use TruthElectionDb\Models\Ballot;
+use TruthElectionDb\Models\Candidate;
 use TruthElectionDb\Models\ElectionReturn;
+use TruthElectionDb\Models\Position;
 use TruthElectionDb\Support\DatabaseElectionStore;
 use TruthElection\Data\{BallotData, PrecinctData};
 use TruthElection\Data\{VoteData, VoteCountData};
@@ -338,4 +340,41 @@ it('loads positions and creates empty ballots', function () {
         ->and($ballots[0]['code'])->toBe('MAYOR')
         ->and($ballots[0]['votes'])->toBeArray()
         ->and($ballots[0]['votes'])->toHaveCount(0);
+});
+
+it('persists positions using setPositions()', function () {
+    $store = new DatabaseElectionStore();
+
+    $position = new PositionData(
+        code: 'MAYOR',
+        name: 'Municipal Mayor',
+        level: Level::LOCAL,
+        count: 1
+    );
+
+    $store->setPositions([
+        'MAYOR' => $position,
+    ]);
+
+    expect(Position::count())->toBe(1);
+    expect(Position::first()->code)->toBe('MAYOR');
+});
+
+it('persists candidates using setCandidates()', function () {
+    $store = new DatabaseElectionStore();
+
+    $position = new PositionData('MAYOR', 'Municipal Mayor', Level::LOCAL, 1);
+    $candidate = new CandidateData(
+        code: 'cand-123',
+        name: 'Jane Doe',
+        alias: 'JANE',
+        position: $position,
+    );
+
+    $store->setCandidates([
+        'cand-123' => $candidate,
+    ]);
+
+    expect(Candidate::count())->toBe(1);
+    expect(Candidate::first()->alias)->toBe('JANE');
 });

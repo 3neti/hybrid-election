@@ -94,6 +94,10 @@ class DatabaseElectionStore implements ElectionStoreInterface
     public function setPositions(array $positionMap): void
     {
         $this->positions = $positionMap;
+
+        foreach ($positionMap as $position) {
+            Position::fromData($position);
+        }
     }
 
     public function getPosition(string $code): ?PositionData
@@ -104,6 +108,10 @@ class DatabaseElectionStore implements ElectionStoreInterface
     public function setCandidates(array $candidateMap): void
     {
         $this->candidates = $candidateMap;
+
+        foreach ($candidateMap as $candidate) {
+           Candidate::fromData($candidate);
+        }
     }
 
     public function getCandidate(string $code): ?CandidateData

@@ -2,6 +2,7 @@
 
 namespace TruthElectionDb;
 
+use TruthElectionDb\Console\Commands\SetupElectionCommand;
 use TruthElectionDb\Support\DatabaseElectionStore;
 use TruthElection\Support\ElectionStoreInterface;
 use Illuminate\Support\ServiceProvider;
@@ -31,5 +32,10 @@ class TruthElectionDbServiceProvider extends ServiceProvider
 
         // Load package routes
         $this->loadRoutesFrom(__DIR__ . '/../routes/web.php');
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                SetupElectionCommand::class,
+            ]);
+        }
     }
 }
