@@ -3,7 +3,7 @@
 namespace TruthElection\Actions;
 
 use TruthElection\Policies\Signatures\SignaturePolicy;
-use TruthElection\Support\InMemoryElectionStore;
+use TruthElection\Support\ElectionStoreInterface;
 use Lorisleiva\Actions\Concerns\AsAction;
 use TruthElection\Data\SignPayloadData;
 use Lorisleiva\Actions\ActionRequest;
@@ -15,6 +15,7 @@ class SignElectionReturn
 
     public function __construct(
         protected SignaturePolicy $policy,
+        protected ElectionStoreInterface $store,
     ) {}
 
     /**
@@ -32,7 +33,7 @@ class SignElectionReturn
      */
     public function handle(SignPayloadData $payload, string $electionReturnCode): array
     {
-        $store = InMemoryElectionStore::instance();
+        $store = $this->store;
 
         $original = $store->getElectionReturn($electionReturnCode)
             ?? abort(404, "Election return [$electionReturnCode] not found.");

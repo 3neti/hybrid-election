@@ -2,7 +2,6 @@
 
 use TruthElection\Data\{CandidateData, PositionData, PrecinctData, SignPayloadData, VoteData};
 use TruthElection\Actions\{GenerateElectionReturn, SignElectionReturn, SubmitBallot};
-use TruthElection\Policies\Signatures\ChairPlusMemberPolicy;
 use TruthElection\Tests\ResetsInMemoryElectionStore;
 use Spatie\LaravelData\{DataCollection, Optional};
 use TruthElection\Support\InMemoryElectionStore;
@@ -97,7 +96,7 @@ test('successfully signs as chairperson', function () {
     expect($original)->not->toBeNull();
 
     // ✅ Initialize action with policy
-    $action = new SignElectionReturn(new ChairPlusMemberPolicy());
+    $action = app(SignElectionReturn::class);
 
     // 📝 Prepare payload: Alice = A1, chairperson
     $payload = SignPayloadData::fromQrString('BEI:A1:base64signature');
@@ -140,7 +139,7 @@ test('successfully signs as chairperson', function () {
 });
 
 test('appends signature when second inspector signs', function () {
-    $action = new SignElectionReturn(new ChairPlusMemberPolicy());
+    $action = app(SignElectionReturn::class);
 
     // First: Alice (A1, chairperson)
     $action->handle(SignPayloadData::fromQrString('BEI:A1:sig1'), $this->return->code);
@@ -163,7 +162,7 @@ test('appends signature when second inspector signs', function () {
 });
 
 test('fails if inspector ID is not found in roster', function () {
-    $action = new SignElectionReturn(new ChairPlusMemberPolicy());
+    $action = app(SignElectionReturn::class);
 
     $payload = SignPayloadData::fromQrString('BEI:Z9:sig');
 

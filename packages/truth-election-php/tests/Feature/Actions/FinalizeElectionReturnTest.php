@@ -2,7 +2,6 @@
 
 use TruthElection\Data\{CandidateData, ElectionReturnData, PositionData, PrecinctData, SignPayloadData, VoteData};
 use TruthElection\Actions\{FinalizeElectionReturn, SignElectionReturn, SubmitBallot, GenerateElectionReturn};
-use TruthElection\Policies\Signatures\ChairPlusMemberPolicy;
 use TruthElection\Enums\{ElectoralInspectorRole, Level};
 use TruthElection\Tests\ResetsInMemoryElectionStore;
 use TruthElection\Support\InMemoryElectionStore;
@@ -79,7 +78,7 @@ uses(ResetsInMemoryElectionStore::class)->beforeEach(function () {
 
     $return = GenerateElectionReturn::run('PRECINCT-01');
 
-    $action = new SignElectionReturn(new ChairPlusMemberPolicy());
+    $action = app(SignElectionReturn::class);
     $action->handle(SignPayloadData::fromQrString('BEI:A1:sig1'), $return->code);
     $action->handle(SignPayloadData::fromQrString('BEI:B2:sig2'), $return->code);
 
