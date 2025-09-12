@@ -7,7 +7,7 @@
 | Entity | Role |
 |--------|------|
 | **Millawave Technologies** | Owns the **Computer Vision / Augmented Reality** IP (Ballot Appreciation™) |
-| **3neti Research & Development OPC** | Owns the **TRUTH Engine** and blockchain-based election tech |
+| **3neti Research & Development OPC** | Owns the **TRUTH Engine** election tech |
 | **Joint Venture (JV)** | Formed between Millawave and 3neti. Global licensor of the tech. May be incorporated or contractual. |
 | **Hybrid Election Systems Inc. (HES)** | To be incorporated. Philippine-exclusive implementor. Will raise ₱100M for dev/marketing. Will contract the JV for tech licensing and dev services. |
 
@@ -27,7 +27,7 @@
 | Partner | % Stake | Role |
 |---------|---------|------|
 | Millawave | 50% | CV/AR tech IP owner |
-| 3neti R&D | 50% | TRUTH engine and blockchain IP owner |
+| 3neti R&D | 50% | TRUTH engine IP owner |
 
 The JV licenses tech to HES and may commercialize globally under separate agreements.
 
@@ -39,12 +39,11 @@ The JV licenses tech to HES and may commercialize globally under separate agreem
 |----------|------------|-------|
 | Software Development | 25,000,000 | Paid to JV on milestone basis |
 | Equipment / Demo Kits | 15,000,000 | Initial kits (e.g., 300 precinct kits × ₱50K) |
-| Cloud Infrastructure | 5,000,000 | Hosting, redundancy, and uptime SLAs |
-| Legal / Regulatory | 5,000,000 | Incorporation, BIR, SEC, permits, audit |
-| Roadshow & Marketing | 15,000,000 | Awareness campaigns and on-ground demos |
-| Poll Watcher Training | 10,000,000 | Targeting 300 precincts for simulation |
+| Cloud Infrastructure | 5,000,000  | Hosting, redundancy, and uptime SLAs |
+| Legal / Regulatory | 5,000,000  | Incorporation, BIR, SEC, permits, audit |
+| Roadshow & Marketing | 25,000,000 | Awareness campaigns and on-ground demos |
 | Operations & Salaries | 20,000,000 | Core team, project mgmt, technical staff |
-| Contingency | 5,000,000 | Buffer fund |
+| Contingency | 5,000,000  | Buffer fund |
 
 ---
 
@@ -110,56 +109,3 @@ The JV licenses tech to HES and may commercialize globally under separate agreem
 - ✅ **Cap Table**: Visual snapshot of equity distribution
 
 ---
-
-## 🧾 Investor Pitch Deck (Markdown Outline for Keynote)
-
-```markdown
-# Slide 1 – Title
-Hybrid Election System (HES)
-Securing Democracy with Transparent Tech
-
-# Slide 2 – Vision
-Rebuilding trust in elections using verifiable, low-cost, high-transparency solutions
-
-# Slide 3 – Problem
-- Lack of transparency in electronic vote counting
-- Voter distrust
-- No auditable, visual record
-
-# Slide 4 – Solution
-- Ballot Appreciation™: Augmented Reality Vote Recognition
-- TRUTH Engine: Open-source, tamper-evident election returns
-- Printed + digital = secure hybrid
-
-# Slide 5 – Team & Partners
-- Millawave (CV/AR Tech)
-- 3neti R&D (TRUTH, blockchain, civic tech)
-- Legal, Electoral, and Technical Advisors
-
-# Slide 6 – Business Model
-- ₱50–₱100 per voter
-- 50M voters = ₱2.5B–₱5B opportunity
-- Repeats every 3 years
-
-# Slide 7 – Go-To-Market
-- Target 300 precincts (pilot)
-- Secure COMELEC engagement
-- Train poll watchers & validators
-- Nationwide rollout by 2028
-
-# Slide 8 – Ask
-- ₱100M for development, cloud infra, demos, legal, roadshow
-- SAFE: ₱150M cap, 20% discount
-
-# Slide 9 – Returns
-- Up to 10× ROI over 5–7 years
-- Dividend potential every 3 years
-- Strategic exit via M&A
-
-# Slide 10 – Cap Table (Visual)
-[Insert pie chart]
-
-# Slide 11 – Contact
-Lester B. Hurtado  
-Managing Director, 3neti R&D  
-📧 lester@hurtado.ph

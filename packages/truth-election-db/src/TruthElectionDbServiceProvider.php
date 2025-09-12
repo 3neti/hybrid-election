@@ -27,7 +27,7 @@ class TruthElectionDbServiceProvider extends ServiceProvider
 
         // Publish routes
         $this->publishes([
-            __DIR__ . '/../routes/web.php' => base_path('routes/truth-election-db.php'),
+            __DIR__ . '/../routes/web.php' => base_path('routes/web.php'),
         ], 'truth-election-db-routes');
 
         // Load package routes

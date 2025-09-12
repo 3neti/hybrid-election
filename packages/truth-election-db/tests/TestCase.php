@@ -2,6 +2,7 @@
 
 namespace TruthElectionDb\Tests;
 
+use Lorisleiva\Actions\ActionServiceProvider;
 use Spatie\SchemalessAttributes\SchemalessAttributesServiceProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use TruthElectionDb\Actions\SetupElection;
@@ -33,7 +34,8 @@ abstract class TestCase extends BaseTestCase
     {
         return [
             TruthElectionDbServiceProvider::class,
-            SchemalessAttributesServiceProvider::class
+            SchemalessAttributesServiceProvider::class,
+            ActionServiceProvider::class,
         ];
     }
 

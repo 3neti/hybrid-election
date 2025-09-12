@@ -69,12 +69,20 @@ uses(ResetsInMemoryElectionStore::class)->beforeEach(function () {
 
 it('submits a ballot to an existing precinct', function () {
     $ballot = SubmitBallot::run('BAL-001', 'PRECINCT-01', $this->votes);
-
+//dd($this->store->getBallots($this->precinct->code)->toCollection());
     expect($ballot)->toBeInstanceOf(BallotData::class)
         ->and($ballot->code)->toBe('BAL-001')
 //        ->and($ballot->precinct->code)->toBe('PRECINCT-01')
         ->and($ballot->votes)->toHaveCount(2)
-        ->and($this->store->ballots)->toHaveKey('BAL-001');
+        ->and(
+            $this->store
+                ->getBallots($this->precinct->code)
+                ->toCollection()
+                ->keyBy('code')
+                ->all()
+        )->toHaveKey('BAL-001');
+//        ->and($this->store->ballots)->toHaveKey('BAL-001')
+    ;
 });
 
 it('throws if precinct does not exist', function () {

@@ -2,7 +2,7 @@
 
 namespace TruthElection\Actions;
 
-use TruthElection\Support\InMemoryElectionStore;
+use TruthElection\Support\ElectionStoreInterface;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Spatie\LaravelData\DataCollection;
 use Illuminate\Support\Collection;
@@ -14,34 +14,22 @@ class SubmitBallot
     use AsAction;
 
 
+    public function __construct(protected ElectionStoreInterface $store){}
+
     public function handle(string $ballotCode, string $precinctCode, Collection $votes): BallotData
     {
-        $store = InMemoryElectionStore::instance();
+        $store = $this->store;
 
-        if (!isset($store->precincts[$precinctCode])) {
+        $precinct = $store->getPrecinct($precinctCode);
+
+        if (!$precinct) {
             throw new \RuntimeException("Precinct [$precinctCode] not found.");
         }
-
-        $precinct = $store->precincts[$precinctCode];
 
         $ballot = new BallotData(
             code: $ballotCode,
             votes: new DataCollection(VoteData::class, $votes->all()),
         );
-
-        // ✳️ Attach ballot to the precinct (replace or push to collection)
-        $existingBallots = $precinct->ballots ?? new DataCollection(BallotData::class, []);
-
-        $updatedBallots = new DataCollection(
-            BallotData::class,
-            $existingBallots->toCollection()->push($ballot)
-        );
-
-        // 💾 Update the precinct in store with new ballots
-        $store->precincts[$precinctCode] = $precinct->copyWith([
-            'ballots' => $updatedBallots,
-        ]);
-
 
         // 🆕 Important: Also store in ballots array
         $store->putBallot($ballot, $precinctCode);

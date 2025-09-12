@@ -4,6 +4,7 @@ namespace TruthElection\Support;
 
 use TruthElection\Data\ElectoralInspectorData;
 use TruthElection\Data\ElectionReturnData;
+use Spatie\LaravelData\DataCollection;
 use TruthElection\Data\CandidateData;
 use TruthElection\Data\PositionData;
 use TruthElection\Data\PrecinctData;
@@ -12,6 +13,8 @@ use TruthElection\Data\BallotData;
 interface ElectionStoreInterface
 {
     public function getBallotsForPrecinct(string $precinctCode): array;
+
+    public function getBallots(string $precinctCode): DataCollection;
 
     public function putBallot(BallotData $ballot, string $precinctCode): void;
 

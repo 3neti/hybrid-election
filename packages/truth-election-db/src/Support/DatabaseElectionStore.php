@@ -2,21 +2,12 @@
 
 namespace TruthElectionDb\Support;
 
-use Spatie\LaravelData\DataCollection;
-use TruthElection\Data\BallotData;
-use TruthElection\Data\CandidateData;
-use TruthElection\Data\ElectionReturnData;
-use TruthElection\Data\ElectoralInspectorData;
-use TruthElection\Data\PositionData;
-use TruthElection\Data\PrecinctData;
-use TruthElection\Data\VoteData;
-use TruthElection\Support\ElectionStoreInterface;
 
-use TruthElectionDb\Models\Ballot;
-use TruthElectionDb\Models\Candidate;
-use TruthElectionDb\Models\ElectionReturn;
-use TruthElectionDb\Models\Position;
-use TruthElectionDb\Models\Precinct;
+use TruthElection\Data\{BallotData, CandidateData, ElectionReturnData, ElectoralInspectorData, PositionData, PrecinctData, VoteData};
+use TruthElectionDb\Models\{Ballot, Candidate, ElectionReturn, Position, Precinct};
+use TruthElection\Support\ElectionStoreInterface;
+use Illuminate\Validation\ValidationException;
+use Spatie\LaravelData\DataCollection;
 
 class DatabaseElectionStore implements ElectionStoreInterface
 {
@@ -35,11 +26,44 @@ class DatabaseElectionStore implements ElectionStoreInterface
             : [];
     }
 
+    public function getBallots(string $precinctCode): DataCollection
+    {
+        $precinct = Precinct::with('ballots')->whereCode($precinctCode)->first();
+
+        if (! $precinct) {
+            return new DataCollection(BallotData::class, []);
+        }
+
+        return new DataCollection(BallotData::class, $precinct->ballots);
+    }
+
     public function putBallot(BallotData $ballot, string $precinctCode): void
     {
+        $precinct = Precinct::whereCode($precinctCode)->first();
+
+        if (!$precinct) {
+            throw new \RuntimeException("Precinct [$precinctCode] not found.");
+        }
+
+        // Check for existing ballot with same code
+//        if (Ballot::query()->where('code', $ballot->code)->exists()) {
+//            throw new \RuntimeException("Duplicate ballot code [{$ballot->code}] for precinct [$precinctCode].");
+//        }
+        if (Ballot::query()->where('code', $ballot->code)->exists()) {
+            throw ValidationException::withMessages([
+                'ballot_code' => "Duplicate ballot code [{$ballot->code}] for precinct [{$precinctCode}].",
+            ]);
+        }
+
         $ballot->setPrecinctCode($precinctCode);
         Ballot::fromData($ballot);
     }
+
+//    public function putBallot(BallotData $ballot, string $precinctCode): void
+//    {
+//        $ballot->setPrecinctCode($precinctCode);
+//        Ballot::fromData($ballot);
+//    }
 
     public function getPrecinct(string $code): ?PrecinctData
     {

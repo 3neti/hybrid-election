@@ -19,7 +19,7 @@ class InMemoryElectionStore implements ElectionStoreInterface
     /** @var array<string, CandidateData> */ // key: candidate_code => CandidateData
     public array $candidates = [];
 
-    /** @var array<string, BallotData> */
+    /** @deprecated Use $precinct->ballots instead */
     public array $ballots = [];
 
     /** @var array<string, PrecinctData> */
@@ -43,13 +43,22 @@ class InMemoryElectionStore implements ElectionStoreInterface
         return self::$instance ??= new self();
     }
 
+    public function getBallots(string $precinctCode): DataCollection
+    {
+        $precinct = $this->getPrecinct($precinctCode);
+
+        if (! $precinct || ! $precinct->ballots) {
+            return new DataCollection(BallotData::class, []);
+        }
+
+        return $precinct->ballots;
+    }
+
     /**
      * Add or replace a ballot.
      */
     public function putBallot(BallotData $ballot, string $precinctCode): void
     {
-        $this->ballots[$ballot->code] = $ballot;
-
         $precinct = $this->getPrecinct($precinctCode);
 
         if (! $precinct) {

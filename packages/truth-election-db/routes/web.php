@@ -11,3 +11,7 @@ Route::prefix('truth-election-db')
 use TruthElectionDb\Actions\SetupElection;
 
 Route::post('/election/setup', SetupElection::class)->name('election.setup');
+
+use TruthElectionDb\Actions\CastBallot;
+
+Route::post('/ballot/cast', CastBallot::class)->name('ballot.cast');

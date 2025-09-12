@@ -34,7 +34,14 @@ it('can store and retrieve ballots and precincts in memory', function () {
     $ballots = $store->getBallotsForPrecinct('PRECINCT-01');
 
     expect($store->precincts)->toHaveKey('PRECINCT-01')
-        ->and($store->ballots)->toHaveKey('BAL-001')
+//        ->and($store->ballots)->toHaveKey('BAL-001')
+        ->and(
+            $store
+                ->getBallots($precinct->code)
+                ->toCollection()
+                ->keyBy('code')
+                ->all()
+        )->toHaveKey('BAL-001')
         ->and($ballots)->toHaveCount(1)
         ->and($ballots[0]['code'])->toBe('BAL-001');
 });
