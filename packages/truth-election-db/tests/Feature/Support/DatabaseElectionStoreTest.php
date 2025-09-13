@@ -378,3 +378,67 @@ it('persists candidates using setCandidates()', function () {
     expect(Candidate::count())->toBe(1);
     expect(Candidate::first()->alias)->toBe('JANE');
 });
+
+it('retrieves electoral inspectors for a given precinct', function () {
+    $store = new DatabaseElectionStore();
+
+    // Create a precinct with inspectors
+    $inspectors = new DataCollection(ElectoralInspectorData::class, [
+        new ElectoralInspectorData(
+            id: 'ei-301',
+            name: 'Inspector Uno',
+            role: ElectoralInspectorRole::CHAIRPERSON
+        ),
+        new ElectoralInspectorData(
+            id: 'ei-302',
+            name: 'Inspector Dos',
+            role: ElectoralInspectorRole::MEMBER
+        ),
+    ]);
+
+    $precinct = new PrecinctData(
+        code: 'PX-301',
+        location_name: 'Town Hall',
+        latitude: 11.11,
+        longitude: 123.45,
+        electoral_inspectors: $inspectors,
+        ballots: new DataCollection(BallotData::class, []),
+    );
+
+    // Store it
+    $store->putPrecinct($precinct);
+
+    // Retrieve inspectors using the method under test
+    $retrievedInspectors = $store->getInspectorsForPrecinct('PX-301');
+
+    expect($retrievedInspectors)->toBeInstanceOf(DataCollection::class)
+        ->and($retrievedInspectors)->toHaveCount(2)
+        ->and($retrievedInspectors->first()->id)->toBe('ei-301')
+        ->and($retrievedInspectors->last()->name)->toBe('Inspector Dos');
+});
+
+it('returns an empty collection if the precinct is not found', function () {
+    $store = new DatabaseElectionStore();
+
+    $inspectors = $store->getInspectorsForPrecinct('NON-EXISTENT');
+
+    expect($inspectors)->toBeInstanceOf(DataCollection::class)
+        ->and($inspectors)->toHaveCount(0);
+});
+
+it('returns an empty collection if electoral_inspectors is null', function () {
+    Precinct::create([
+        'code' => 'PX-302',
+        'location_name' => 'Sample Location', // ✅ required field
+        'latitude' => 0,                      // optional but often required depending on your schema
+        'longitude' => 0,
+        'electoral_inspectors' => null,
+    ]);
+
+    $store = new DatabaseElectionStore();
+
+    $inspectors = $store->getInspectorsForPrecinct('PX-302');
+
+    expect($inspectors)->toBeInstanceOf(DataCollection::class)
+        ->and($inspectors)->toHaveCount(0);
+});

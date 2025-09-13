@@ -154,6 +154,16 @@ class InMemoryElectionStore implements ElectionStoreInterface
         return ElectoralInspectorData::from($raw);
     }
 
+    public function getInspectorsForPrecinct(string $precinctCode): DataCollection
+    {
+        $precinct = $this->getPrecinct($precinctCode);
+
+        return new DataCollection(
+            ElectoralInspectorData::class,
+            $precinct?->electoral_inspectors ?? []
+        );
+    }
+
     function findSignatory(ElectionReturnData $er, string $id): ElectoralInspectorData {
         $raw = collect($er->signatures)->firstWhere('id', $id);
 

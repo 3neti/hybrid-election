@@ -5,12 +5,12 @@ use TruthElection\Actions\{GenerateElectionReturn, SignElectionReturn, SubmitBal
 use TruthElection\Data\{ElectoralInspectorData, FinalizeErContext};
 use TruthElection\Policies\Signatures\ChairPlusMemberPolicy;
 use TruthElection\Enums\{ElectoralInspectorRole, Level};
-use TruthElection\Tests\ResetsInMemoryElectionStore;
+use TruthElection\Tests\ResetsElectionStore;
 use TruthElection\Support\InMemoryElectionStore;
 use TruthElection\Pipes\ValidateSignatures;
 use Spatie\LaravelData\DataCollection;
 
-uses(ResetsInMemoryElectionStore::class)->beforeEach(function () {
+uses(ResetsElectionStore::class)->beforeEach(function () {
     $this->store = InMemoryElectionStore::instance();
     $this->store->reset();
 

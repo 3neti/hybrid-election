@@ -3,12 +3,12 @@
 use TruthElection\Data\{CandidateData, FinalizeErContext, PositionData, PrecinctData, SignPayloadData, VoteData};
 use TruthElection\Actions\{GenerateElectionReturn, SignElectionReturn, SubmitBallot};
 use TruthElection\Enums\{ElectoralInspectorRole, Level};
-use TruthElection\Tests\ResetsInMemoryElectionStore;
+use TruthElection\Tests\ResetsElectionStore;
 use TruthElection\Support\InMemoryElectionStore;
 use TruthElection\Pipes\CloseBalloting;
 use Spatie\LaravelData\DataCollection;
 
-uses(ResetsInMemoryElectionStore::class)->beforeEach(function () {
+uses(ResetsElectionStore::class)->beforeEach(function () {
     $this->store = InMemoryElectionStore::instance();
     $this->store->reset();
 

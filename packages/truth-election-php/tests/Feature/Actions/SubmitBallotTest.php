@@ -1,6 +1,6 @@
 <?php
 
-use TruthElection\Tests\ResetsInMemoryElectionStore;
+use TruthElection\Tests\ResetsElectionStore;
 use TruthElection\Support\InMemoryElectionStore;
 use TruthElection\Actions\SubmitBallot;
 use Spatie\LaravelData\DataCollection;
@@ -11,7 +11,7 @@ use TruthElection\Data\BallotData;
 use TruthElection\Data\VoteData;
 use TruthElection\Enums\Level;
 
-uses(ResetsInMemoryElectionStore::class)->beforeEach(function () {
+uses(ResetsElectionStore::class)->beforeEach(function () {
     $this->resetElectionStore();
 
     $this->store = InMemoryElectionStore::instance();

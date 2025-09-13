@@ -1,14 +1,14 @@
 <?php
 
 use TruthElection\Data\{ElectionReturnData, PrecinctData};
-use TruthElection\Tests\ResetsInMemoryElectionStore;
+use TruthElection\Tests\ResetsElectionStore;
 use TruthElection\Support\ElectionStoreInterface;
 use TruthElection\Support\InMemoryElectionStore;
 use TruthElection\Data\ElectoralInspectorData;
 use TruthElection\Data\BallotData;
 use Illuminate\Support\Carbon;
 
-uses(ResetsInMemoryElectionStore::class)->beforeEach(fn () => $this->resetElectionStore());
+uses(ResetsElectionStore::class)->beforeEach(fn () => $this->resetElectionStore());
 
 it('can store and retrieve ballots and precincts in memory', function () {
     $store = InMemoryElectionStore::instance();
@@ -297,4 +297,40 @@ it('binds ElectionStoreInterface to InMemoryElectionStore singleton', function (
 
     expect($resolved)->toBeInstanceOf(InMemoryElectionStore::class)
         ->and($resolved)->toBe(InMemoryElectionStore::instance());
+});
+
+it('can retrieve inspectors for a precinct using getInspectorsForPrecinct()', function () {
+    $store = InMemoryElectionStore::instance();
+    $store->reset();
+
+    $precinct = PrecinctData::from([
+        'id' => 'precinct-42',
+        'code' => 'PRECINCT-42',
+        'location_name' => 'Barangay Hall',
+        'latitude' => 15.0,
+        'longitude' => 120.7,
+        'electoral_inspectors' => [
+            [
+                'id' => 'I-123',
+                'name' => 'Inspector One',
+                'role' => 'chairperson',
+            ],
+            [
+                'id' => 'I-456',
+                'name' => 'Inspector Two',
+                'role' => 'member',
+            ],
+        ],
+    ]);
+
+    $store->putPrecinct($precinct);
+
+    $inspectors = $store->getInspectorsForPrecinct('PRECINCT-42');
+
+    expect($inspectors)->toHaveCount(2)
+        ->and($inspectors[0]->id)->toBe('I-123')
+        ->and($inspectors[0]->name)->toBe('Inspector One')
+        ->and($inspectors[0]->role->value)->toBe('chairperson')
+        ->and($inspectors[1]->id)->toBe('I-456')
+        ->and($inspectors[1]->role->value)->toBe('member');
 });

@@ -1,8 +1,10 @@
 <?php
 
-use TruthElection\Actions\{GenerateElectionReturn, SubmitBallot};
-use TruthElection\Tests\ResetsElectionStore;
-use TruthElection\Support\InMemoryElectionStore;
+use TruthElectionDb\Models\{ElectionReturn, Precinct};
+use TruthElectionDb\Actions\{CastBallot, TallyVotes};
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use TruthElection\Support\ElectionStoreInterface;
+use TruthElectionDb\Tests\ResetsElectionStore;
 use Spatie\LaravelData\DataCollection;
 use TruthElection\Enums\Level;
 use TruthElection\Data\{
@@ -13,10 +15,10 @@ use TruthElection\Data\{
     VoteData
 };
 
-uses(ResetsElectionStore::class)->beforeEach(function () {
+uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function () {
     $this->resetElectionStore();
 
-    $this->store = InMemoryElectionStore::instance();
+    $this->store = app(ElectionStoreInterface::class);
 
     $this->precinct = PrecinctData::from([
         'id' => 'PR001',
@@ -32,7 +34,7 @@ uses(ResetsElectionStore::class)->beforeEach(function () {
     $votes1 = collect([
         new VoteData(
             candidates: new DataCollection(CandidateData::class, [
-                new CandidateData(code: 'CANDIDATE-001', name: 'Juan Dela Cruz', alias: 'JUAN', position:  new PositionData(
+                new CandidateData(code: 'CANDIDATE-001', name: 'Juan Dela Cruz', alias: 'JUAN', position: new PositionData(
                     code: 'PRESIDENT',
                     name: 'President of the Philippines',
                     level: Level::NATIONAL,
@@ -86,6 +88,7 @@ uses(ResetsElectionStore::class)->beforeEach(function () {
                     level: Level::NATIONAL,
                     count: 12
                 )),
+                // 12+1 = 13 senators (overvote), should be rejected
                 new CandidateData(code: 'CANDIDATE-007', name: 'Apolinario Mabini', alias: 'APO', position: $position),
                 new CandidateData(code: 'CANDIDATE-008', name: 'Gregorio del Pilar', alias: 'GREG', position: $position),
                 new CandidateData(code: 'CANDIDATE-009', name: 'Melchora Aquino', alias: 'TANDANG', position: $position),
@@ -102,73 +105,68 @@ uses(ResetsElectionStore::class)->beforeEach(function () {
         ),
     ]);
 
-    SubmitBallot::run('BAL-001', 'PRECINCT-01', $votes1); // valid
-    SubmitBallot::run('BAL-002', 'PRECINCT-01', $votes2); // valid
-    SubmitBallot::run('BAL-003', 'PRECINCT-01', $votes3); // overvote (13 senators), should be rejected
+    CastBallot::run('BAL-001', 'PRECINCT-01', $votes1);
+    CastBallot::run('BAL-002', 'PRECINCT-01', $votes2);
+    CastBallot::run('BAL-003', 'PRECINCT-01', $votes3); // should be rejected due to overvote
 });
 
-it('generates an election return from in-memory data', function () {
+it('persists election return via handle()', function () {
+    $action = app(TallyVotes::class);
 
-    $return = GenerateElectionReturn::run('PRECINCT-01');
+    // Resolve the actual Precinct model from the code
+    $precinct = Precinct::where('code', 'PRECINCT-01')->first();
 
-    expect($return)->toBeInstanceOf(ElectionReturnData::class)
-        ->and($return->precinct->code)->toBe('PRECINCT-01')
-        ->and($return->ballots)->toHaveCount(3)
-        ->and($return->tallies)->toBeInstanceOf(DataCollection::class)
-    ;
-    $return->tallies->each(fn ($tally) => expect($tally->count)->toBeGreaterThan(0));
+    expect($precinct)->not->toBeNull();
+
+    // Act
+    $er = $action->run($precinct->code);
+
+    // Assert the returned object
+    expect($er)->toBeInstanceOf(ElectionReturnData::class)
+        ->and($er->precinct->code)->toBe('PRECINCT-01')
+        ->and($er->tallies)->toHaveCount(5) // 2 presidents + 3 valid senators
+        ->and($er->ballots)->toHaveCount(3);
+
+    // Assert the return was persisted in DB
+    $persisted = ElectionReturn::where('code', $er->code)->first();
+
+    expect($persisted)->not->toBeNull()
+        ->and($persisted->precinct_code)->toBe($precinct->code);
 });
 
-it('generates an election return with correct tallies', function () {
-    $return = GenerateElectionReturn::run('PRECINCT-01');
+it('returns a valid election return via controller', function () {
+    $response = $this->postJson(route('votes.tally', [
+        'precinct_code' => 'PRECINCT-01',
+    ]));
 
-    expect($return)->toBeInstanceOf(ElectionReturnData::class)
-        ->and($return->precinct->code)->toBe('PRECINCT-01')
-        ->and($return->ballots)->toHaveCount(3) // 3 ballots submitted
-        ->and($return->tallies)->toBeInstanceOf(DataCollection::class);
+    $response->assertOk();
 
-    // Convert tallies to base Laravel collection
-    $tallies = $return->tallies->toCollection();
+    $data = $response->json();
 
-    // ✅ PRESIDENT tallies (2 ballots voted for president)
-    $presidentTallies = $tallies->where('position_code', 'PRESIDENT');
+    expect($data)->toHaveKeys([
+        'code',
+        'precinct',
+        'ballots',
+        'tallies',
+    ])
+        ->and($data['precinct']['code'])->toBe('PRECINCT-01')
+        ->and($data['ballots'])->toHaveCount(3)
+        ->and($data['tallies'])->toBeArray();
 
-    expect($presidentTallies)->toHaveCount(2); // 2 valid votes for PRESIDENT
+    // One should be invalid
 
-    $presidentVotes = $presidentTallies->keyBy('candidate_code')->map->count;
+    $tallyCollection = collect($data['tallies']);
 
-    expect($presidentVotes->get('CANDIDATE-001'))->toBe(1); // Juan Dela Cruz (BAL-001)
-    expect($presidentVotes->get('CANDIDATE-004'))->toBe(1); // Jose Rizal (BAL-002)
+    $presidents = $tallyCollection->where('position_code', 'PRESIDENT');
+    expect($presidents)->toHaveCount(2); // 2 president votes
 
-    // ✅ SENATOR tallies (BAL-001 and BAL-002 only — BAL-003 is overvote and ignored)
-    $senatorTallies = $tallies->where('position_code', 'SENATOR');
-
-    expect($senatorTallies)->toHaveCount(3); // Only 3 valid senator votes from 2 ballots
-
-    $senatorVotes = $senatorTallies->keyBy('candidate_code')->map->count;
-
-    expect($senatorVotes->get('CANDIDATE-002'))->toBe(2); // Maria Santos (BAL-001 and BAL-002)
-    expect($senatorVotes->get('CANDIDATE-003'))->toBe(1); // Pedro Reyes (BAL-001)
-    expect($senatorVotes->get('CANDIDATE-005'))->toBe(1); // Andres Bonifacio (BAL-002)
-
-    // 🚫 Ensure over voted senators from BAL-003 are excluded
-    expect($senatorVotes->has('CANDIDATE-006'))->toBeFalse(); // Emilio Aguinaldo (BAL-003 only)
+    $senators = $tallyCollection->where('position_code', 'SENATOR');
+    expect($senators)->toHaveCount(3); // only valid senator votes from BAL-001 and BAL-002
 });
 
-it('stores election return in the election store', function () {
-    expect($this->store->electionReturns)->toBeEmpty();
+it('validates missing precinct_code field', function () {
+    $response = $this->postJson(route('votes.tally', []));
 
-    $return = GenerateElectionReturn::run('PRECINCT-01');
-
-    expect($return)->toBeInstanceOf(ElectionReturnData::class)
-        ->and($return->ballots)->toHaveCount(3)
-        ->and($return->tallies)->toBeInstanceOf(DataCollection::class)
-        ->and($return->code)->toBeString();
-
-    // 🧠 Confirm it was saved into the store
-    $stored = $this->store->getElectionReturn($return->code);
-
-    expect($stored)->not->toBeNull()
-        ->and($stored->code)->toBe($return->code)
-        ->and($stored->precinct->code)->toBe('PRECINCT-01');
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['precinct_code']);
 });

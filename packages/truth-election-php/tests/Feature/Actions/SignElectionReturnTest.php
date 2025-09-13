@@ -2,13 +2,13 @@
 
 use TruthElection\Data\{CandidateData, PositionData, PrecinctData, SignPayloadData, VoteData};
 use TruthElection\Actions\{GenerateElectionReturn, SignElectionReturn, SubmitBallot};
-use TruthElection\Tests\ResetsInMemoryElectionStore;
+use TruthElection\Tests\ResetsElectionStore;
 use Spatie\LaravelData\{DataCollection, Optional};
 use TruthElection\Support\InMemoryElectionStore;
 use TruthElection\Enums\ElectoralInspectorRole;
 use TruthElection\Enums\Level;
 
-uses(ResetsInMemoryElectionStore::class)->beforeEach(function () {
+uses(ResetsElectionStore::class)->beforeEach(function () {
 
     $this->store = InMemoryElectionStore::instance();
     $this->store->reset();

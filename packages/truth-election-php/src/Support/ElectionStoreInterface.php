@@ -48,6 +48,8 @@ interface ElectionStoreInterface
 
     public function findPrecinctInspector(ElectionReturnData $er, string $id): ElectoralInspectorData;
 
+    public function getInspectorsForPrecinct(string $precinctCode): DataCollection;
+
     public function findSignatory(ElectionReturnData $er, string $id): ElectoralInspectorData;
 
     public function reset(): void;

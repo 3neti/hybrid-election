@@ -2,13 +2,12 @@
 
 namespace TruthElection\Actions;
 
-use TruthElection\Support\InMemoryElectionStore;
+use TruthElection\Support\ElectionStoreInterface;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Spatie\LaravelData\DataCollection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use TruthElection\Data\{
-    ElectoralInspectorData,
     ElectionReturnData,
     VoteCountData,
     PrecinctData,
@@ -19,19 +18,16 @@ class GenerateElectionReturn
 {
     use AsAction;
 
+    public function __construct(protected ElectionStoreInterface $store){}
+
     public function handle(string $precinctCode): ElectionReturnData
     {
-        $store = InMemoryElectionStore::instance();
-
-        if (!isset($store->precincts[$precinctCode])) {
+        $store = $this->store;
+        $precinct = $store->getPrecinct($precinctCode);
+        if (!$precinct) {
             throw new \RuntimeException("Precinct [$precinctCode] not found.");
         }
-
-        $precinct = $store->precincts[$precinctCode];
-
-        $ballots = $precinct->ballots instanceof DataCollection
-            ? $precinct->ballots
-            : new DataCollection(BallotData::class, $precinct->ballots ?? []);
+        $ballots = $store->getBallots($precinctCode);
 
         // 🗳️ Tally votes
         $tallies = [];
@@ -87,7 +83,7 @@ class GenerateElectionReturn
             code: $electionReturnCode,
             precinct: PrecinctData::from($precinct),
             tallies: new DataCollection(VoteCountData::class, $voteCounts->all()),
-            signatures: new DataCollection(ElectoralInspectorData::class, $precinct->electoral_inspectors ?? []),
+            signatures: $store->getInspectorsForPrecinct($precinctCode),
             ballots: new DataCollection(BallotData::class, $ballots->all()),
             created_at: $timestamp,
             updated_at: $timestamp,

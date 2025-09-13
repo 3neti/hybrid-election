@@ -28,7 +28,7 @@ class DatabaseElectionStore implements ElectionStoreInterface
 
     public function getBallots(string $precinctCode): DataCollection
     {
-        $precinct = Precinct::with('ballots')->whereCode($precinctCode)->first();
+        $precinct = Precinct::whereCode($precinctCode)->first();
 
         if (! $precinct) {
             return new DataCollection(BallotData::class, []);
@@ -163,6 +163,24 @@ class DatabaseElectionStore implements ElectionStoreInterface
     {
         return collect($er->precinct->electoral_inspectors)
             ->firstWhere('id', $id);
+    }
+
+    public function getInspectorsForPrecinct(string $precinctCode): DataCollection
+    {
+        $precinct = Precinct::query()
+            ->whereCode($precinctCode)
+            ->first();
+
+        if (! $precinct || !is_array($precinct->electoral_inspectors)) {
+            return new DataCollection(ElectoralInspectorData::class, []);
+        }
+
+        return new DataCollection(
+            ElectoralInspectorData::class,
+            collect($precinct->electoral_inspectors)
+                ->map(fn ($inspector) => ElectoralInspectorData::from($inspector))
+                ->all()
+        );
     }
 
     public function findSignatory(ElectionReturnData $er, string $id): ElectoralInspectorData
