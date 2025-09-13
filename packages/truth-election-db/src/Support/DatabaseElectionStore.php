@@ -153,15 +153,15 @@ class DatabaseElectionStore implements ElectionStoreInterface
         return $this->candidates;
     }
 
-    public function findInspector(ElectionReturnData $er, string $id): ElectoralInspectorData
+    public function findInspector(ElectionReturnData $er, string $id): ?ElectoralInspectorData
     {
-        return collect($er->precinct->electoral_inspectors)
+        return $er->precinct->electoral_inspectors->toCollection()
             ->firstWhere('id', $id);
     }
 
-    public function findPrecinctInspector(ElectionReturnData $er, string $id): ElectoralInspectorData
+    public function findPrecinctInspector(ElectionReturnData $er, string $id): ?ElectoralInspectorData
     {
-        return collect($er->precinct->electoral_inspectors)
+        return $er->precinct->electoral_inspectors->toCollection()
             ->firstWhere('id', $id);
     }
 
@@ -185,7 +185,7 @@ class DatabaseElectionStore implements ElectionStoreInterface
 
     public function findSignatory(ElectionReturnData $er, string $id): ElectoralInspectorData
     {
-        return collect($er->signatures)->firstWhere('id', $id);
+        return $er->signatures->toCollection()->firstWhere('id', $id);
     }
 
     public function reset(): void

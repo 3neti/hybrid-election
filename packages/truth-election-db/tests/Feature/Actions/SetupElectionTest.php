@@ -2,20 +2,15 @@
 
 use TruthElectionDb\Models\{Candidate, Position, Precinct};
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use TruthElectionDb\Tests\ResetsElectionStore;
 use Illuminate\Testing\Fluent\AssertableJson;
 use TruthElectionDb\Actions\SetupElection;
 use Illuminate\Support\Facades\File;
 
-uses(RefreshDatabase::class);
-
-beforeEach(function () {
+uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function () {
     File::ensureDirectoryExists(base_path('config'));
     File::copy(realpath(__DIR__ . '/../../../config/election.json'), base_path('config/election.json'));
     File::copy(realpath(__DIR__ . '/../../../config/precinct.yaml'), base_path('config/precinct.yaml'));
-
-    Precinct::truncate();
-    Position::truncate();
-    Candidate::truncate();
 });
 
 test('SetupElectionFromFiles::handle() loads config and persists to database', function () {

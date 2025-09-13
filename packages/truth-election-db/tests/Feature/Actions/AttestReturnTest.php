@@ -1,18 +1,14 @@
 <?php
 
-use TruthElectionDb\Actions\{CastBallot, SetupElection, TallyVotes};
-use TruthElectionDb\Models\{ElectionReturn, Precinct};
+use TruthElectionDb\Actions\{AttestReturn, SetupElection, CastBallot, TallyVotes};
+use TruthElection\Data\{CandidateData, PositionData, VoteData, SignPayloadData};
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use TruthElection\Support\ElectionStoreInterface;
 use TruthElectionDb\Tests\ResetsElectionStore;
+use TruthElectionDb\Models\ElectionReturn;
 use Spatie\LaravelData\DataCollection;
 use Illuminate\Support\Facades\File;
 use TruthElection\Enums\Level;
-use TruthElection\Data\{
-    ElectionReturnData,
-    CandidateData,
-    PositionData,
-    VoteData
-};
 
 uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function () {
     $this->resetElectionStore();
@@ -46,6 +42,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
             ])
         ),
     ]));
+
     CastBallot::run('BAL-002', 'CURRIMAO-001', collect([
         new VoteData(
             candidates: new DataCollection(CandidateData::class, [
@@ -69,6 +66,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
             ])
         ),
     ]));
+
     CastBallot::run('BAL-003', 'CURRIMAO-001', collect([
         new VoteData(
             candidates: new DataCollection(CandidateData::class, [
@@ -78,7 +76,6 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
                     level: Level::NATIONAL,
                     count: 12
                 )),
-                // 12+1 = 13 senators (overvote), should be rejected
                 new CandidateData(code: 'CANDIDATE-007', name: 'Apolinario Mabini', alias: 'APO', position: $position),
                 new CandidateData(code: 'CANDIDATE-008', name: 'Gregorio del Pilar', alias: 'GREG', position: $position),
                 new CandidateData(code: 'CANDIDATE-009', name: 'Melchora Aquino', alias: 'TANDANG', position: $position),
@@ -93,73 +90,67 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
                 new CandidateData(code: 'CANDIDATE-018', name: 'Sergio Osmeña', alias: 'OSMENA', position: $position),
             ])
         ),
-    ])); // should be rejected due to overvote
-});
-
-dataset('action', function () {
-    return [
-        fn() => app(TallyVotes::class)
-    ];
-});
-
-dataset('precinct', function () {
-    return [
-        fn() => Precinct::where('code', 'CURRIMAO-001')->first()
-    ];
-});
-
-it('persists election return via handle()', function (TallyVotes $action, Precinct $precinct) {
-    expect($precinct)->not->toBeNull();
-
-    // Act
-    $er = $action->run($precinct->code);
-
-    // Assert the returned object
-    expect($er)->toBeInstanceOf(ElectionReturnData::class)
-        ->and($er->precinct->code)->toBe('CURRIMAO-001')
-        ->and($er->tallies)->toHaveCount(5) // 2 presidents + 3 valid senators
-        ->and($er->ballots)->toHaveCount(3);
-
-    // Assert the return was persisted in DB
-    $persisted = ElectionReturn::where('code', $er->code)->first();
-
-    expect($persisted)->not->toBeNull()
-        ->and($persisted->precinct_code)->toBe($precinct->code);
-})->with('action', 'precinct');
-
-it('returns a valid election return via controller', function () {
-    $response = $this->postJson(route('votes.tally', [
-        'precinct_code' => 'CURRIMAO-001',
     ]));
 
-    $response->assertOk();
-
-    $data = $response->json();
-
-    expect($data)->toHaveKeys([
-        'code',
-        'precinct',
-        'ballots',
-        'tallies',
-    ])
-        ->and($data['precinct']['code'])->toBe('CURRIMAO-001')
-        ->and($data['ballots'])->toHaveCount(3)
-        ->and($data['tallies'])->toBeArray();
-
-    // One should be invalid
-
-    $tallyCollection = collect($data['tallies']);
-
-    $presidents = $tallyCollection->where('position_code', 'PRESIDENT');
-    expect($presidents)->toHaveCount(2); // 2 president votes
-
-    $senators = $tallyCollection->where('position_code', 'SENATOR');
-    expect($senators)->toHaveCount(3); // only valid senator votes from BAL-001 and BAL-002
+    app(TallyVotes::class)->run('CURRIMAO-001');
 });
 
-it('validates missing precinct_code field', function () {
-    $response = $this->postJson(route('votes.tally', []));
-
-    $response->assertStatus(422)
-        ->assertJsonValidationErrors(['precinct_code']);
+dataset('er', function () {
+    return [
+        fn() => app(ElectionStoreInterface::class)->getElectionReturnByPrecinct('CURRIMAO-001'),
+    ];
 });
+
+test('successfully signs election return using AttestReturn', function ($er) {
+    $payload = SignPayloadData::fromQrString('BEI:uuid-juan:signature123');
+
+    $er_code = $er->code;
+
+    $response = app(AttestReturn::class)->run($payload, $er_code);
+
+    expect($response)
+        ->message->toBe('Signature saved successfully.')
+        ->id->toBe('uuid-juan')
+        ->name->toBe('Juan dela Cruz')
+        ->role->toBe('chairperson')
+        ->signed_at->toBeString();
+
+    $updated = ElectionReturn::where('code', $er_code)->first()?->getData();
+    $signed = $updated->signedInspectors();
+    $ids = $signed->pluck('id');
+    expect($ids)->toContain('uuid-juan');
+
+    $juan = $updated->findSignatory('uuid-juan');
+    expect($juan->name)->toBe('Juan dela Cruz');
+})->with('er');
+
+test('appends second inspector signature using AttestReturn', function () {
+    $er = app(ElectionStoreInterface::class)->getElectionReturnByPrecinct('CURRIMAO-001');
+
+    AttestReturn::run(SignPayloadData::fromQrString('BEI:uuid-juan:signature123'), $er->code);
+    AttestReturn::run(SignPayloadData::fromQrString('BEI:uuid-maria:signature456'), $er->code);
+
+    $updated = ElectionReturn::where('code', $er->code)->first()?->getData();
+    $signed = $updated->signedInspectors();
+
+    expect($signed)->toHaveCount(2);
+
+    $ids = $signed->pluck('id');
+    expect($ids)->toContain('uuid-juan')->toContain('uuid-maria');
+
+    $maria = $updated->findSignatory('uuid-maria');
+    expect($maria->signature)->toBe('signature456');
+});
+
+test('returns 404 for unknown inspector', function () {
+    $er = app(ElectionStoreInterface::class)->getElectionReturnByPrecinct('CURRIMAO-001');
+    $payload = SignPayloadData::fromQrString('BEI:Z9:wrong');
+
+    AttestReturn::run($payload, $er->code);
+})->throws(\Symfony\Component\HttpKernel\Exception\HttpException::class, 'Inspector with ID [Z9] not found.');
+
+test('returns 404 for missing election return', function () {
+    $payload = SignPayloadData::fromQrString('BEI:uuid-juan:legit');
+
+    AttestReturn::run($payload, 'NON-EXISTENT-ER');
+})->throws(\Symfony\Component\HttpKernel\Exception\HttpException::class, 'Election return [NON-EXISTENT-ER] not found.');

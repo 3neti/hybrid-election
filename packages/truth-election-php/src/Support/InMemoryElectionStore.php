@@ -142,14 +142,14 @@ class InMemoryElectionStore implements ElectionStoreInterface
         return null;
     }
 
-    function findInspector(ElectionReturnData $er, string $id): ElectoralInspectorData {
-        $raw = collect($er->precinct->electoral_inspectors)->firstWhere('id', $id);
+    function findInspector(ElectionReturnData $er, string $id): ?ElectoralInspectorData {
+        $raw = $er->precinct->electoral_inspectors->toCollection()->firstWhere('id', $id);
 
         return ElectoralInspectorData::from($raw);
     }
 
-    function findPrecinctInspector(ElectionReturnData $er, string $id): ElectoralInspectorData {
-        $raw = collect($er->precinct->electoral_inspectors)->firstWhere('id', $id);
+    function findPrecinctInspector(ElectionReturnData $er, string $id): ?ElectoralInspectorData {
+        $raw = $er->precinct->electoral_inspectors->toCollection()->firstWhere('id', $id);
 
         return ElectoralInspectorData::from($raw);
     }

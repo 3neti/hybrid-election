@@ -1,25 +1,19 @@
 <?php
 
-
 use TruthElection\Data\{BallotData, CandidateData, PositionData, VoteData};
-use TruthElectionDb\Models\{Ballot, Candidate, Position, Precinct};
 use TruthElectionDb\Actions\{CastBallot, SetupElection};
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use TruthElectionDb\Tests\ResetsElectionStore;
 use Spatie\LaravelData\DataCollection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Collection;
+use TruthElectionDb\Models\Ballot;
 use TruthElection\Enums\Level;
 
-uses(RefreshDatabase::class);
-
-beforeEach(function () {
+uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function () {
     File::ensureDirectoryExists(base_path('config'));
     File::copy(realpath(__DIR__ . '/../../../config/election.json'), base_path('config/election.json'));
     File::copy(realpath(__DIR__ . '/../../../config/precinct.yaml'), base_path('config/precinct.yaml'));
-
-    Precinct::truncate();
-    Position::truncate();
-    Candidate::truncate();
 
     SetupElection::run();
 });

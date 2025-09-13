@@ -102,4 +102,15 @@ class ElectionReturnData extends Data
 
         return $this->withUpdatedSignatures($signatures);
     }
+
+    //TODO: test these
+    public function findSignatory(string $id): ElectoralInspectorData
+    {
+        return $this->signatures->toCollection()->firstWhere('id', $id);
+    }
+
+    public function hasInspectorSigned(string $id): bool
+    {
+        return $this->signedInspectors()->contains(fn($i) => $i->id === $id);
+    }
 }

@@ -14,7 +14,7 @@ class SignElectionReturn
     use AsAction;
 
     public function __construct(
-        protected SignaturePolicy $policy,
+//        protected SignaturePolicy $policy,
         protected ElectionStoreInterface $store,
     ) {}
 

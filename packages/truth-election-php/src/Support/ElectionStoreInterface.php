@@ -44,9 +44,9 @@ interface ElectionStoreInterface
 
     public function allCandidates(): array;
 
-    public function findInspector(ElectionReturnData $er, string $id): ElectoralInspectorData;
+    public function findInspector(ElectionReturnData $er, string $id): ?ElectoralInspectorData;
 
-    public function findPrecinctInspector(ElectionReturnData $er, string $id): ElectoralInspectorData;
+    public function findPrecinctInspector(ElectionReturnData $er, string $id): ?ElectoralInspectorData;
 
     public function getInspectorsForPrecinct(string $precinctCode): DataCollection;
 
