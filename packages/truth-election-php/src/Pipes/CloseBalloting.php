@@ -2,8 +2,9 @@
 
 namespace TruthElection\Pipes;
 
+use Illuminate\Support\Carbon;
 use TruthElection\Actions\InputPrecinctStatistics;
-use TruthElection\Support\InMemoryElectionStore;
+use TruthElection\Support\ElectionStoreInterface;
 use TruthElection\Data\FinalizeErContext;
 use Closure;
 
@@ -11,10 +12,9 @@ final class CloseBalloting
 {
     public function handle(FinalizeErContext $ctx, Closure $next): FinalizeErContext
     {
-        $store = InMemoryElectionStore::instance();
-        $precinct = $store->precincts[$ctx->precinct->code];
-
-        if (empty($precinct->closed_at)) {
+        $store = app(ElectionStoreInterface::class);
+        $precinct = $store->getPrecinct($ctx->precinct->code);
+        if (is_null($precinct->closed_at)) {
             InputPrecinctStatistics::run($precinct->code, [
                 'closed_at' => now()->toISOString(),
             ]);

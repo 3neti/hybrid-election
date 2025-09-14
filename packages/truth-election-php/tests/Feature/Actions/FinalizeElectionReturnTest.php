@@ -3,12 +3,14 @@
 use TruthElection\Data\{CandidateData, ElectionReturnData, PositionData, PrecinctData, SignPayloadData, VoteData};
 use TruthElection\Actions\{FinalizeElectionReturn, SignElectionReturn, SubmitBallot, GenerateElectionReturn};
 use TruthElection\Enums\{ElectoralInspectorRole, Level};
-use TruthElection\Tests\ResetsElectionStore;
+use TruthElection\Support\ElectionStoreInterface;
 use TruthElection\Support\InMemoryElectionStore;
+use TruthElection\Tests\ResetsElectionStore;
 use Spatie\LaravelData\DataCollection;
 
 uses(ResetsElectionStore::class)->beforeEach(function () {
-    $this->store = InMemoryElectionStore::instance();
+//    $this->store = InMemoryElectionStore::instance();
+    $this->store = app(ElectionStoreInterface::class);
     $this->store->reset();
 
     $this->precinct = PrecinctData::from([
@@ -145,7 +147,7 @@ test('finalize election return fails without required signatures', function () {
     SubmitBallot::run('BAL-003', 'PRECINCT-02', $votes);
     GenerateElectionReturn::run('PRECINCT-02');
 
-    $action = new FinalizeElectionReturn();
+    $action = app(FinalizeElectionReturn::class);
 
     $action->handle(
         precinctCode: 'PRECINCT-02',

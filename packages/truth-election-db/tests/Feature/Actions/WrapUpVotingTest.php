@@ -1,15 +1,15 @@
 <?php
 
-use TruthElectionDb\Actions\{AttestReturn, SetupElection, CastBallot, TallyVotes};
-use TruthElection\Data\{CandidateData, PositionData, VoteData, SignPayloadData};
+use TruthElection\Data\{CandidateData, ElectionReturnData, PositionData, SignPayloadData, VoteData};
+use TruthElectionDb\Actions\{AttestReturn, SetupElection, CastBallot, TallyVotes, WrapUpVoting};
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use TruthElection\Support\ElectionStoreInterface;
-use TruthElectionDb\Models\Precinct;
 use TruthElectionDb\Tests\ResetsElectionStore;
-use TruthElectionDb\Models\ElectionReturn;
 use Spatie\LaravelData\DataCollection;
+use TruthElectionDb\Models\Precinct;
 use Illuminate\Support\Facades\File;
 use TruthElection\Enums\Level;
+use Illuminate\Support\Carbon;
 
 uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function () {
     $this->resetElectionStore();
@@ -93,65 +93,110 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
         ),
     ]));
 
-    app(TallyVotes::class)->run('CURRIMAO-001');
+    $this->return = app(TallyVotes::class)->run('CURRIMAO-001');
+
 });
 
-dataset('er', function () {
-    return [
-        fn() => app(ElectionStoreInterface::class)->getElectionReturnByPrecinct('CURRIMAO-001'),
-    ];
+test('wraps up voting and generates final return', function () {
+    $result = app(WrapUpVoting::class)->run(
+        precinctCode: 'CURRIMAO-001',
+        disk: 'local',
+        payload: 'minimal',
+        maxChars: 1000,
+        dir: 'final',
+        force: true
+    );
+
+    expect($result)->not->toBeNull();
+    expect($result)->toBeInstanceOf(ElectionReturnData::class);
+    expect($result->code)->toBe($this->return->code);
+    expect($result->ballots)->not->toBeEmpty();
+    expect($result->tallies)->not->toBeEmpty();
 });
 
-test('successfully signs election return using AttestReturn', function ($er) {
-    $payload = SignPayloadData::fromQrString('BEI:uuid-juan:signature123');
+test('fails if signatures are missing and force is false', function () {
+    // Assume signatures were NOT added to the ElectionReturn
+    expect(fn() => WrapUpVoting::run(
+        'CURRIMAO-001',
+        disk: 'local',
+        payload: 'minimal',
+        maxChars: 1000,
+        dir: 'final',
+        force: false
+    ))->toThrow(RuntimeException::class, 'Missing required signatures (need chair + at least one member).');
+});
 
-    $er_code = $er->code;
-
-    $response = app(AttestReturn::class)->run($payload, $er_code);
-
-    expect($response)
-        ->message->toBe('Signature saved successfully.')
-        ->id->toBe('uuid-juan')
-        ->name->toBe('Juan dela Cruz')
-        ->role->toBe('chairperson')
-        ->signed_at->toBeString();
-
-    $updated = ElectionReturn::where('code', $er_code)->first()?->getData();
-    $signed = $updated->signedInspectors();
-    $ids = $signed->pluck('id');
-    expect($ids)->toContain('uuid-juan');
-
-    $juan = $updated->findSignatory('uuid-juan');
-    expect($juan->name)->toBe('Juan dela Cruz');
-})->with('er');
-
-test('appends second inspector signature using AttestReturn', function () {
-    $er = app(ElectionStoreInterface::class)->getElectionReturnByPrecinct('CURRIMAO-001');
+test('succeeds if signatures are present and valid', function () {
+    $store = app(ElectionStoreInterface::class);
+    $er = $store->getElectionReturnByPrecinct('CURRIMAO-001');
 
     AttestReturn::run(SignPayloadData::fromQrString('BEI:uuid-juan:signature123'), $er->code);
     AttestReturn::run(SignPayloadData::fromQrString('BEI:uuid-maria:signature456'), $er->code);
 
-    $updated = ElectionReturn::where('code', $er->code)->first()?->getData();
-    $signed = $updated->signedInspectors();
+    $result = WrapUpVoting::run(
+        'CURRIMAO-001',
+        disk: 'local',
+        payload: 'minimal',
+        maxChars: 1000,
+        dir: 'final',
+        force: false
+    );
 
-    expect($signed)->toHaveCount(2);
-
-    $ids = $signed->pluck('id');
-    expect($ids)->toContain('uuid-juan')->toContain('uuid-maria');
-
-    $maria = $updated->findSignatory('uuid-maria');
-    expect($maria->signature)->toBe('signature456');
+    expect($result)->toBeInstanceOf(ElectionReturnData::class);
+    expect($result->signedInspectors())->toHaveCount(2);
 });
 
-test('returns 404 for unknown inspector', function () {
-    $er = app(ElectionStoreInterface::class)->getElectionReturnByPrecinct('CURRIMAO-001');
-    $payload = SignPayloadData::fromQrString('BEI:Z9:wrong');
+test('bypasses signature validation when force is true', function () {
+    $result = WrapUpVoting::run(
+        'CURRIMAO-001',
+        disk: 'local',
+        payload: 'minimal',
+        maxChars: 1000,
+        dir: 'final',
+        force: true
+    );
 
-    AttestReturn::run($payload, $er->code);
-})->throws(\Symfony\Component\HttpKernel\Exception\HttpException::class, 'Inspector with ID [Z9] not found.');
+    expect($result)->toBeInstanceOf(ElectionReturnData::class);
+});
 
-test('returns 404 for missing election return', function () {
-    $payload = SignPayloadData::fromQrString('BEI:uuid-juan:legit');
+test('sets closed_at if not previously set', function () {
+    $precinct = Precinct::query()->where('code', 'CURRIMAO-001')->first();
+    expect($precinct->closed_at)->toBeNull();
 
-    AttestReturn::run($payload, 'NON-EXISTENT-ER');
-})->throws(\Symfony\Component\HttpKernel\Exception\HttpException::class, 'Election return [NON-EXISTENT-ER] not found.');
+    WrapUpVoting::run(
+        'CURRIMAO-001',
+        disk: 'local',
+        payload: 'minimal',
+        maxChars: 1000,
+        dir: 'final',
+        force: true, // skip signature validation
+    );
+
+    $precinct->refresh();
+
+    expect($precinct->closed_at)->not->toBeNull();
+    expect($precinct->closed_at)->toBeString();
+});
+
+test('does not overwrite closed_at if already set', function () {
+    $originalClosedAt = now()->subHours(2);
+    $precinct = Precinct::query()->where('code', 'CURRIMAO-001')->first();
+    $precinct->closed_at = $originalClosedAt;
+    $precinct->save();
+    expect(Carbon::parse($precinct->closed_at)->toISOString())->toBe(
+        $originalClosedAt->copy()->micro(0)->toISOString()
+    );
+
+    WrapUpVoting::run(
+        'CURRIMAO-001',
+        disk: 'local',
+        payload: 'minimal',
+        maxChars: 1000,
+        dir: 'final',
+        force: true,
+    );
+
+    expect(Carbon::parse($precinct->closed_at)->toISOString())->toBe(
+        $originalClosedAt->copy()->micro(0)->toISOString()
+    );
+});

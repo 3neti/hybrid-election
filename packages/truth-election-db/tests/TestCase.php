@@ -5,6 +5,7 @@ namespace TruthElectionDb\Tests;
 use Lorisleiva\Actions\ActionServiceProvider;
 use Spatie\SchemalessAttributes\SchemalessAttributesServiceProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use TruthElection\TruthElectionServiceProvider;
 use TruthElectionDb\Actions\SetupElection;
 use TruthElectionDb\TruthElectionDbServiceProvider;
 use Orchestra\Testbench\TestCase as BaseTestCase;
@@ -33,6 +34,7 @@ abstract class TestCase extends BaseTestCase
     protected function getPackageProviders($app)
     {
         return [
+            TruthElectionServiceProvider::class,
             TruthElectionDbServiceProvider::class,
             SchemalessAttributesServiceProvider::class,
             ActionServiceProvider::class,

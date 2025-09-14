@@ -10,8 +10,6 @@ use Closure;
 
 final class ValidateSignatures
 {
-    public function __construct(private SignaturePolicy $policy) {}
-
     public function handle(FinalizeErContext $ctx, Closure $next): FinalizeErContext
     {
         $sigs = $ctx->er->signatures ?? [];
@@ -19,8 +17,7 @@ final class ValidateSignatures
         if ($sigs instanceof DataCollection || $sigs instanceof Collection) {
             $sigs = $sigs->toArray();
         }
-
-        $this->policy->assertSatisfied((array)$sigs, $ctx->force);
+        app(SignaturePolicy::class)->assertSatisfied((array)$sigs, $ctx->force);
 
         return $next($ctx);
     }
