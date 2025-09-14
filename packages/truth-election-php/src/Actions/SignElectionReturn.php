@@ -2,7 +2,6 @@
 
 namespace TruthElection\Actions;
 
-use TruthElection\Policies\Signatures\SignaturePolicy;
 use TruthElection\Support\ElectionStoreInterface;
 use Lorisleiva\Actions\Concerns\AsAction;
 use TruthElection\Data\SignPayloadData;
@@ -14,7 +13,6 @@ class SignElectionReturn
     use AsAction;
 
     public function __construct(
-//        protected SignaturePolicy $policy,
         protected ElectionStoreInterface $store,
     ) {}
 

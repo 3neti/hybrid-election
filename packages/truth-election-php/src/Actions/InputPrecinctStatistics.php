@@ -2,7 +2,7 @@
 
 namespace TruthElection\Actions;
 
-use TruthElection\Support\InMemoryElectionStore;
+use TruthElection\Support\ElectionStoreInterface;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Lorisleiva\Actions\ActionRequest;
 use TruthElection\Data\PrecinctData;
@@ -11,6 +11,8 @@ use Illuminate\Http\JsonResponse;
 class InputPrecinctStatistics
 {
     use AsAction;
+
+    public function __construct(protected ElectionStoreInterface $store){}
 
     /**
      * Update statistical fields of the given Precinct using the provided payload.
@@ -21,8 +23,8 @@ class InputPrecinctStatistics
      */
     public function handle(string $precinctCode, array $payload): PrecinctData
     {
-        $store = InMemoryElectionStore::instance();
-        $precinct = $store->precincts[$precinctCode];
+        $store = $this->store;
+        $precinct = $store->getPrecinct($precinctCode);
 
         if (! $precinct) {
             throw new \RuntimeException("Precinct [$precinctCode] not found in memory.");

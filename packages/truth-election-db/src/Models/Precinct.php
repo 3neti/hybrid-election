@@ -57,6 +57,15 @@ class Precinct extends Model
         'latitude',
         'longitude',
         'electoral_inspectors',
+        'watchers_count',
+        'precincts_count',
+        'registered_voters_count',
+        'actual_voters_count',
+        'ballots_in_box_count',
+        'unused_ballots_count',
+        'spoiled_ballots_count',
+        'void_ballots_count',
+        'closed_at',
     ];
 
     protected $casts = [

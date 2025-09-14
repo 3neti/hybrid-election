@@ -19,3 +19,7 @@ Route::post('/ballot/cast', CastBallot::class)->name('ballot.cast');
 use TruthElectionDb\Actions\TallyVotes;
 
 Route::post('/votes/tally', TallyVotes::class)->name('votes.tally');
+
+use TruthElectionDb\Actions\RecordStatistics;
+
+Route::patch('/precincts/{precinct}/statistics', RecordStatistics::class)->name('precinct.statistics');
