@@ -35,3 +35,11 @@ test('artisan election:tally shows expected vote tally for precinct', function (
         ->assertExitCode(0)
     ;
 });
+
+test('artisan election:tally fails when precinct code does not exist', function () {
+    $this->artisan('election:tally', [
+        'precinct_code' => 'NONEXISTENT-999',
+    ])
+        ->expectsOutputToContain('❌ Error generating tally:')
+        ->assertExitCode(1);
+});

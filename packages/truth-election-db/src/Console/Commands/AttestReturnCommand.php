@@ -1,0 +1,50 @@
+<?php
+
+namespace TruthElectionDb\Console\Commands;
+
+use TruthElectionDb\Actions\AttestReturn;
+use TruthElection\Data\SignPayloadData;
+use Illuminate\Console\Command;
+
+class AttestReturnCommand extends Command
+{
+    /**
+     * The name and signature of the console command.
+     *
+     * Run with:
+     *   php artisan election:attest ER-CODE 'json-encoded-or-base64 payload'
+     */
+    protected $signature = 'election:attest
+        {election_return_code : The code of the election return}
+        {payload : The QR string or base64-encoded JSON payload from the inspector}';
+
+    /**
+     * The console command description.
+     */
+    protected $description = 'Attest an election return using inspector signature payload.';
+
+    /**
+     * Execute the console command.
+     */
+    public function handle(): int
+    {
+        $code = $this->argument('election_return_code');
+        $rawPayload = $this->argument('payload');
+
+        try {
+            $payload = SignPayloadData::fromQrString($rawPayload);
+
+            $result = AttestReturn::make()->run($payload, $code);
+
+            $this->info('✅ Signature saved successfully:');
+            $this->line("🧑 Inspector: {$result['name']} ({$result['role']})");
+            $this->line("🗓 Signed At: {$result['signed_at']}");
+            $this->line("🗳 Election Return: $code");
+
+            return self::SUCCESS;
+        } catch (\Throwable $e) {
+            $this->error('❌ Failed to attest election return: ' . $e->getMessage());
+            return self::FAILURE;
+        }
+    }
+}
