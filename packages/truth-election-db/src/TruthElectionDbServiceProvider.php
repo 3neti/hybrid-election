@@ -3,6 +3,7 @@
 namespace TruthElectionDb;
 
 use TruthElectionDb\Console\Commands\AttestReturnCommand;
+use TruthElectionDb\Console\Commands\RecordStatisticsCommand;
 use TruthElectionDb\Console\Commands\SetupElectionCommand;
 use TruthElectionDb\Console\Commands\CastBallotCommand;
 use TruthElectionDb\Console\Commands\TallyVotesCommand;
@@ -40,7 +41,8 @@ class TruthElectionDbServiceProvider extends ServiceProvider
                 SetupElectionCommand::class,
                 CastBallotCommand::class,
                 TallyVotesCommand::class,
-                AttestReturnCommand::class
+                AttestReturnCommand::class,
+                RecordStatisticsCommand::class
             ]);
         }
     }
