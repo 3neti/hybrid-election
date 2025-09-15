@@ -3,6 +3,7 @@
 namespace TruthElectionDb;
 
 use TruthElectionDb\Console\Commands\SetupElectionCommand;
+use TruthElectionDb\Console\Commands\CastBallotCommand;
 use TruthElectionDb\Support\DatabaseElectionStore;
 use TruthElection\Support\ElectionStoreInterface;
 use Illuminate\Support\ServiceProvider;
@@ -35,6 +36,7 @@ class TruthElectionDbServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 SetupElectionCommand::class,
+                CastBallotCommand::class
             ]);
         }
     }

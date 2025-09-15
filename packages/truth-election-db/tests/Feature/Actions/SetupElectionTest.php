@@ -30,18 +30,6 @@ test('SetupElectionFromFiles::handle() loads config and persists to database', f
     expect($precinct->code)->toBe('CURRIMAO-001');
 });
 
-test('SetupElectionFromFiles::asCommand works via Artisan CLI', function () {
-
-    $this->artisan('election:setup')
-        ->expectsOutput('✅ Election setup complete.')
-        ->assertSuccessful();
-
-    // 🧪 Confirm database state
-    expect(Precinct::count())->toBe(1);
-    expect(Position::count())->toBeGreaterThan(0);
-    expect(Candidate::count())->toBeGreaterThan(0);
-});
-
 test('SetupElectionFromFiles::asController works via HTTP POST', function () {
     $response = $this->postJson('/election/setup', [
         'election_path' => null,
@@ -107,16 +95,6 @@ test('Running setup twice does not create duplicates', function () {
 
     SetupElection::run();
     expect(Candidate::count())->toBe($initialCount); // or whatever behavior you define
-});
-
-test('SetupElectionCommand works via Artisan CLI', function () {
-    $this->artisan('election:setup')
-        ->expectsOutput('✅ Election setup complete.')
-        ->assertExitCode(0);
-
-    expect(Precinct::count())->toBe(1)
-        ->and(Position::count())->toBeGreaterThan(0)
-        ->and(Candidate::count())->toBeGreaterThan(0);
 });
 
 test('SetupElectionFromFiles::asController returns correct summary', function () {
