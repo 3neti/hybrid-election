@@ -3,8 +3,8 @@
 namespace TruthElectionDb\Console\Commands;
 
 use TruthElectionDb\Actions\CastBallot;
-use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
+use Illuminate\Console\Command;
 
 class CastBallotCommand extends Command
 {
