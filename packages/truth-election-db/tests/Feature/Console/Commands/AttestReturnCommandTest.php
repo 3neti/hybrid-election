@@ -3,6 +3,9 @@
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use TruthElection\Support\ElectionStoreInterface;
 use TruthElectionDb\Tests\ResetsElectionStore;
+use TruthElectionDb\Actions\AttestReturn;
+use Illuminate\Support\Facades\Artisan;
+use TruthElection\Data\SignPayloadData;
 use Illuminate\Support\Facades\File;
 
 uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function () {
@@ -91,4 +94,46 @@ test('artisan election:attest fails with non-existent election return', function
     ])
         ->expectsOutputToContain('❌ Failed to attest election return: Election return [NON-EXISTENT-ER] not found.')
         ->assertExitCode(1);
+});
+
+test('artisan election:attest invokes AttestReturn::run and shows output', function () {
+    // Arrange
+    $code = 'ER-CURRIMAO-001';
+    $payloadString = 'BEI:uuid-juan:signature123';
+    $payload = SignPayloadData::fromQrString($payloadString);
+
+    // Prepare expected return array
+    $mockResult = [
+        'message' => 'Signature saved successfully.',
+        'id' => $payload->id,
+        'name' => 'Juan dela Cruz',
+        'role' => 'chairperson',
+        'signed_at' => now()->toIso8601String(),
+    ];
+
+    // Mock the AttestReturn action
+    $mock = \Mockery::mock(AttestReturn::class);
+    $mock->shouldReceive('run')
+        ->once()
+        ->withArgs(function (SignPayloadData $arg, string $argCode) use ($payload, $code) {
+            return $arg->id === $payload->id && $argCode === $code;
+        })
+        ->andReturn($mockResult);
+
+    app()->instance(AttestReturn::class, $mock);
+
+    // Act
+    $exitCode = Artisan::call('election:attest', [
+        'election_return_code' => $code,
+        'payload' => $payloadString,
+    ]);
+
+    $output = Artisan::output();
+
+    // Assert
+    expect($exitCode)->toBe(0);
+    expect($output)->toContain('✅ Signature saved successfully:');
+    expect($output)->toContain('Juan dela Cruz');
+    expect($output)->toContain('chairperson');
+    expect($output)->toContain($code);
 });

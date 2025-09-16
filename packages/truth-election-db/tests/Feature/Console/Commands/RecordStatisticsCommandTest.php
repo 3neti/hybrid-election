@@ -1,7 +1,11 @@
 <?php
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
+use TruthElection\Actions\InputPrecinctStatistics;
+use TruthElection\Data\PrecinctData;
 use TruthElection\Support\ElectionStoreInterface;
+use TruthElectionDb\Actions\RecordStatistics;
 use TruthElectionDb\Tests\ResetsElectionStore;
 use TruthElectionDb\Models\Precinct;
 use Illuminate\Support\Facades\File;
@@ -104,4 +108,66 @@ test('artisan election:record-statistics fails when payload is missing', functio
     ])
         ->expectsOutputToContain('❌ Please provide a JSON payload using the --payload option.')
         ->assertExitCode(1);
+});
+
+test('artisan election:record-statistics invokes RecordStatistics::run and shows output', function () {
+    // Arrange
+    $precinct_code = 'CURRIMAO-001';
+
+    $payloadArray = [
+        'watchers_count' => 5,
+        'registered_voters_count' => 800,
+        'actual_voters_count' => 700,
+        'ballots_in_box_count' => 695,
+        'unused_ballots_count' => 105,
+    ];
+
+    $payloadJson = json_encode($payloadArray);
+
+    $original = Precinct::query()
+        ->where('code', $precinct_code)
+        ->first()
+        ->getData();
+
+    $expectedPrecinctData = PrecinctData::from(array_merge($original->toArray(), $payloadArray));
+
+    // Create mock with both rules() and run() expectations
+    $mock = \Mockery::mock(RecordStatistics::class);
+
+    // Stub the rules method for validation to succeed
+    $mock->shouldReceive('rules')
+        ->once()
+        ->andReturn([
+            'watchers_count' => ['sometimes', 'nullable', 'integer'],
+            'registered_voters_count' => ['sometimes', 'nullable', 'integer'],
+            'actual_voters_count' => ['sometimes', 'nullable', 'integer'],
+            'ballots_in_box_count' => ['sometimes', 'nullable', 'integer'],
+            'unused_ballots_count' => ['sometimes', 'nullable', 'integer'],
+        ]);
+
+    // Stub the run method to simulate a successful call
+    $mock->shouldReceive('handle')
+        ->once()
+        ->with($precinct_code, $payloadArray)
+        ->andReturn($expectedPrecinctData);
+
+    // Bind mock to container
+    app()->instance(RecordStatistics::class, $mock);
+
+    // Act
+    $exitCode = Artisan::call('election:record-statistics', [
+        'precinct_code' => $precinct_code,
+        '--payload' => $payloadJson,
+    ]);
+
+    $output = Artisan::output();
+
+    // Assert
+    expect($exitCode)->toBe(0);
+    expect($output)->toContain('✅ Statistics successfully recorded for precinct: CURRIMAO-001');
+    expect($output)->toContain('watchers_count: 5');
+    expect($output)->toContain('registered_voters_count: 800');
+    expect($output)->toContain('actual_voters_count: 700');
+    expect($output)->toContain('ballots_in_box_count: 695');
+    expect($output)->toContain('unused_ballots_count: 105');
 });
