@@ -55,16 +55,6 @@ abstract class TestCase extends BaseTestCase
             \Spatie\LaravelData\Normalizers\JsonNormalizer::class,
         ]);
         config()->set('data.date_format', "Y-m-d\TH:i:sP");
-        $migration = include __DIR__.'/../database/migrations/01_create_precincts_table.php.stub';
-        $migration->up();
-        $migration = include __DIR__.'/../database/migrations/02_create_ballots_table.php.stub';
-        $migration->up();
-        $migration = include __DIR__.'/../database/migrations/03_create_positions_table.php.stub';
-        $migration->up();
-        $migration = include __DIR__.'/../database/migrations/04_create_candidates_table.php.stub';
-        $migration->up();
-        $migration = include __DIR__.'/../database/migrations/05_create_election_returns_table.php.stub';
-        $migration->up();
     }
 
     protected function loadConfig()
