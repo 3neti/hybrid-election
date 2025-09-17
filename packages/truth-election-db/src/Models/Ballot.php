@@ -31,7 +31,7 @@ class Ballot extends Model
     use HasUuids;
     use WithData;
 
-    protected string $dataClass = BallotData::class;
+//    protected string $dataClass = BallotData::class;
 
     protected $fillable = [
         'code',
@@ -65,5 +65,15 @@ class Ballot extends Model
     public function precinct()
     {
         return $this->belongsTo(Precinct::class, 'precinct_code', 'code');
+    }
+
+    public function dataClass(): BallotData
+    {
+        $data = BallotData::from($this);
+        if ($this->precinct?->code) {
+            $data->setPrecinctCode($this->precinct->code);
+        }
+
+        return $data;
     }
 }

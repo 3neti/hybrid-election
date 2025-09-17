@@ -190,6 +190,7 @@ it('creates or updates a ballot using fromData', function () {
     $dto = $ballot->getData();
 
     expect($dto)->toBeInstanceOf(BallotData::class)
+        ->and($dto->getPrecinctCode())->toBe('P-001')
         ->and($dto->code)->toBe('BALLOT-XYZ')
         ->and($dto->votes)->toHaveCount(1)
         ->and($dto->votes[0]->position->code)->toBe('PRESIDENT')

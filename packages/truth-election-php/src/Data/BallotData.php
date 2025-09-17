@@ -11,7 +11,7 @@ use Spatie\LaravelData\Data;
  */
 class BallotData extends Data
 {
-    protected string $precinct_code;
+    public string $precinct_code;
 
     public function getPrecinctCode(): string
     {
