@@ -126,7 +126,7 @@ class DatabaseElectionStore implements ElectionStoreInterface
 
     public function getPosition(string $code): ?PositionData
     {
-        return $this->positions[$code] ?? null;
+        return Position::query()->where('code', $code)->first()?->getData() ?? null; //TODO: test this
     }
 
     public function setCandidates(array $candidateMap): void
@@ -140,17 +140,17 @@ class DatabaseElectionStore implements ElectionStoreInterface
 
     public function getCandidate(string $code): ?CandidateData
     {
-        return $this->candidates[$code] ?? null;
+        return Candidate::query()->where('code', $code)->first()?->getData() ?? null; //TODO: test this
     }
 
     public function allPositions(): array
     {
-        return $this->positions;
+        return (new DataCollection(PositionData::class, Position::all()->toArray() ?? []))->toArray(); //TODO: test this
     }
 
     public function allCandidates(): array
     {
-        return $this->candidates;
+        return (new DataCollection(CandidateData::class, Candidate::with('position')->get()->toArray() ?? []))->toArray(); //TODO: test this
     }
 
     public function findInspector(ElectionReturnData $er, string $id): ?ElectoralInspectorData

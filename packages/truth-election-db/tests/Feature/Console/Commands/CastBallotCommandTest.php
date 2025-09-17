@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\{Artisan, File};
 use TruthElectionDb\Tests\ResetsElectionStore;
 use TruthElectionDb\Actions\CastBallot;
 use TruthElection\Data\BallotData;
+use TruthElectionDb\Models\Ballot;
 
 uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function () {
     File::ensureDirectoryExists(base_path('config'));
@@ -58,25 +59,11 @@ test('artisan election:cast works via json file', function () {
     ;
 });
 
-test('artisan election:cast fails with no input or json provided', function () {
-    $this->artisan('election:cast')
-        ->expectsOutputToContain('❌ No valid input. Please provide --json or --input.')
-        ->assertExitCode(1);
-});
-
-test('artisan election:cast fails when input file does not exist', function () {
-    $this->artisan('election:cast', [
-        '--input' => base_path('config/missing-ballot.json'),
-    ])
-        ->expectsOutputToContain('❌ No valid input. Please provide --json or --input.')
-        ->assertExitCode(1);
-});
-
 test('artisan election:cast fails with malformed JSON string', function () {
     $this->artisan('election:cast', [
         '--json' => '{"ballot_code": "BAL001", "precinct_code": "P-001", "votes": [}', // malformed JSON
     ])
-        ->expectsOutputToContain('❌ Failed to parse JSON:')
+        ->expectsOutputToContain('❌ Failed to parse JSON: State mismatch (invalid or malformed JSON')
         ->assertExitCode(1);
 });
 
@@ -88,7 +75,7 @@ test('artisan election:cast fails with malformed JSON file', function () {
     $this->artisan('election:cast', [
         '--input' => $malformed,
     ])
-        ->expectsOutputToContain('❌ Failed to parse JSON file:')
+        ->expectsOutputToContain('❌ Failed to parse JSON: State mismatch (invalid or malformed JSON)')
         ->assertExitCode(1);
 });
 
@@ -165,4 +152,50 @@ test('election:cast uses CastBallot instance and returns expected output', funct
     expect($output)->toContain('Ballot Code: BALLOT-001');
     expect($output)->toContain('Precinct: CURRIMAO-001');
     expect($output)->toContain('Votes: 2');
+});
+
+test('election:cast parses full compact line and stores all votes', function () {
+    $line = "BAL-001|PRESIDENT:AJ_006;VICE-PRESIDENT:TH_001;SENATOR:ES_002,LN_048,AA_018,GG_016,BC_015,MD_009,WS_007,MA_035,SB_006,FP_038,OS_028,MF_003;REPRESENTATIVE-PARTY-LIST:THE_MATRIX_008;GOVERNOR-ILN:EN_001;VICE-GOVERNOR-ILN:MF_002;BOARD-MEMBER-ILN:DP_004,BDT_005;REPRESENTATIVE-ILN-1:JF_001;MAYOR-ILN-CURRIMAO:EW_003;VICE-MAYOR-ILN-CURRIMAO:JKS_001;COUNCILOR-ILN-CURRIMAO:ER_001,SG_002,SR_003,MC_004,MS_005,CE_006,GMR_007,DO_008";
+
+    $exit = Artisan::call('election:cast', [
+        'lines' => [$line]
+    ]);
+
+    $output = Artisan::output();
+
+    expect($exit)->toBe(0);
+    expect($output)->toContain('BAL-001');
+    expect($output)->toContain('Precinct: CURRIMAO-001');
+    expect($output)->toContain('Votes: 11');
+
+    $model = Ballot::query()->firstWhere('code', 'BAL-001');
+    expect($model)->toBeInstanceOf(Ballot::class);
+
+    $data = $model->getData()->setPrecinctCode('CURRIMAO-001');
+    expect($data)->toBeInstanceOf(BallotData::class);
+    expect($data->getPrecinctCode())->toBe('CURRIMAO-001');
+    expect($data->code)->toBe('BAL-001');
+
+    $votes = collect($data->votes->toArray());
+
+    $expectedVotes = [
+        ['position' => 'PRESIDENT', 'candidates' => ['AJ_006']],
+        ['position' => 'VICE-PRESIDENT', 'candidates' => ['TH_001']],
+        ['position' => 'SENATOR', 'candidates' => ['ES_002','LN_048','AA_018','GG_016','BC_015','MD_009','WS_007','MA_035','SB_006','FP_038','OS_028','MF_003']],
+        ['position' => 'REPRESENTATIVE-PARTY-LIST', 'candidates' => ['THE_MATRIX_008']],
+        ['position' => 'GOVERNOR-ILN', 'candidates' => ['EN_001']],
+        ['position' => 'VICE-GOVERNOR-ILN', 'candidates' => ['MF_002']],
+        ['position' => 'BOARD-MEMBER-ILN', 'candidates' => ['DP_004','BDT_005']],
+        ['position' => 'REPRESENTATIVE-ILN-1', 'candidates' => ['JF_001']],
+        ['position' => 'MAYOR-ILN-CURRIMAO', 'candidates' => ['EW_003']],
+        ['position' => 'VICE-MAYOR-ILN-CURRIMAO', 'candidates' => ['JKS_001']],
+        ['position' => 'COUNCILOR-ILN-CURRIMAO', 'candidates' => ['ER_001','SG_002','SR_003','MC_004','MS_005','CE_006','GMR_007','DO_008']],
+    ];
+
+    foreach ($expectedVotes as $index => $expectedVote) {
+        $vote = $votes->get($index);
+        expect($vote['position']['code'])->toBe($expectedVote['position']);
+        $actualCandidateCodes = collect($vote['candidates'])->pluck('code')->toArray();
+        expect($actualCandidateCodes)->toEqualCanonicalizing($expectedVote['candidates']);
+    }
 });

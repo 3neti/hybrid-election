@@ -2,54 +2,26 @@
 
 namespace TruthElectionDb\Console\Commands;
 
+use TruthElection\Support\ParseCompactBallotFormat;
 use TruthElectionDb\Actions\CastBallot;
 use Illuminate\Support\Facades\File;
 use Illuminate\Console\Command;
 
 class CastBallotCommand extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * You can now run it either:
-     *  php artisan election:cast --json='{"ballot_code": "BAL001", ...}'
-     *  php artisan election:cast --input=/path/to/ballot.json
-     */
     protected $signature = 'election:cast
+        {lines?* : One or more ballot lines in CODE|POS1:CANDA,CANDB;POS2:... format. If omitted, read from STDIN.}
         {--input= : Path to the ballot JSON file}
         {--json= : Raw ballot JSON string}';
 
-    /**
-     * The console command description.
-     */
-    protected $description = 'Cast a ballot from JSON input (file or raw JSON) using the CastBallot action.';
+    protected $description = 'Cast a ballot from JSON or compact format using the CastBallot action.';
 
-    /**
-     * Execute the console command.
-     */
     public function handle(): int
     {
-        $jsonOption = $this->option('json');
-        $inputFile = $this->option('input');
+        $data = $this->resolveInput();
 
-        $data = [];
-
-        if ($jsonOption) {
-            $data = json_decode($jsonOption, true);
-
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                $this->error('❌ Failed to parse JSON: ' . json_last_error_msg());
-                return self::FAILURE;
-            }
-        } elseif ($inputFile && File::exists($inputFile)) {
-            $data = json_decode(File::get($inputFile), true);
-
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                $this->error('❌ Failed to parse JSON file: ' . json_last_error_msg());
-                return self::FAILURE;
-            }
-        } else {
-            $this->error('❌ No valid input. Please provide --json or --input.');
+        if (is_null($data)) {
+            $this->error('❌ No valid input. Please use --json, --input, or compact lines.');
             return self::FAILURE;
         }
 
@@ -70,5 +42,61 @@ class CastBallotCommand extends Command
             $this->error('❌ Error casting ballot: ' . $e->getMessage());
             return self::FAILURE;
         }
+    }
+
+    protected function resolveInput(): ?array
+    {
+        if ($json = $this->option('json')) {
+            return $this->parseJson($json);
+        }
+
+        if ($file = $this->option('input')) {
+            return $this->parseFile($file);
+        }
+
+        return $this->parseCompactInput();
+    }
+
+    protected function parseJson(string $json): ?array
+    {
+        $data = json_decode($json, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $this->error('❌ Failed to parse JSON: ' . json_last_error_msg());
+            return null;
+        }
+
+        return $data;
+    }
+
+    protected function parseFile(string $path): ?array
+    {
+        if (!File::exists($path)) {
+            $this->error("❌ File not found: $path");
+            return null;
+        }
+
+        $contents = File::get($path);
+        return $this->parseJson($contents);
+    }
+
+    protected function parseCompactInput(): ?array
+    {
+        $lines = $this->argument('lines') ?? [];
+
+        if (empty($lines)) {
+            while (!feof(STDIN)) {
+                $chunk = fgets(STDIN);
+                if ($chunk === false) break;
+                $lines[] = trim($chunk);
+            }
+        }
+
+        $lines = array_filter($lines); // Remove empty
+
+        if (empty($lines)) return null;
+
+        // 💡 Refactor this to return an array of ballot data (for now, take the first)
+        return json_decode(app(ParseCompactBallotFormat::class)->__invoke($lines[0], 'CURRIMAO-001'), true);
     }
 }
