@@ -13,7 +13,7 @@ class RecordStatisticsCommand extends Command
                             {precinct_code : The code of the precinct to update}
                             {--payload= : JSON payload of statistics to update}';
 
-    protected $description = '📊 Record statistics (watchers, voters, ballots, etc.) for a given precinct';
+    protected $description = 'Record statistics (watchers, voters, ballots, etc.) for a given precinct';
 
     public function handle(): int
     {

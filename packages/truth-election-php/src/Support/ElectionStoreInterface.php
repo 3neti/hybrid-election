@@ -12,6 +12,8 @@ use TruthElection\Data\BallotData;
 
 interface ElectionStoreInterface
 {
+    public static function instance(): self;
+
     public function getBallotsForPrecinct(string $precinctCode): array;
 
     public function getBallots(string $precinctCode): DataCollection;

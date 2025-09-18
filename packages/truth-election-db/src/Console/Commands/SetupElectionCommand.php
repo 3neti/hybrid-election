@@ -27,10 +27,18 @@ class SetupElectionCommand extends Command
      */
     public function handle(): int
     {
-        $result = InitializeSystem::run(
-            electionPath: $this->option('election'),
-            precinctPath: $this->option('precinct'),
-        );
+        try {
+            $result = InitializeSystem::run(
+                electionPath: $this->option('election'),
+                precinctPath: $this->option('precinct'),
+            );
+        } catch (\RuntimeException $e) {
+            $this->error($e->getMessage());
+            $this->line('');
+            $this->line('💡 You may also provide file paths explicitly:');
+            $this->line('   php artisan election:setup --election=... --precinct=...');
+            return self::FAILURE;
+        }
 
         $this->info('✅ Election setup complete.');
 
