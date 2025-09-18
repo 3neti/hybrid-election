@@ -12,13 +12,15 @@ class TallyVotes extends GenerateElectionReturn
     {
         return [
             'precinct_code' => ['required', 'string'],
+            'election_return_code' => ['nullable', 'string'],
         ];
     }
 
     public function asController(ActionRequest $request): \Illuminate\Http\Response|JsonResponse
     {
         $precinctCode = $request->get('precinct_code');
-        $electionReturn = $this->handle($precinctCode);
+        $electionReturnCode = $request->get('election_return_code'); // may be null
+        $electionReturn = $this->handle($precinctCode, $electionReturnCode);
 
         return response()->json($electionReturn);
     }

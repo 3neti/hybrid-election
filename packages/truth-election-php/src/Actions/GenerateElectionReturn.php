@@ -20,7 +20,7 @@ class GenerateElectionReturn
 
     public function __construct(protected ElectionStoreInterface $store){}
 
-    public function handle(string $precinctCode): ElectionReturnData
+    public function handle(string $precinctCode, ?string $electionReturnCode = null): ElectionReturnData
     {
         $store = $this->store;
         $precinct = $store->getPrecinct($precinctCode);
@@ -75,7 +75,12 @@ class GenerateElectionReturn
 
         // 🆔 Generate ID and code (in real app, these would be persisted)
         $electionReturnId = (string) Str::uuid();
-        $electionReturnCode = strtoupper(Str::random(12));
+        $electionReturnCode = $electionReturnCode ?? strtoupper(Str::random(12));
+//        if ($electionReturnCode && !preg_match('/^[A-Z0-9]{12}$/', $electionReturnCode)) {
+//            throw ValidationException::withMessages([
+//                'election_return_code' => "Election return code must be 12 uppercase alphanumeric characters.",
+//            ]);
+//        }
         $timestamp = Carbon::now();
 
         $electionReturn =  new ElectionReturnData(

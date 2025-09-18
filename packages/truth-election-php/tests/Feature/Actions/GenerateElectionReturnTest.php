@@ -172,3 +172,20 @@ it('stores election return in the election store', function () {
         ->and($stored->code)->toBe($return->code)
         ->and($stored->precinct->code)->toBe('PRECINCT-01');
 });
+
+it('generates an election return with a custom code', function () {
+    $customCode = 'ER-PRECINCT-01-CUSTOM';
+
+    // Run GenerateElectionReturn with optional electionReturnCode
+    $return = GenerateElectionReturn::run('PRECINCT-01', $customCode);
+
+    expect($return)->toBeInstanceOf(ElectionReturnData::class)
+        ->and($return->code)->toBe($customCode)
+        ->and($return->precinct->code)->toBe('PRECINCT-01');
+
+    // 🧠 Confirm it was saved with the custom code
+    $stored = $this->store->getElectionReturn($customCode);
+
+    expect($stored)->not->toBeNull()
+        ->and($stored->code)->toBe($customCode);
+});

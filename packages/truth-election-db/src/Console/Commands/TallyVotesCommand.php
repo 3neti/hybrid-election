@@ -11,10 +11,11 @@ class TallyVotesCommand extends Command
      * The name and signature of the console command.
      *
      * Run with:
-     *   php artisan election:tally P-001
+     *   php artisan election:tally P-001 [ELECTION_RETURN_CODE]
      */
     protected $signature = 'election:tally
-        {precinct_code : The code of the precinct to tally votes for}';
+        {precinct_code : The code of the precinct to tally votes for}
+        {election_return_code? : Optional code to assign to the election return}';
 
     /**
      * The console command description.
@@ -27,9 +28,10 @@ class TallyVotesCommand extends Command
     public function handle(): int
     {
         $precinctCode = $this->argument('precinct_code');
+        $electionReturnCode = $this->argument('election_return_code');
 
         try {
-            $result = TallyVotes::make()->run($precinctCode);
+            $result = TallyVotes::make()->run($precinctCode, $electionReturnCode);
 
             $this->info('✅ Tally complete:');
             $this->line("Precinct: $precinctCode");

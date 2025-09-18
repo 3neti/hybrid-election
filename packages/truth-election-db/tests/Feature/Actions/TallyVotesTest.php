@@ -163,3 +163,29 @@ it('validates missing precinct_code field', function () {
     $response->assertStatus(422)
         ->assertJsonValidationErrors(['precinct_code']);
 });
+
+it('accepts optional election_return_code via controller', function () {
+    $response = $this->postJson(route('votes.tally', [
+        'precinct_code' => 'CURRIMAO-001',
+        'election_return_code' => 'ER-CURRIMAO-TEST-001',
+    ]));
+
+    $response->assertOk();
+
+    $data = $response->json();
+
+    expect($data)->toHaveKeys([
+        'code',
+        'precinct',
+        'ballots',
+        'tallies',
+    ])
+        ->and($data['code'])->toBe('ER-CURRIMAO-TEST-001')
+        ->and($data['precinct']['code'])->toBe('CURRIMAO-001')
+        ->and($data['ballots'])->toHaveCount(3);
+
+    // Confirm persisted
+    $persisted = ElectionReturn::where('code', 'ER-CURRIMAO-TEST-001')->first();
+    expect($persisted)->not->toBeNull()
+        ->and($persisted->precinct_code)->toBe('CURRIMAO-001');
+});
