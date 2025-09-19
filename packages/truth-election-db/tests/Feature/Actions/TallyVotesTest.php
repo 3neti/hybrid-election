@@ -23,7 +23,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
 
     SetupElection::run();
 
-    CastBallot::run('BAL-001', 'CURRIMAO-001', collect([
+    CastBallot::run('BAL-001', collect([
         new VoteData(
             candidates: new DataCollection(CandidateData::class, [
                 new CandidateData(code: 'CANDIDATE-001', name: 'Juan Dela Cruz', alias: 'JUAN', position: new PositionData(
@@ -46,7 +46,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
             ])
         ),
     ]));
-    CastBallot::run('BAL-002', 'CURRIMAO-001', collect([
+    CastBallot::run('BAL-002', collect([
         new VoteData(
             candidates: new DataCollection(CandidateData::class, [
                 new CandidateData(code: 'CANDIDATE-004', name: 'Jose Rizal', alias: 'JOSE', position: new PositionData(
@@ -69,7 +69,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
             ])
         ),
     ]));
-    CastBallot::run('BAL-003', 'CURRIMAO-001', collect([
+    CastBallot::run('BAL-003', collect([
         new VoteData(
             candidates: new DataCollection(CandidateData::class, [
                 new CandidateData(code: 'CANDIDATE-006', name: 'Emilio Aguinaldo', alias: 'EMILIO', position: $position = new PositionData(
@@ -112,7 +112,7 @@ it('persists election return via handle()', function (TallyVotes $action, Precin
     expect($precinct)->not->toBeNull();
 
     // Act
-    $er = $action->run($precinct->code);
+    $er = $action->run();
 
     // Assert the returned object
     expect($er)->toBeInstanceOf(ElectionReturnData::class)
@@ -128,9 +128,7 @@ it('persists election return via handle()', function (TallyVotes $action, Precin
 })->with('action', 'precinct');
 
 it('returns a valid election return via controller', function () {
-    $response = $this->postJson(route('votes.tally', [
-        'precinct_code' => 'CURRIMAO-001',
-    ]));
+    $response = $this->postJson(route('votes.tally', []));
 
     $response->assertOk();
 
@@ -157,16 +155,15 @@ it('returns a valid election return via controller', function () {
     expect($senators)->toHaveCount(3); // only valid senator votes from BAL-001 and BAL-002
 });
 
-it('validates missing precinct_code field', function () {
-    $response = $this->postJson(route('votes.tally', []));
-
-    $response->assertStatus(422)
-        ->assertJsonValidationErrors(['precinct_code']);
-});
+//it('validates missing precinct_code field', function () {
+//    $response = $this->postJson(route('votes.tally', []));
+//
+//    $response->assertStatus(422)
+//        ->assertJsonValidationErrors(['precinct_code']);
+//});
 
 it('accepts optional election_return_code via controller', function () {
     $response = $this->postJson(route('votes.tally', [
-        'precinct_code' => 'CURRIMAO-001',
         'election_return_code' => 'ER-CURRIMAO-TEST-001',
     ]));
 

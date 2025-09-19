@@ -3,6 +3,7 @@
 namespace TruthElection\Actions;
 
 use TruthElection\Support\ElectionStoreInterface;
+use TruthElection\Support\PrecinctContext;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Spatie\LaravelData\DataCollection;
 use Illuminate\Support\Collection;
@@ -13,17 +14,17 @@ class SubmitBallot
 {
     use AsAction;
 
+    public function __construct(
+        protected ElectionStoreInterface $store,
+        protected PrecinctContext $precinctContext
+    ) {}
 
-    public function __construct(protected ElectionStoreInterface $store){}
-
-    public function handle(string $ballotCode, string $precinctCode, Collection $votes): BallotData
+    public function handle(string $ballotCode, Collection $votes): BallotData
     {
-        $store = $this->store;
-
-        $precinct = $store->getPrecinct($precinctCode);
+        $precinct = $this->precinctContext->getPrecinct();
 
         if (!$precinct) {
-            throw new \RuntimeException("Precinct [$precinctCode] not found.");
+            throw new \RuntimeException("Precinct not found.");
         }
 
         $ballot = new BallotData(
@@ -31,8 +32,7 @@ class SubmitBallot
             votes: new DataCollection(VoteData::class, $votes->all()),
         );
 
-        // 🆕 Important: Also store in ballots array
-        $store->putBallot($ballot, $precinctCode);
+        $this->store->putBallot($ballot, $precinct->code);
 
         return $ballot;
     }

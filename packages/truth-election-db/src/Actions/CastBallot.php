@@ -11,7 +11,6 @@ class CastBallot extends SubmitBallot
     {
         return [
             'ballot_code' => 'required|string',
-            'precinct_code' => 'required|string',
             'votes' => 'required|array|min:1',
             'votes.*.position' => 'required|array',
             'votes.*.position.code' => 'required|string',
@@ -32,7 +31,7 @@ class CastBallot extends SubmitBallot
 
         $result = $this->handle(
             ballotCode: $validated['ballot_code'],
-            precinctCode: $validated['precinct_code'],
+//            precinctCode: $validated['precinct_code'],
             votes: collect($validated['votes']),
         );
 

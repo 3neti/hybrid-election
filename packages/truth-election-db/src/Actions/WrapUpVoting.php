@@ -14,7 +14,6 @@ class WrapUpVoting extends FinalizeElectionReturn
     public function rules(): array
     {
         return [
-            'precinct_code' => ['required', 'string'],
             'disk' => ['nullable', 'string'],
             'payload' => ['nullable', 'string'],
             'max_chars' => ['nullable', 'integer'],
@@ -28,7 +27,6 @@ class WrapUpVoting extends FinalizeElectionReturn
         $validated = $request->validated();
 
         return $this->handle(
-            precinctCode: $validated['precinct_code'],
             disk: $validated['disk'] ?? 'local',
             payload: $validated['payload'] ?? 'minimal',
             maxChars: $validated['max_chars'] ?? 1200,

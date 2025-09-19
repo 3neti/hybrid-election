@@ -8,6 +8,7 @@ use TruthElection\Support\ElectionStoreInterface;
 use TruthElection\Support\InMemoryElectionStore;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Route;
+use TruthElection\Support\PrecinctContext;
 
 final class TruthElectionServiceProvider extends ServiceProvider
 {
@@ -37,6 +38,13 @@ final class TruthElectionServiceProvider extends ServiceProvider
         ], 'truth-election-config');
 
         $this->registerRoutes();
+
+        $this->app->bind(PrecinctContext::class, function ($app) {
+            $store = $app->make(ElectionStoreInterface::class);
+            $precinctCode = request()->input('precinct_code') ?? null;
+
+            return new PrecinctContext($store, $precinctCode);
+        });
     }
 
     protected function registerRoutes(): void

@@ -18,7 +18,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
 
     SetupElection::run();
 
-    CastBallot::run('BAL-001', 'CURRIMAO-001', collect([
+    CastBallot::run('BAL-001', collect([
         new VoteData(
             candidates: new DataCollection(CandidateData::class, [
                 new CandidateData(code: 'CANDIDATE-001', name: 'Juan Dela Cruz', alias: 'JUAN', position: new PositionData(
@@ -42,7 +42,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
         ),
     ]));
 
-    CastBallot::run('BAL-002', 'CURRIMAO-001', collect([
+    CastBallot::run('BAL-002', collect([
         new VoteData(
             candidates: new DataCollection(CandidateData::class, [
                 new CandidateData(code: 'CANDIDATE-004', name: 'Jose Rizal', alias: 'JOSE', position: new PositionData(
@@ -66,7 +66,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
         ),
     ]));
 
-    CastBallot::run('BAL-003', 'CURRIMAO-001', collect([
+    CastBallot::run('BAL-003', collect([
         new VoteData(
             candidates: new DataCollection(CandidateData::class, [
                 new CandidateData(code: 'CANDIDATE-006', name: 'Emilio Aguinaldo', alias: 'EMILIO', position: $position = new PositionData(
@@ -108,7 +108,7 @@ test('persists all statistics fields to database store', function () {
         'closed_at' => now()->toIso8601String(),
     ];
 
-    $result = RecordStatistics::run('CURRIMAO-001', $payload);
+    $result = RecordStatistics::run($payload);
 
     foreach ($payload as $key => $expected) {
         expect($result->{$key})->toBe($expected);
@@ -122,11 +122,11 @@ test('persists all statistics fields to database store', function () {
 });
 
 test('allows setting individual fields to null and persists it', function () {
-    RecordStatistics::run('CURRIMAO-001', [
+    RecordStatistics::run([
         'unused_ballots_count' => 42,
     ]);
 
-    $updated = RecordStatistics::run('CURRIMAO-001', [
+    $updated = RecordStatistics::run([
         'unused_ballots_count' => null,
     ]);
 
@@ -137,12 +137,12 @@ test('allows setting individual fields to null and persists it', function () {
 });
 
 test('updates only specified fields without overwriting others', function () {
-    RecordStatistics::run('CURRIMAO-001', [
+    RecordStatistics::run([
         'registered_voters_count' => 1500,
         'actual_voters_count' => 1450,
     ]);
 
-    $updated = RecordStatistics::run('CURRIMAO-001', [
+    $updated = RecordStatistics::run([
         'actual_voters_count' => 1400,
     ]);
 
@@ -155,7 +155,7 @@ test('updates only specified fields without overwriting others', function () {
 });
 
 test('ignores unknown fields in payload', function () {
-    $updated = RecordStatistics::run('CURRIMAO-001', [
+    $updated = RecordStatistics::run([
         'spoiled_ballots_count' => 3,
         'foobar' => 999, // should be ignored
     ]);
@@ -164,7 +164,7 @@ test('ignores unknown fields in payload', function () {
     expect(isset($updated->foobar))->toBeFalse();
 });
 
-test('PATCH /precincts/{precinct}/statistics updates statistics via controller', function () {
+test('PATCH /precincts/statistics updates statistics via controller', function () {
     $payload = [
         'watchers_count' => 8,
         'registered_voters_count' => 1234,
@@ -172,7 +172,7 @@ test('PATCH /precincts/{precinct}/statistics updates statistics via controller',
     ];
 
     $response = $this->patchJson(
-        route('precinct.statistics', ['precinct' => 'CURRIMAO-001']),
+        route('precinct.statistics'),
         $payload
     );
 
@@ -193,7 +193,7 @@ test('PATCH /precincts/{precinct}/statistics updates statistics via controller',
 
 test('validates input data via controller', function () {
     $response = $this->patchJson(
-        route('precinct.statistics', ['precinct' => 'CURRIMAO-001']),
+        route('precinct.statistics'),
         ['watchers_count' => -5] // invalid
     );
 

@@ -3,6 +3,7 @@
 namespace TruthElection\Actions;
 
 use TruthElection\Support\ElectionStoreInterface;
+use TruthElection\Support\PrecinctContext;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Lorisleiva\Actions\ActionRequest;
 use TruthElection\Data\PrecinctData;
@@ -12,19 +13,23 @@ class InputPrecinctStatistics
 {
     use AsAction;
 
-    public function __construct(protected ElectionStoreInterface $store){}
+    public function __construct(
+        protected ElectionStoreInterface $store,
+        protected PrecinctContext $precinctContext
+    ) {}
 
     /**
      * Update statistical fields of the given Precinct using the provided payload.
      *
-     * @param  string  $precinctCode
      * @param  array   $payload
      * @return PrecinctData
      */
-    public function handle(string $precinctCode, array $payload): PrecinctData
+    public function handle(array $payload): PrecinctData
     {
         $store = $this->store;
-        $precinct = $store->getPrecinct($precinctCode);
+        $precinct = $this->precinctContext->getPrecinct();
+        $precinctCode = $precinct->code;
+//        $precinct = $store->getPrecinct($precinctCode);
 
         if (! $precinct) {
             throw new \RuntimeException("Precinct [$precinctCode] not found in memory.");
@@ -60,14 +65,13 @@ class InputPrecinctStatistics
     /**
      * PATCH /precincts/{precinct}/statistics
      *
-     * @param  string         $precinct
      * @param  ActionRequest  $request
      * @return JsonResponse
      */
-    public function asController(string $precinct, ActionRequest $request): JsonResponse
+    public function asController(ActionRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $updated = $this->handle($precinct, $validated);
+        $updated = $this->handle($validated);
 
         return response()->json($updated);
     }

@@ -442,3 +442,34 @@ it('returns an empty collection if electoral_inspectors is null', function () {
     expect($inspectors)->toBeInstanceOf(DataCollection::class)
         ->and($inspectors)->toHaveCount(0);
 });
+
+it('returns the first precinct if no code is provided', function () {
+    $store = new DatabaseElectionStore();
+
+    $precinct1 = PrecinctData::from([
+        'code' => 'PRECINCT-01',
+        'location_name' => 'City Hall',
+        'latitude' => 10.1,
+        'longitude' => 120.1,
+        'electoral_inspectors' => [],
+        'ballots' => [],
+    ]);
+
+    $precinct2 = PrecinctData::from([
+        'code' => 'PRECINCT-02',
+        'location_name' => 'Barangay Hall',
+        'latitude' => 11.2,
+        'longitude' => 121.2,
+        'electoral_inspectors' => [],
+        'ballots' => [],
+    ]);
+
+    $store->putPrecinct($precinct1);
+    $store->putPrecinct($precinct2);
+
+    $default = $store->getPrecinct(); // No code passed
+
+    expect($default)->not->toBeNull()
+        ->and($default->code)->toBe('PRECINCT-01') // The first one inserted
+        ->and($default->location_name)->toBe('City Hall');
+});

@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 class WrapUpVotingCommand extends Command
 {
     protected $signature = 'election:wrapup
-                            {precinct_code : The code of the precinct}
+                            {precinct_code? : The code of the precinct}
                             {--disk=local : The storage disk to use}
                             {--payload=minimal : The payload format (e.g. minimal, full)}
                             {--max_chars=1200 : Max characters per payload chunk}
@@ -22,7 +22,6 @@ class WrapUpVotingCommand extends Command
     {
         try {
             $result = WrapUpVoting::run(
-                precinctCode: $this->argument('precinct_code'),
                 disk: $this->option('disk'),
                 payload: $this->option('payload'),
                 maxChars: (int) $this->option('max_chars'),

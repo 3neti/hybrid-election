@@ -20,7 +20,7 @@ interface ElectionStoreInterface
 
     public function putBallot(BallotData $ballot, string $precinctCode): void;
 
-    public function getPrecinct(string $code): ?PrecinctData;
+    public function getPrecinct(?string $code = null): ?PrecinctData;
 
     public function putPrecinct(PrecinctData $precinct): void;
 

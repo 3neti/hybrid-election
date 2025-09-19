@@ -334,3 +334,34 @@ it('can retrieve inspectors for a precinct using getInspectorsForPrecinct()', fu
         ->and($inspectors[1]->id)->toBe('I-456')
         ->and($inspectors[1]->role->value)->toBe('member');
 });
+
+it('returns the first precinct if no code is provided', function () {
+    $store = InMemoryElectionStore::instance();
+    $store->reset();
+
+    $precinct1 = PrecinctData::from([
+        'id' => 'p1',
+        'code' => 'P-001',
+        'location_name' => 'Precinct One',
+        'latitude' => 10.0,
+        'longitude' => 120.0,
+        'electoral_inspectors' => [],
+    ]);
+
+    $precinct2 = PrecinctData::from([
+        'id' => 'p2',
+        'code' => 'P-002',
+        'location_name' => 'Precinct Two',
+        'latitude' => 11.0,
+        'longitude' => 121.0,
+        'electoral_inspectors' => [],
+    ]);
+
+    $store->putPrecinct($precinct1);
+    $store->putPrecinct($precinct2);
+
+    $defaultPrecinct = $store->getPrecinct(); // No code passed
+
+    expect($defaultPrecinct)->toBeInstanceOf(PrecinctData::class)
+        ->and($defaultPrecinct->code)->toBe('P-001'); // First added
+});

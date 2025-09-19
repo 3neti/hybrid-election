@@ -9,11 +9,10 @@ use Spatie\LaravelData\DataCollection;
 use TruthElection\Enums\Level;
 
 uses(ResetsElectionStore::class)->beforeEach(function () {
-
     $this->store = InMemoryElectionStore::instance();
     $this->store->reset();
 
-    $this->precinct = PrecinctData::from([
+    $this->store->putPrecinct(PrecinctData::from([
         'id' => 'PR001',
         'code' => 'PRECINCT-01',
         'location_name' => 'City Hall',
@@ -31,9 +30,7 @@ uses(ResetsElectionStore::class)->beforeEach(function () {
                 'role' => ElectoralInspectorRole::MEMBER,
             ],
         ]
-    ]);
-
-    $this->store->putPrecinct($this->precinct);
+    ]));
 
     $votes1 = collect([
         new VoteData(
@@ -83,8 +80,8 @@ uses(ResetsElectionStore::class)->beforeEach(function () {
         ),
     ]);
 
-    SubmitBallot::run('BAL-001', 'PRECINCT-01', $votes1);
-    SubmitBallot::run('BAL-001', 'PRECINCT-01', $votes2);
+    SubmitBallot::run('BAL-001', $votes1);
+    SubmitBallot::run('BAL-001', $votes2);
 
     $this->return = GenerateElectionReturn::run('PRECINCT-01');
 
@@ -105,13 +102,13 @@ test('updates all precinct statistics fields', function () {
         'void_ballots_count' => 0,
     ];
 
-    $updated = InputPrecinctStatistics::run($this->precinct->code, $payload);
+    $updated = InputPrecinctStatistics::run($payload);
 
     foreach ($payload as $key => $expected) {
         expect($updated->{$key})->toBe($expected);
     }
 
-    $stored = $this->store->precincts[$this->precinct->code];
+    $stored = $this->store->getPrecinct();
 
     foreach ($payload as $key => $expected) {
         expect($stored->{$key})->toBe($expected);
@@ -119,16 +116,14 @@ test('updates all precinct statistics fields', function () {
 });
 
 test('allows partial updates without affecting other fields', function () {
-    $code = $this->precinct->code;
-
     // Step 1: set initial values
-    InputPrecinctStatistics::run($code, [
+    InputPrecinctStatistics::run([
         'watchers_count' => 5,
         'registered_voters_count' => 1000,
     ]);
 
     // Step 2: update only watchers_count
-    $updated = InputPrecinctStatistics::run($code, [
+    $updated = InputPrecinctStatistics::run([
         'watchers_count' => 8,
     ]);
 
@@ -136,7 +131,7 @@ test('allows partial updates without affecting other fields', function () {
         ->watchers_count->toBe(8)
         ->registered_voters_count->toBe(1000); // should remain
 
-    $stored = $this->store->precincts[$code];
+    $stored = $this->store->getPrecinct();
 
     expect($stored)
         ->watchers_count->toBe(8)
@@ -144,13 +139,11 @@ test('allows partial updates without affecting other fields', function () {
 });
 
 test('allows setting fields to null', function () {
-    $code = $this->precinct->code;
-
-    InputPrecinctStatistics::run($code, [
+    InputPrecinctStatistics::run([
         'unused_ballots_count' => 30,
     ]);
 
-    $updated = InputPrecinctStatistics::run($code, [
+    $updated = InputPrecinctStatistics::run([
         'unused_ballots_count' => null,
     ]);
 
@@ -158,9 +151,7 @@ test('allows setting fields to null', function () {
 });
 
 test('ignores invalid keys in payload', function () {
-    $code = $this->precinct->code;
-
-    $updated = InputPrecinctStatistics::run($code, [
+    $updated = InputPrecinctStatistics::run([
         'watchers_count' => 7,
         'invalid_key' => 999,
     ]);
@@ -172,29 +163,29 @@ test('ignores invalid keys in payload', function () {
 test('sets the closed_at timestamp properly', function () {
     $now = now()->toIso8601String();
 
-    $updated = InputPrecinctStatistics::run($this->precinct->code, [
+    $updated = InputPrecinctStatistics::run([
         'closed_at' => $now,
     ]);
 
     expect($updated->closed_at)->toBe($now);
 
-    $stored = $this->store->precincts[$this->precinct->code];
+    $stored = $this->store->getPrecinct();
     expect($stored->closed_at)->toBe($now);
 });
 
 test('allows closed_at to be set to null', function () {
     // First set it to a value
-    InputPrecinctStatistics::run($this->precinct->code, [
+    InputPrecinctStatistics::run([
         'closed_at' => now()->toIso8601String(),
     ]);
 
     // Then set it to null
-    $updated = InputPrecinctStatistics::run($this->precinct->code, [
+    $updated = InputPrecinctStatistics::run([
         'closed_at' => null,
     ]);
 
     expect($updated->closed_at)->toBeNull();
 
-    $stored = $this->store->precincts[$this->precinct->code];
+    $stored = $this->store->getPrecinct();
     expect($stored->closed_at)->toBeNull();
 });

@@ -40,7 +40,8 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
 
 test('artisan election:cast works via json option', function () {
     $this->artisan('election:cast', [
-        '--json' => '{"ballot_code":"BAL001","precinct_code":"CURRIMAO-001","votes":[{"position":{"code":"PRESIDENT","name":"President","level":"national","count":1},"candidates":[{"code":"LD_001","name":"Leonardo DiCaprio","alias":"LD","position":{"code":"PRESIDENT","name":"President","level":"national","count":1}}]},{"position":{"code":"VICE-PRESIDENT","name":"Vice President","level":"national","count":1},"candidates":[{"code":"TH_001","name":"Tom Hanks","alias":"TH","position":{"code":"VICE-PRESIDENT","name":"Vice President","level":"national","count":1}}]}]}',
+        '--json' => '{"ballot_code":"BAL001","votes":[{"position":{"code":"PRESIDENT","name":"President","level":"national","count":1},"candidates":[{"code":"LD_001","name":"Leonardo DiCaprio","alias":"LD","position":{"code":"PRESIDENT","name":"President","level":"national","count":1}}]},{"position":{"code":"VICE-PRESIDENT","name":"Vice President","level":"national","count":1},"candidates":[{"code":"TH_001","name":"Tom Hanks","alias":"TH","position":{"code":"VICE-PRESIDENT","name":"Vice President","level":"national","count":1}}]}]}',
+//        '--json' => '{"ballot_code":"BAL001","precinct_code":"CURRIMAO-001","votes":[{"position":{"code":"PRESIDENT","name":"President","level":"national","count":1},"candidates":[{"code":"LD_001","name":"Leonardo DiCaprio","alias":"LD","position":{"code":"PRESIDENT","name":"President","level":"national","count":1}}]},{"position":{"code":"VICE-PRESIDENT","name":"Vice President","level":"national","count":1},"candidates":[{"code":"TH_001","name":"Tom Hanks","alias":"TH","position":{"code":"VICE-PRESIDENT","name":"Vice President","level":"national","count":1}}]}]}',
     ])
         ->expectsOutputToContain('✅ Ballot successfully cast')
         ->assertExitCode(0);
@@ -61,7 +62,7 @@ test('artisan election:cast works via json file', function () {
 
 test('artisan election:cast fails with malformed JSON string', function () {
     $this->artisan('election:cast', [
-        '--json' => '{"ballot_code": "BAL001", "precinct_code": "P-001", "votes": [}', // malformed JSON
+        '--json' => '{"ballot_code": "BAL001", "votes": [}', // malformed JSON
     ])
         ->expectsOutputToContain('❌ Failed to parse JSON: State mismatch (invalid or malformed JSON')
         ->assertExitCode(1);
@@ -125,13 +126,12 @@ test('election:cast uses CastBallot instance and returns expected output', funct
     $votes = collect($castInput['votes']); // May or may not match run() arg structure
 
     $mock = \Mockery::mock(CastBallot::class);
-    $args = compact('ballotCode', 'precinctCode', 'votes');
+    $args = compact('ballotCode', 'votes');
 
     $mock->shouldReceive('run')
         ->once()
-        ->withArgs(function (...$args) use ($ballotCode, $precinctCode, $votes) {
+        ->withArgs(function (...$args) use ($ballotCode, $votes) {
             return $ballotCode === 'BALLOT-001'
-                && $precinctCode === 'CURRIMAO-001'
                 && $votes->count() === 2;
         })
         ->andReturn($expectedBallot);

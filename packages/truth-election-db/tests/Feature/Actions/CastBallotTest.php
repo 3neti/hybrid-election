@@ -58,7 +58,6 @@ dataset('votes', function () {
 it('successfully casts a ballot using CastBallot::handle()', function (Collection $votes) {
     $data = CastBallot::run(
         ballotCode: 'BALLOT-123',
-        precinctCode: 'CURRIMAO-001',
         votes: $votes,
     );
     expect($data)->toBeInstanceOf(BallotData::class);
@@ -75,7 +74,6 @@ it('successfully casts a ballot using CastBallot::handle()', function (Collectio
 it('casts a ballot successfully via controller', function (Collection $votes) {
     $response = $this->postJson(route('ballot.cast'), [
         'ballot_code' => 'BALLOT-001',
-        'precinct_code' => 'CURRIMAO-001',
         'votes' => $votes->toArray(),
     ]);
 
@@ -100,30 +98,13 @@ it('validates missing fields', function () {
     $response->assertStatus(422)
         ->assertJsonValidationErrors([
             'ballot_code',
-            'precinct_code',
             'votes',
         ]);
-});
-
-it('rejects unknown precincts', function () {
-    $response = $this->postJson('/ballot/cast', [
-        'ballot_code' => 'BALLOT-002',
-        'precinct_code' => 'UNKNOWN-999',
-        'votes' => [
-            [
-                'position_code' => 'PRESIDENT',
-                'candidate_code' => 'ACTOR-001',
-            ],
-        ],
-    ]);
-
-    $response->assertStatus(422); // Unprocessible entity
 });
 
 it('fails when candidate code is missing', function () {
     $response = $this->postJson(route('ballot.cast'), [
         'ballot_code' => 'BALLOT-003',
-        'precinct_code' => 'CURRIMAO-001',
         'votes' => [
             [
                 'position' => ['code' => 'PRESIDENT'],
@@ -140,7 +121,6 @@ it('fails when candidate code is missing', function () {
 it('fails when votes is not an array of objects', function () {
     $response = $this->postJson(route('ballot.cast'), [
         'ballot_code' => 'BALLOT-004',
-        'precinct_code' => 'CURRIMAO-001',
         'votes' => 'not-an-array',
     ]);
 
@@ -152,14 +132,12 @@ it('rejects duplicate ballot codes for the same precinct', function (Collection 
     // First submission should succeed
     $this->postJson(route('ballot.cast'), [
         'ballot_code' => 'BALLOT-999',
-        'precinct_code' => 'CURRIMAO-001',
         'votes' => $votes->toArray(),
     ])->assertOk();
 
     // Second submission: expect exception
     $response = $this->postJson(route('ballot.cast'), [
         'ballot_code' => 'BALLOT-999',
-        'precinct_code' => 'CURRIMAO-001',
         'votes' => $votes->toArray(),
     ]);
 

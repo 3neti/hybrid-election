@@ -7,8 +7,8 @@ use TruthElection\Data\{BallotData, CandidateData, ElectionReturnData, Electoral
 use TruthElectionDb\Models\{Ballot, Candidate, ElectionReturn, Position, Precinct};
 use TruthElection\Support\ElectionStoreInterface;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\{Cache, DB};
 use Spatie\LaravelData\DataCollection;
-use Illuminate\Support\Facades\DB;
 
 class DatabaseElectionStore implements ElectionStoreInterface
 {
@@ -64,10 +64,42 @@ class DatabaseElectionStore implements ElectionStoreInterface
         });
     }
 
-    public function getPrecinct(string $code): ?PrecinctData
+//    public function getPrecinct(?string $code = null): ?PrecinctData
+//    {
+//        $key = $code ? "precinct:{$code}" : 'precinct:first';
+//
+//        return Cache::remember($key, now()->addMinutes(10), function () use ($code) {
+//            $model = $code
+//                ? Precinct::whereCode($code)->first()
+//                : Precinct::first();
+//
+//            return $model?->getData(); // convert to PrecinctData
+//        });
+//    }
+    public function getPrecinct(?string $code = null): ?PrecinctData
     {
+        if ($code === null) {
+            return Precinct::first()?->getData();
+        }
+
         return Precinct::whereCode($code)->first()?->getData();
     }
+
+//    public function putPrecinct(PrecinctData $precinct): void
+//    {
+//        DB::transaction(function () use ($precinct) {
+//            Precinct::fromData($precinct);
+//
+//            // Refresh the cache
+//            $code = $precinct->code;
+//
+//            $key = $code ? "precinct:{$code}" : 'precinct:first';
+//
+//            // Optional: use tags if supported
+//            Cache::forget($key);
+//            Cache::put($key, $precinct, now()->addMinutes(10));
+//        });
+//    }
 
     public function putPrecinct(PrecinctData $precinct): void
     {

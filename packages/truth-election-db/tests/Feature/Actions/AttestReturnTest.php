@@ -20,7 +20,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
 
     SetupElection::run();
 
-    CastBallot::run('BAL-001', 'CURRIMAO-001', collect([
+    CastBallot::run('BAL-001', collect([
         new VoteData(
             candidates: new DataCollection(CandidateData::class, [
                 new CandidateData(code: 'CANDIDATE-001', name: 'Juan Dela Cruz', alias: 'JUAN', position: new PositionData(
@@ -44,7 +44,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
         ),
     ]));
 
-    CastBallot::run('BAL-002', 'CURRIMAO-001', collect([
+    CastBallot::run('BAL-002', collect([
         new VoteData(
             candidates: new DataCollection(CandidateData::class, [
                 new CandidateData(code: 'CANDIDATE-004', name: 'Jose Rizal', alias: 'JOSE', position: new PositionData(
@@ -68,7 +68,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
         ),
     ]));
 
-    CastBallot::run('BAL-003', 'CURRIMAO-001', collect([
+    CastBallot::run('BAL-003', collect([
         new VoteData(
             candidates: new DataCollection(CandidateData::class, [
                 new CandidateData(code: 'CANDIDATE-006', name: 'Emilio Aguinaldo', alias: 'EMILIO', position: $position = new PositionData(

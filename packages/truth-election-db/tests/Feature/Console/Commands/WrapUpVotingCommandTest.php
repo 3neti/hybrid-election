@@ -27,9 +27,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
         '--json' => '{"ballot_code":"BAL001","precinct_code":"CURRIMAO-001","votes":[{"position":{"code":"PRESIDENT","name":"President","level":"national","count":1},"candidates":[{"code":"LD_001","name":"Leonardo DiCaprio","alias":"LD","position":{"code":"PRESIDENT","name":"President","level":"national","count":1}}]}]}'
     ])->assertExitCode(0);
 
-    $this->artisan('election:tally', [
-        'precinct_code' => 'CURRIMAO-001',
-    ]);
+    $this->artisan('election:tally');
 
     $er = app(ElectionStoreInterface::class)->getElectionReturnByPrecinct('CURRIMAO-001');
     $this->er_code = $er->code;
@@ -43,7 +41,6 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
     ]);
 
     $this->artisan('election:record-statistics', [
-        'precinct_code' => 'CURRIMAO-001',
         '--payload' => $jsonPayload,
     ]);
 });
@@ -60,7 +57,6 @@ test('artisan election:wrapup completes and finalizes return', function () {
     ]);
 
     $this->artisan('election:wrapup', [
-        'precinct_code' => 'CURRIMAO-001',
         '--disk' => 'local',
         '--payload' => 'minimal',
         '--max_chars' => 1200,
@@ -87,9 +83,7 @@ test('artisan election:wrapup throws if already finalized without --force', func
     $precinct->closed_at = now()->toISOString();
     $precinct->save();
 
-    $this->artisan('election:wrapup', [
-        'precinct_code' => 'CURRIMAO-001',
-    ])
+    $this->artisan('election:wrapup')
 //        ->expectsOutputToContain('Balloting already closed. Nothing to do.')
         ->assertExitCode(1)
     ;
@@ -102,7 +96,6 @@ test('artisan election:wrapup fails if signatures are incomplete', function () {
     ]);
 
     $this->artisan('election:wrapup', [
-        'precinct_code' => 'CURRIMAO-001',
         '--force' => false,
     ])
 //        ->expectsOutputToContain('Signature validation failed')
@@ -246,10 +239,9 @@ test('artisan election:wrapup invokes WrapUpVoting::run with expected args', fun
     $mock->shouldReceive('handle')
         ->once()
         ->withArgs(function (...$args) {
-            [$precinctCode, $disk, $payload, $maxChars, $dir, $force] = $args;
+            [$disk, $payload, $maxChars, $dir, $force] = $args;
 
-            return $precinctCode === 'CURRIMAO-001'
-                && $disk === 'local'
+            return $disk === 'local'
                 && $payload === 'minimal'
                 && $maxChars === 1200
                 && $dir === 'final'
@@ -260,7 +252,6 @@ test('artisan election:wrapup invokes WrapUpVoting::run with expected args', fun
     app()->instance(WrapUpVoting::class, $mock);
 
     $exitCode = Artisan::call('election:wrapup', [
-        'precinct_code' => 'CURRIMAO-001',
         '--disk' => 'local',
         '--payload' => 'minimal',
         '--max_chars' => 1200,

@@ -9,15 +9,14 @@ use Illuminate\Console\Command;
 
 class RecordStatisticsCommand extends Command
 {
+    //TODO: payload should be an argument and not an option
     protected $signature = 'election:record-statistics
-                            {precinct_code : The code of the precinct to update}
                             {--payload= : JSON payload of statistics to update}';
 
     protected $description = 'Record statistics (watchers, voters, ballots, etc.) for a given precinct';
 
     public function handle(): int
     {
-        $precinctCode = $this->argument('precinct_code');
         $payloadRaw   = $this->option('payload');
 
         if (! $payloadRaw) {
@@ -48,9 +47,9 @@ class RecordStatisticsCommand extends Command
         }
 
         try {
-            $updated = RecordStatistics::run($precinctCode, $validated);
+            $updated = RecordStatistics::run($validated);
 
-            $this->info("✅ Statistics successfully recorded for precinct: $precinctCode");
+            $this->info("✅ Statistics successfully recorded for precinct: {$updated->code}");
             foreach ($validated as $key => $val) {
                 $this->line(" - $key: " . ($val ?? 'null'));
             }

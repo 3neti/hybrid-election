@@ -83,8 +83,8 @@ uses(ResetsElectionStore::class)->beforeEach(function () {
         ),
     ]);
 
-    SubmitBallot::run('BAL-001', 'PRECINCT-01', $votes1);
-    SubmitBallot::run('BAL-001', 'PRECINCT-01', $votes2);
+    SubmitBallot::run('BAL-001', $votes1);
+    SubmitBallot::run('BAL-001', $votes2);
 
     $this->return = GenerateElectionReturn::run('PRECINCT-01');
 });

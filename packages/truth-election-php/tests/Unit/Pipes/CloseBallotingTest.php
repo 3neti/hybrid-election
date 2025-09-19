@@ -82,8 +82,8 @@ uses(ResetsElectionStore::class)->beforeEach(function () {
         ),
     ]);
 
-    SubmitBallot::run('BAL-001', 'PRECINCT-01', $votes1);
-    SubmitBallot::run('BAL-001', 'PRECINCT-01', $votes2);
+    SubmitBallot::run('BAL-001', $votes1);
+    SubmitBallot::run('BAL-001', $votes2);
 
     $return = GenerateElectionReturn::run('PRECINCT-01');
 
@@ -143,8 +143,8 @@ test('close balloting sets closed_at if not set', function () {
 test('close balloting does not overwrite closed_at if already set', function () {
     $firstClosedAt = now()->toISOString();
 
+//    $precinct = test()->precinct;
     \TruthElection\Actions\InputPrecinctStatistics::run(
-        test()->precinct->code,
         ['closed_at' => $firstClosedAt]
     );
 

@@ -28,7 +28,7 @@ class CastBallotCommand extends Command
         try {
             $ballot = CastBallot::make()->run(
                 ballotCode: $data['ballot_code'] ?? null,
-                precinctCode: $data['precinct_code'] ?? null,
+//                precinctCode: $data['precinct_code'] ?? null,
                 votes: collect($data['votes'] ?? [])
             );
 

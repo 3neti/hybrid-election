@@ -23,14 +23,12 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
 
     // Cast a valid ballot
     $this->artisan('election:cast', [
-        '--json' => '{"ballot_code":"BAL001","precinct_code":"CURRIMAO-001","votes":[{"position":{"code":"PRESIDENT","name":"President","level":"national","count":1},"candidates":[{"code":"LD_001","name":"Leonardo DiCaprio","alias":"LD","position":{"code":"PRESIDENT","name":"President","level":"national","count":1}}]}]}',
+        '--json' => '{"ballot_code":"BAL001","votes":[{"position":{"code":"PRESIDENT","name":"President","level":"national","count":1},"candidates":[{"code":"LD_001","name":"Leonardo DiCaprio","alias":"LD","position":{"code":"PRESIDENT","name":"President","level":"national","count":1}}]}]}',
     ])->assertExitCode(0);
 });
 
 test('artisan election:tally shows expected vote tally for precinct', function () {
-    $this->artisan('election:tally', [
-        'precinct_code' => 'CURRIMAO-001',
-    ])
+    $this->artisan('election:tally')
         ->expectsOutputToContain('✅ Tally complete:')
         ->expectsOutputToContain('Precinct: CURRIMAO-001')
         ->expectsOutputToContain('Position: President')
@@ -39,19 +37,16 @@ test('artisan election:tally shows expected vote tally for precinct', function (
     ;
 });
 
-test('artisan election:tally fails when precinct code does not exist', function () {
-    $this->artisan('election:tally', [
-        'precinct_code' => 'NONEXISTENT-999',
-    ])
-        ->expectsOutputToContain('❌ Error generating tally:')
-        ->assertExitCode(1);
-});
+//test('artisan election:tally fails when precinct code does not exist', function () {
+//    $this->artisan('election:tally', [
+//        'precinct_code' => 'NONEXISTENT-999',
+//    ])
+//        ->expectsOutputToContain('❌ Error generating tally:')
+//        ->assertExitCode(1);
+//})->skip();
 
 test('artisan election:tally invokes TallyVotes::run and shows output', function () {
     // Given
-    $precinctCode = 'CURRIMAO-001';
-
-    // 🎯 Create a mock ElectionReturnData
     $json = [
         'id' => 'uuid-er-001',
         'code' => 'ER-001',
@@ -178,15 +173,12 @@ test('artisan election:tally invokes TallyVotes::run and shows output', function
     $mock = \Mockery::mock(TallyVotes::class);
     $mock->shouldReceive('run')
         ->once()
-        ->with($precinctCode, null)
         ->andReturn($mockReturn);
 
     $this->app->instance(TallyVotes::class, $mock);
 
     // When
-    $exitCode = Artisan::call('election:tally', [
-        'precinct_code' => $precinctCode,
-    ]);
+    $exitCode = Artisan::call('election:tally');
 
     // Then
     $output = Artisan::output();
@@ -198,8 +190,7 @@ test('artisan election:tally invokes TallyVotes::run and shows output', function
 });
 
 test('artisan election:tally with optional electionReturnCode invokes TallyVotes::run correctly', function () {
-// Given
-    $precinctCode = 'CURRIMAO-001';
+    // Given
     $electionReturnCode = 'ER-XYZ';
 
     $mockReturn = ElectionReturnData::from([
@@ -326,14 +317,13 @@ test('artisan election:tally with optional electionReturnCode invokes TallyVotes
     $mock = \Mockery::mock(TallyVotes::class);
     $mock->shouldReceive('run')
         ->once()
-        ->with($precinctCode, $electionReturnCode)
+        ->with($electionReturnCode)
         ->andReturn($mockReturn);
 
     $this->app->instance(TallyVotes::class, $mock);
 
     // When
     $exitCode = Artisan::call('election:tally', [
-        'precinct_code' => $precinctCode,
         'election_return_code' => $electionReturnCode,
     ]);
 

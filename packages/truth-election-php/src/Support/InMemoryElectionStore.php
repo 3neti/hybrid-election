@@ -86,8 +86,12 @@ class InMemoryElectionStore implements ElectionStoreInterface
         ]);
     }
 
-    public function getPrecinct(string $code): ?PrecinctData
+    public function getPrecinct(?string $code = null): ?PrecinctData
     {
+        if ($code === null) {
+            return collect($this->precincts)->values()->first();
+        }
+
         return $this->precincts[$code] ?? null;
     }
 

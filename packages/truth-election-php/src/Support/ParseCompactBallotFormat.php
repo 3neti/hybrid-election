@@ -5,7 +5,8 @@ namespace TruthElection\Support;
 class ParseCompactBallotFormat
 {
     public function __construct(
-        protected ElectionStoreInterface $store
+        protected ElectionStoreInterface $store,
+        protected PrecinctContext $precinctContext
     ) {}
 
     /**
@@ -28,10 +29,9 @@ class ParseCompactBallotFormat
      *   }
      *
      * @param  string  $compact
-     * @param  string  $precinctCode
      * @return string  JSON string
      */
-    public function __invoke(string $compact, string $precinctCode): string
+    public function __invoke(string $compact): string
     {
         [$ballotCode, $votesPart] = explode('|', $compact, 2);
 
@@ -62,9 +62,15 @@ class ParseCompactBallotFormat
             ];
         }
 
+        $precinct = $this->precinctContext->getPrecinct();
+
+        if (!$precinct) {
+            throw new \RuntimeException("Precinct not found.");
+        }
+
         return json_encode([
             'ballot_code'    => $ballotCode,
-            'precinct_code'  => $precinctCode,
+            'precinct_code'  => $precinct->code,
             'votes'          => $votes,
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     }

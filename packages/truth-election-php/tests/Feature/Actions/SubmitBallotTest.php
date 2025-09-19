@@ -68,11 +68,10 @@ uses(ResetsElectionStore::class)->beforeEach(function () {
 });
 
 it('submits a ballot to an existing precinct', function () {
-    $ballot = SubmitBallot::run('BAL-001', 'PRECINCT-01', $this->votes);
-//dd($this->store->getBallots($this->precinct->code)->toCollection());
+    $ballot = SubmitBallot::run('BAL-001', $this->votes);
+
     expect($ballot)->toBeInstanceOf(BallotData::class)
         ->and($ballot->code)->toBe('BAL-001')
-//        ->and($ballot->precinct->code)->toBe('PRECINCT-01')
         ->and($ballot->votes)->toHaveCount(2)
         ->and(
             $this->store
@@ -81,16 +80,11 @@ it('submits a ballot to an existing precinct', function () {
                 ->keyBy('code')
                 ->all()
         )->toHaveKey('BAL-001');
-//        ->and($this->store->ballots)->toHaveKey('BAL-001')
     ;
 });
 
-it('throws if precinct does not exist', function () {
-    SubmitBallot::run('BAL-002', 'NONEXISTENT', $this->votes);
-})->throws(RuntimeException::class, 'Precinct [NONEXISTENT] not found.');
-
 it('stores vote data correctly', function () {
-    $ballot = SubmitBallot::run('BAL-003', 'PRECINCT-01', $this->votes);
+    $ballot = SubmitBallot::run('BAL-003', $this->votes);
 
     $vote1 = $ballot->votes[0];
     $vote2 = $ballot->votes[1];

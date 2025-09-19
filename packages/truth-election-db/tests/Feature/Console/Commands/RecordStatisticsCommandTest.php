@@ -28,9 +28,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
         '--json' => '{"ballot_code":"BAL001","precinct_code":"CURRIMAO-001","votes":[{"position":{"code":"PRESIDENT","name":"President","level":"national","count":1},"candidates":[{"code":"LD_001","name":"Leonardo DiCaprio","alias":"LD","position":{"code":"PRESIDENT","name":"President","level":"national","count":1}}]}]}'
     ])->assertExitCode(0);
 
-    $this->artisan('election:tally', [
-        'precinct_code' => 'CURRIMAO-001',
-    ]);
+    $this->artisan('election:tally');
 
     $er = app(ElectionStoreInterface::class)->getElectionReturnByPrecinct('CURRIMAO-001');
     $code = $er->code;
@@ -58,7 +56,7 @@ test('artisan election:record-statistics persists statistics fields', function (
     $jsonPayload = json_encode($payload);
 
     $this->artisan('election:record-statistics', [
-        'precinct_code' => 'CURRIMAO-001',
+//        'precinct_code' => 'CURRIMAO-001',
         '--payload' => $jsonPayload,
     ])
         ->expectsOutputToContain('✅ Statistics successfully recorded for precinct: CURRIMAO-001')
@@ -75,7 +73,6 @@ test('artisan election:record-statistics persists statistics fields', function (
 
 test('artisan election:record-statistics fails with malformed JSON', function () {
     $this->artisan('election:record-statistics', [
-        'precinct_code' => 'CURRIMAO-001',
         '--payload' => '{"watchers_count": 5,,}',
     ])
         ->expectsOutputToContain('❌ Invalid JSON payload:')
@@ -84,7 +81,6 @@ test('artisan election:record-statistics fails with malformed JSON', function ()
 
 test('artisan election:record-statistics fails with invalid data', function () {
     $this->artisan('election:record-statistics', [
-        'precinct_code' => 'CURRIMAO-001',
         '--payload' => json_encode(['actual_voters_count' => -12]),
     ])
         ->expectsOutputToContain('❌ Validation failed:')
@@ -92,18 +88,17 @@ test('artisan election:record-statistics fails with invalid data', function () {
         ->assertExitCode(1);
 });
 
-test('artisan election:record-statistics fails with unknown precinct', function () {
-    $this->artisan('election:record-statistics', [
-        'precinct_code' => 'DOES-NOT-EXIST',
-        '--payload' => json_encode(['watchers_count' => 1]),
-    ])
-        ->expectsOutputToContain('❌ Failed to record statistics: Precinct [DOES-NOT-EXIST] not found in memory.')
-        ->assertExitCode(1);
-});
+//test('artisan election:record-statistics fails with unknown precinct', function () {
+//    $this->artisan('election:record-statistics', [
+//        'precinct_code' => 'DOES-NOT-EXIST',
+//        '--payload' => json_encode(['watchers_count' => 1]),
+//    ])
+//        ->expectsOutputToContain('❌ Failed to record statistics: Precinct [DOES-NOT-EXIST] not found in memory.')
+//        ->assertExitCode(1);
+//});
 
 test('artisan election:record-statistics fails when payload is missing', function () {
     $this->artisan('election:record-statistics', [
-        'precinct_code' => 'CURRIMAO-001',
         // no --payload
     ])
         ->expectsOutputToContain('❌ Please provide a JSON payload using the --payload option.')
@@ -148,7 +143,7 @@ test('artisan election:record-statistics invokes RecordStatistics::run and shows
     // Stub the run method to simulate a successful call
     $mock->shouldReceive('handle')
         ->once()
-        ->with($precinct_code, $payloadArray)
+        ->with($payloadArray)
         ->andReturn($expectedPrecinctData);
 
     // Bind mock to container
@@ -156,7 +151,6 @@ test('artisan election:record-statistics invokes RecordStatistics::run and shows
 
     // Act
     $exitCode = Artisan::call('election:record-statistics', [
-        'precinct_code' => $precinct_code,
         '--payload' => $payloadJson,
     ]);
 

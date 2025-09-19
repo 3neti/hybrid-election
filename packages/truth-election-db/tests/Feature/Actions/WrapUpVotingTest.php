@@ -20,7 +20,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
 
     SetupElection::run();
 
-    CastBallot::run('BAL-001', 'CURRIMAO-001', collect([
+    CastBallot::run('BAL-001', collect([
         new VoteData(
             candidates: new DataCollection(CandidateData::class, [
                 new CandidateData(code: 'CANDIDATE-001', name: 'Juan Dela Cruz', alias: 'JUAN', position: new PositionData(
@@ -44,7 +44,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
         ),
     ]));
 
-    CastBallot::run('BAL-002', 'CURRIMAO-001', collect([
+    CastBallot::run('BAL-002', collect([
         new VoteData(
             candidates: new DataCollection(CandidateData::class, [
                 new CandidateData(code: 'CANDIDATE-004', name: 'Jose Rizal', alias: 'JOSE', position: new PositionData(
@@ -68,7 +68,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
         ),
     ]));
 
-    CastBallot::run('BAL-003', 'CURRIMAO-001', collect([
+    CastBallot::run('BAL-003', collect([
         new VoteData(
             candidates: new DataCollection(CandidateData::class, [
                 new CandidateData(code: 'CANDIDATE-006', name: 'Emilio Aguinaldo', alias: 'EMILIO', position: $position = new PositionData(
@@ -93,13 +93,12 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
         ),
     ]));
 
-    $this->return = app(TallyVotes::class)->run('CURRIMAO-001');
+    $this->return = app(TallyVotes::class)->run();
 
 });
 
 test('wraps up voting and generates final return', function () {
     $result = app(WrapUpVoting::class)->run(
-        precinctCode: 'CURRIMAO-001',
         disk: 'local',
         payload: 'minimal',
         maxChars: 1000,
@@ -117,7 +116,6 @@ test('wraps up voting and generates final return', function () {
 test('fails if signatures are missing and force is false', function () {
     // Assume signatures were NOT added to the ElectionReturn
     expect(fn() => WrapUpVoting::run(
-        'CURRIMAO-001',
         disk: 'local',
         payload: 'minimal',
         maxChars: 1000,
@@ -134,7 +132,6 @@ test('succeeds if signatures are present and valid', function () {
     AttestReturn::run(SignPayloadData::fromQrString('BEI:uuid-maria:signature456'), $er->code);
 
     $result = WrapUpVoting::run(
-        'CURRIMAO-001',
         disk: 'local',
         payload: 'minimal',
         maxChars: 1000,
@@ -148,7 +145,6 @@ test('succeeds if signatures are present and valid', function () {
 
 test('bypasses signature validation when force is true', function () {
     $result = WrapUpVoting::run(
-        'CURRIMAO-001',
         disk: 'local',
         payload: 'minimal',
         maxChars: 1000,
@@ -164,7 +160,6 @@ test('sets closed_at if not previously set', function () {
     expect($precinct->closed_at)->toBeNull();
 
     WrapUpVoting::run(
-        'CURRIMAO-001',
         disk: 'local',
         payload: 'minimal',
         maxChars: 1000,
@@ -188,7 +183,6 @@ test('does not overwrite closed_at if already set', function () {
     );
 
     WrapUpVoting::run(
-        'CURRIMAO-001',
         disk: 'local',
         payload: 'minimal',
         maxChars: 1000,

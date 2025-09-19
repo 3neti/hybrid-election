@@ -102,14 +102,14 @@ uses(ResetsElectionStore::class)->beforeEach(function () {
         ),
     ]);
 
-    SubmitBallot::run('BAL-001', 'PRECINCT-01', $votes1); // valid
-    SubmitBallot::run('BAL-002', 'PRECINCT-01', $votes2); // valid
-    SubmitBallot::run('BAL-003', 'PRECINCT-01', $votes3); // overvote (13 senators), should be rejected
+    SubmitBallot::run('BAL-001', $votes1); // valid
+    SubmitBallot::run('BAL-002', $votes2); // valid
+    SubmitBallot::run('BAL-003', $votes3); // overvote (13 senators), should be rejected
 });
 
 it('generates an election return from in-memory data', function () {
 
-    $return = GenerateElectionReturn::run('PRECINCT-01');
+    $return = GenerateElectionReturn::run();
 
     expect($return)->toBeInstanceOf(ElectionReturnData::class)
         ->and($return->precinct->code)->toBe('PRECINCT-01')
@@ -120,7 +120,7 @@ it('generates an election return from in-memory data', function () {
 });
 
 it('generates an election return with correct tallies', function () {
-    $return = GenerateElectionReturn::run('PRECINCT-01');
+    $return = GenerateElectionReturn::run();
 
     expect($return)->toBeInstanceOf(ElectionReturnData::class)
         ->and($return->precinct->code)->toBe('PRECINCT-01')
@@ -158,7 +158,7 @@ it('generates an election return with correct tallies', function () {
 it('stores election return in the election store', function () {
     expect($this->store->electionReturns)->toBeEmpty();
 
-    $return = GenerateElectionReturn::run('PRECINCT-01');
+    $return = GenerateElectionReturn::run();
 
     expect($return)->toBeInstanceOf(ElectionReturnData::class)
         ->and($return->ballots)->toHaveCount(3)
@@ -177,7 +177,7 @@ it('generates an election return with a custom code', function () {
     $customCode = 'ER-PRECINCT-01-CUSTOM';
 
     // Run GenerateElectionReturn with optional electionReturnCode
-    $return = GenerateElectionReturn::run('PRECINCT-01', $customCode);
+    $return = GenerateElectionReturn::run($customCode);
 
     expect($return)->toBeInstanceOf(ElectionReturnData::class)
         ->and($return->code)->toBe($customCode)
