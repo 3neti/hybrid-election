@@ -2,15 +2,13 @@
 
 namespace TruthElection\Support;
 
-use TruthElection\Data\BallotData;
-use TruthElection\Data\ElectionReturnData;
-use TruthElection\Data\ElectoralInspectorData;
+use TruthElection\Data\{BallotData, ElectionReturnData, ElectoralInspectorData};
 use Spatie\LaravelData\DataCollection;
 use TruthElection\Data\PrecinctData;
 
 class PrecinctContext
 {
-    protected ?PrecinctData $precinct = null;
+    public ?PrecinctData $precinct = null;
 
     public function __construct(
         protected ElectionStoreInterface $store,
@@ -35,10 +33,43 @@ class PrecinctContext
         return $this->store->getBallots($this->getPrecinct()->code);
     }
 
-    public function putBallot(BallotData $ballot): void
+    /**
+     * Store or merge a ballot under the given precinct code.
+     *
+     * @param BallotData $ballot - must have precinct_code already set
+     */
+    public function putBallot(BallotData $incoming): void
     {
-        $this->store->putBallot($ballot, $this->getPrecinct()->code);
+        $existing = $this->getBallots()
+            ->toCollection()
+            ->firstWhere('code', $incoming->code);
+
+        if ($existing) {
+            $merged = $existing->mergeWith($incoming);
+            $merged->setPrecinctCode($this->code());
+
+            logger()->info("[Ballot Merge] Updated page for ballot: {$incoming->code}", [
+                'precinct' => $this->code(),
+                'votes' => $incoming->votes->count(),
+                'mergedVotes' => $merged->votes->count(),
+            ]);
+
+            $this->store->putBallot($merged, $this->code());
+
+        } else {
+            logger()->info("[Ballot Add] New ballot received: {$incoming->code}", [
+                'precinct' => $this->code(),
+                'votes' => $incoming->votes->count(),
+            ]);
+
+            $this->store->putBallot($incoming, $this->code());
+        }
     }
+
+//    public function putBallot(BallotData $ballot): void
+//    {
+//        $this->store->putBallot($ballot, $this->getPrecinct()->code);
+//    }
 
     public function updateElectionReturn(ElectionReturnData $er): void
     {

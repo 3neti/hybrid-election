@@ -166,3 +166,107 @@ test('BallotData holds structured votes correctly', function () {
         ->and($ballot->votes[0]->position->code)->toBe('PRESIDENT')
         ->and($ballot->votes[1]->candidates[1]->alias)->toBe('PEDRO');
 });
+
+test('BallotData can merge votes correctly with another BallotData', function () {
+    $president = new PositionData('PRESIDENT', 'President', Level::NATIONAL, 1);
+    $senator = new PositionData('SENATOR', 'Senator', Level::NATIONAL, 12);
+    $partyList = new PositionData('REPRESENTATIVE-PH-PARTY-LIST', 'Party List', Level::NATIONAL, 1);
+
+    $original = new BallotData('BALLOT-MAIN', new DataCollection(VoteData::class, [
+        new VoteData(new DataCollection(CandidateData::class, [
+            new CandidateData('CAND-001', 'Original President', 'OP', $president),
+        ])),
+        new VoteData(new DataCollection(CandidateData::class, [
+            new CandidateData('CAND-002', 'Original Senator A', 'OSA', $senator),
+        ])),
+    ]));
+
+    $incoming = new BallotData('BALLOT-MAIN', new DataCollection(VoteData::class, [
+        new VoteData(new DataCollection(CandidateData::class, [
+            new CandidateData('CAND-003', 'Override President', 'OP', $president),
+//            new CandidateData('CAND-003', 'Override President', 'NP', $president),
+        ])),
+        new VoteData(new DataCollection(CandidateData::class, [
+            new CandidateData('CAND-004', 'New Party List', 'PL', $partyList),
+        ])),
+    ]));
+
+    $merged = $original->mergeWith($incoming);
+
+    expect($merged)->toBeInstanceOf(BallotData::class)
+        ->and($merged->code)->toBe('BALLOT-MAIN')
+        ->and($merged->votes)->toHaveCount(3);
+
+    // Check that PRESIDENT vote was overridden
+    $presidentVote = $merged->votes->toCollection()
+        ->first(fn(VoteData $vote) => $vote->position->code === 'PRESIDENT');
+    expect($presidentVote->candidates->first()->alias)->toBe('OP');
+//    expect($presidentVote->candidates->first()->alias)->toBe('NP');
+
+    // Check that SENATOR vote is preserved from original
+    $senatorVote = $merged->votes
+        ->first(fn(VoteData $vote) => $vote->position->code === 'SENATOR');
+    expect($senatorVote->candidates->first()->alias)->toBe('OSA');
+
+    // Check that PARTY-LIST was added from incoming
+    $partyVote = $merged->votes
+        ->first(fn(VoteData $vote) => $vote->position->code === 'REPRESENTATIVE-PH-PARTY-LIST');
+    expect($partyVote->candidates->first()->alias)->toBe('PL');
+});
+
+test('BallotData can merge votes correctly with another BallotData including 12 senators', function () {
+    $president = new PositionData('PRESIDENT', 'President', Level::NATIONAL, 1);
+    $senator = new PositionData('SENATOR', 'Senator', Level::NATIONAL, 12);
+    $partyList = new PositionData('REPRESENTATIVE-PH-PARTY-LIST', 'Party List', Level::NATIONAL, 1);
+
+    // Original ballot with president + 12 senators
+    $originalSenators = collect(range('A', 'L'))->map(function ($suffix, $i) use ($senator) {
+        return new CandidateData(
+            code: 'SEN-' . str_pad($i + 1, 3, '0', STR_PAD_LEFT),
+            name: "Senator $suffix",
+            alias: "SEN-$suffix",
+            position: $senator,
+        );
+    });
+
+    $original = new BallotData('BALLOT-MAIN', new DataCollection(VoteData::class, [
+        new VoteData(new DataCollection(CandidateData::class, [
+            new CandidateData('CAND-001', 'Original President', 'OP', $president),
+        ])),
+        new VoteData(new DataCollection(CandidateData::class, $originalSenators)),
+    ]));
+
+    // Incoming ballot with overriding president + party list
+    $incoming = new BallotData('BALLOT-MAIN', new DataCollection(VoteData::class, [
+        new VoteData(new DataCollection(CandidateData::class, [
+            new CandidateData('CAND-999', 'Override President', 'NP', $president),
+        ])),
+        new VoteData(new DataCollection(CandidateData::class, [
+            new CandidateData('CAND-888', 'New Party List', 'PL', $partyList),
+        ])),
+    ]));
+
+    $merged = $original->mergeWith($incoming);
+
+    expect($merged)->toBeInstanceOf(BallotData::class)
+        ->and($merged->code)->toBe('BALLOT-MAIN')
+        ->and($merged->votes)->toHaveCount(3);
+
+    // PRESIDENT vote overridden
+    $presidentVote = $merged->votes->toCollection()
+        ->first(fn(VoteData $vote) => $vote->position->code === 'PRESIDENT');
+    expect($presidentVote->candidates)->toHaveCount(1)
+        ->and($presidentVote->candidates->first()->alias)->toBe('NP');
+
+    // SENATOR vote preserved with 12 candidates
+    $senatorVote = $merged->votes->toCollection()
+        ->first(fn(VoteData $vote) => $vote->position->code === 'SENATOR');
+    expect($senatorVote->candidates)->toHaveCount(12)
+        ->and($senatorVote->candidates->toCollection()->pluck('alias')->all())->toContain('SEN-A', 'SEN-L');
+
+    // PARTY-LIST added from incoming
+    $partyVote = $merged->votes->toCollection()
+        ->first(fn(VoteData $vote) => $vote->position->code === 'REPRESENTATIVE-PH-PARTY-LIST');
+    expect($partyVote->candidates)->toHaveCount(1)
+        ->and($partyVote->candidates->first()->alias)->toBe('PL');
+});

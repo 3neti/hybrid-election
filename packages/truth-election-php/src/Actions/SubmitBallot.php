@@ -25,10 +25,11 @@ class SubmitBallot
             throw new \RuntimeException("Precinct not found.");
         }
 
-        $ballot = new BallotData(
+        $ballot = (new BallotData(
             code: $ballotCode,
             votes: new DataCollection(VoteData::class, $votes->all()),
-        );
+        // Set precinct code after construction (not part of core ballot identity)
+        ))->setPrecinctCode($precinct->code);
 
         $this->precinctContext->putBallot($ballot);
 

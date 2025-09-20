@@ -1,5 +1,11 @@
 <?php
 
+use Illuminate\Support\Facades\Log;
+use TruthElection\Data\BallotData;
+use TruthElection\Data\CandidateData;
+use TruthElection\Data\PositionData;
+use TruthElection\Data\VoteData;
+use TruthElection\Enums\Level;
 use TruthElection\Support\PrecinctContext;
 use TruthElection\Data\PrecinctData;
 use TruthElection\Data\ElectoralInspectorData;
@@ -118,4 +124,98 @@ it('resolves PrecinctContext via container using request input', function () {
     $this->get("/test-precinct-context?precinct_code={$precinctCode}")
         ->assertOk()
         ->assertSee($precinctCode);
+});
+
+it('puts and merges ballots correctly using putBallot()', function () {
+    Log::spy(); // Spy on logger
+
+    $precinctCode = 'CURRIMAO-001';
+
+    // 🧾 Setup positions
+    $president = new PositionData('PRESIDENT', 'President', Level::NATIONAL, 1);
+    $senator   = new PositionData('SENATOR', 'Senator', Level::NATIONAL, 12);
+
+    // 🗳️ Existing ballot: 1 PRESIDENT vote
+    $existingBallot = new BallotData('BALLOT-001', new DataCollection(VoteData::class, [
+        new VoteData(new DataCollection(CandidateData::class, [
+            new CandidateData('CAND-001', 'Original President', 'OP', $president),
+        ])),
+    ]));
+
+    // 🗳️ Incoming ballot: 1 PRESIDENT override + 12 SENATORS
+    $presidentOverrideVote = new VoteData(new DataCollection(CandidateData::class, [
+        new CandidateData('CAND-002', 'Override President', 'NP', $president),
+    ]));
+
+    $senatorCandidates = [];
+    for ($i = 1; $i <= 12; $i++) {
+        $senatorCandidates[] = new CandidateData("SEN-$i", "Senator $i", "S$i", $senator);
+    }
+
+    $senatorVote = new VoteData(new DataCollection(CandidateData::class, $senatorCandidates));
+
+    $incomingBallot = new BallotData('BALLOT-001', new DataCollection(VoteData::class, [
+        $presidentOverrideVote,
+        $senatorVote,
+    ]));
+
+    // 🧪 Mock store behavior
+    $storeMock = $this->mock(ElectionStoreInterface::class);
+
+    $storeMock->shouldReceive('getPrecinct')
+        ->with($precinctCode)
+        ->andReturn(new PrecinctData(
+            code: $precinctCode,
+            location_name: 'Currimao National High School',
+            latitude: 0,
+            longitude: 0,
+            electoral_inspectors: new DataCollection(ElectoralInspectorData::class, []),
+            watchers_count: 0,
+            precincts_count: 0,
+            registered_voters_count: 0,
+            actual_voters_count: 0,
+            ballots_in_box_count: 0,
+            unused_ballots_count: 0,
+            spoiled_ballots_count: 0,
+            void_ballots_count: 0,
+        ));
+
+    $storeMock->shouldReceive('getBallots')
+        ->andReturn(new DataCollection(BallotData::class, [$existingBallot]));
+
+    $storeMock->shouldReceive('putBallot')
+        ->once()
+        ->withArgs(function (BallotData $merged, string $code) use ($precinctCode) {
+            expect($merged->votes)->toHaveCount(2); // PRESIDENT + SENATOR
+
+            $presidentVote = $merged->votes->toCollection()->first(
+                fn($vote) => $vote->position->code === 'PRESIDENT'
+            );
+            expect($presidentVote)->not()->toBeNull();
+            expect($presidentVote->candidates->first()->alias)->toBe('NP');
+
+            $senatorVote = $merged->votes->toCollection()->first(
+                fn($vote) => $vote->position->code === 'SENATOR'
+            );
+            expect($senatorVote)->not()->toBeNull();
+            expect($senatorVote->candidates)->toHaveCount(12);
+
+            expect($code)->toBe($precinctCode);
+
+            return true;
+        });
+
+    // 🔧 Call putBallot
+    $context = new PrecinctContext($storeMock, $precinctCode);
+    $context->putBallot($incomingBallot);
+
+    // ✅ Assert logging
+    Log::shouldHaveReceived('info')->once()->with(
+        "[Ballot Merge] Updated page for ballot: BALLOT-001",
+        \Mockery::on(fn ($context) =>
+            $context['precinct'] === $precinctCode
+            && $context['votes'] === 2
+            && $context['mergedVotes'] === 2
+        )
+    );
 });

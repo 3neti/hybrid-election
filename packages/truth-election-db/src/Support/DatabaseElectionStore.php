@@ -47,22 +47,57 @@ class DatabaseElectionStore implements ElectionStoreInterface
         DB::transaction(function () use ($ballot, $precinctCode) {
             $precinct = Precinct::whereCode($precinctCode)->first();
 
-            if (!$precinct) {
+            if (! $precinct) {
                 throw new \RuntimeException("Precinct [$precinctCode] not found.");
             }
 
-            // Check for existing ballot with same code
-            if (Ballot::query()->where('code', $ballot->code)->exists()) {
-                throw ValidationException::withMessages([
-                    'ballot_code' => "Duplicate ballot code [{$ballot->code}] for precinct [{$precinctCode}].",
-                ]);
+            // 🔍 Look for existing ballot by code and precinct
+            $existing = Ballot::query()
+                ->where('code', $ballot->code)
+                ->where('precinct_code', $precinctCode)
+                ->first();
+
+            if ($existing) {
+                // 🧩 Merge incoming ballot data with existing
+                $existingData = $existing->getData();
+
+                $merged = $existingData->mergeWith($ballot);
+
+                // 🗑 Remove old ballot before inserting merged one
+                $existing->delete();
+
+                // 💾 Save merged ballot
+                $merged->setPrecinctCode($precinctCode);
+                Ballot::fromData($merged);
+            } else {
+                // 💾 Save new ballot
+                $ballot->setPrecinctCode($precinctCode);
+                Ballot::fromData($ballot);
             }
-
-            $ballot->setPrecinctCode($precinctCode);
-
-            Ballot::fromData($ballot);
         });
     }
+
+//    public function putBallot(BallotData $ballot, string $precinctCode): void
+//    {
+//        DB::transaction(function () use ($ballot, $precinctCode) {
+//            $precinct = Precinct::whereCode($precinctCode)->first();
+//
+//            if (!$precinct) {
+//                throw new \RuntimeException("Precinct [$precinctCode] not found.");
+//            }
+//
+//            // Check for existing ballot with same code
+//            if (Ballot::query()->where('code', $ballot->code)->exists()) {
+//                throw ValidationException::withMessages([
+//                    'ballot_code' => "Duplicate ballot code [{$ballot->code}] for precinct [{$precinctCode}].",
+//                ]);
+//            }
+//
+//            $ballot->setPrecinctCode($precinctCode);
+//
+//            Ballot::fromData($ballot);
+//        });
+//    }
 
 //    public function getPrecinct(?string $code = null): ?PrecinctData
 //    {
