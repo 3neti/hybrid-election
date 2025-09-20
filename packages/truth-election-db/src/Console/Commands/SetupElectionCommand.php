@@ -17,7 +17,8 @@ class SetupElectionCommand extends Command
     protected $signature = 'election:setup
         {--election= : Path to the election.json file}
         {--precinct= : Path to the precinct.yaml file}
-        {--migrate : Run migrations before setting up}';
+        {--fresh     : Wipe database before setting up}
+        {--migrate   : Run migrations before setting up}';
 
     /**
      * The console command description.
@@ -29,8 +30,15 @@ class SetupElectionCommand extends Command
      */
     public function handle(): int
     {
-        // Optionally run `php artisan migrate`
-        if ($this->option('migrate')) {
+        if ($this->option('fresh')) {
+            $this->info('🔄 Fresh start: wiping database...');
+            $this->call('db:wipe', ['--force' => true]);
+
+            // Automatically migrate after wipe
+            $this->info('📦 Running migrations after wipe...');
+            $this->call('migrate', ['--force' => true]);
+        } elseif ($this->option('migrate')) {
+            // If only --migrate is passed (no wipe)
             $this->info('📦 Running migrations...');
             $this->call('migrate', ['--force' => true]);
         }
