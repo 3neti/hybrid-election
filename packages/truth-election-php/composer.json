@@ -3,6 +3,28 @@
     "description": "TRUTH Election: Ballot data structures and election logic (no database required).",
     "type": "library",
     "license": "proprietary",
+    "repositories": [
+        {
+            "type": "path",
+            "url": "./../truth-qr-ui"
+        },
+        {
+            "type": "path",
+            "url": "./../truth-qr-php"
+        },
+        {
+            "type": "path",
+            "url": "./../truth-renderer-php"
+        },
+        {
+            "type": "path",
+            "url": "./../truth-qr-php"
+        },
+        {
+            "type": "path",
+            "url": "./../truth-codec-php"
+        }
+    ],
     "autoload": {
         "psr-4": {
             "TruthElection\\": "src/"
@@ -17,7 +39,8 @@
         "php": "^8.2",
         "ext-json": "*",
         "spatie/laravel-data": "^4.0",
-        "lorisleiva/laravel-actions": "^2.9"
+        "lorisleiva/laravel-actions": "^2.9",
+        "lbhurtado/truth-qr-ui": "dev-main"
     },
     "require-dev": {
         "orchestra/testbench": "^10.3",
