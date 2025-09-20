@@ -1,12 +1,11 @@
 <?php
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Artisan;
-use TruthElection\Actions\InputPrecinctStatistics;
-use TruthElection\Data\PrecinctData;
 use TruthElection\Support\ElectionStoreInterface;
-use TruthElectionDb\Actions\RecordStatistics;
 use TruthElectionDb\Tests\ResetsElectionStore;
+use TruthElectionDb\Actions\RecordStatistics;
+use Illuminate\Support\Facades\Artisan;
+use TruthElection\Data\PrecinctData;
 use TruthElectionDb\Models\Precinct;
 use Illuminate\Support\Facades\File;
 
@@ -54,8 +53,7 @@ test('artisan election:record-statistics persists statistics fields', function (
     $jsonPayload = json_encode($payload);
 
     $this->artisan('election:record-statistics', [
-//        'precinct_code' => 'CURRIMAO-001',
-        '--payload' => $jsonPayload,
+        'payload' => $jsonPayload,
     ])
         ->expectsOutputToContain('✅ Statistics successfully recorded for precinct: CURRIMAO-001')
         ->expectsOutputToContain('watchers_count: 5')
@@ -71,7 +69,7 @@ test('artisan election:record-statistics persists statistics fields', function (
 
 test('artisan election:record-statistics fails with malformed JSON', function () {
     $this->artisan('election:record-statistics', [
-        '--payload' => '{"watchers_count": 5,,}',
+        'payload' => '{"watchers_count": 5,,}',
     ])
         ->expectsOutputToContain('❌ Invalid JSON payload:')
         ->assertExitCode(1);
@@ -79,7 +77,7 @@ test('artisan election:record-statistics fails with malformed JSON', function ()
 
 test('artisan election:record-statistics fails with invalid data', function () {
     $this->artisan('election:record-statistics', [
-        '--payload' => json_encode(['actual_voters_count' => -12]),
+        'payload' => json_encode(['actual_voters_count' => -12]),
     ])
         ->expectsOutputToContain('❌ Validation failed:')
         ->expectsOutputToContain('actual_voters_count')
@@ -99,7 +97,7 @@ test('artisan election:record-statistics fails when payload is missing', functio
     $this->artisan('election:record-statistics', [
         // no --payload
     ])
-        ->expectsOutputToContain('❌ Please provide a JSON payload using the --payload option.')
+        ->expectsOutputToContain('❌ Please provide a JSON payload as an argument or via STDIN.')
         ->assertExitCode(1);
 });
 
@@ -149,7 +147,7 @@ test('artisan election:record-statistics invokes RecordStatistics::run and shows
 
     // Act
     $exitCode = Artisan::call('election:record-statistics', [
-        '--payload' => $payloadJson,
+        'payload' => $payloadJson,
     ]);
 
     $output = Artisan::output();

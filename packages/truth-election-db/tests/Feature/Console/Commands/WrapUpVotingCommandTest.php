@@ -41,7 +41,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
     ]);
 
     $this->artisan('election:record-statistics', [
-        '--payload' => $jsonPayload,
+        'payload' => $jsonPayload,
     ]);
 });
 

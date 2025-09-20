@@ -2,11 +2,14 @@
 
 namespace TruthElectionDb\Console\Commands;
 
+use TruthElectionDb\Traits\HandlesStdinInput;
 use TruthElectionDb\Actions\TallyVotes;
 use Illuminate\Console\Command;
 
 class TallyVotesCommand extends Command
 {
+    use HandlesStdinInput;
+
     /**
      * The name and signature of the console command.
      *
@@ -26,7 +29,7 @@ class TallyVotesCommand extends Command
      */
     public function handle(): int
     {
-        $electionReturnCode = $this->argument('election_return_code');
+        $electionReturnCode = $this->argument('election_return_code') ?? $this->readLineFromStdin();
 
         try {
             $result = TallyVotes::make()->run($electionReturnCode);

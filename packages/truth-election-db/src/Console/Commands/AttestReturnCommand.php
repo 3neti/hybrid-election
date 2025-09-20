@@ -2,12 +2,15 @@
 
 namespace TruthElectionDb\Console\Commands;
 
+use TruthElectionDb\Traits\HandlesStdinInput;
 use TruthElectionDb\Actions\AttestReturn;
 use TruthElection\Data\SignPayloadData;
 use Illuminate\Console\Command;
 
 class AttestReturnCommand extends Command
 {
+    use HandlesStdinInput;
+
     /**
      * The name and signature of the console command.
      *
@@ -15,7 +18,7 @@ class AttestReturnCommand extends Command
      *   php artisan election:attest ER-CODE 'json-encoded-or-base64 payload'
      */
     protected $signature = 'election:attest
-        {payload : The QR string or base64-encoded JSON payload from the inspector}';
+        {payload? : The QR string or base64-encoded JSON payload from the inspector}';
 
     /**
      * The console command description.
@@ -27,7 +30,14 @@ class AttestReturnCommand extends Command
      */
     public function handle(): int
     {
-        $rawPayload = $this->argument('payload');
+        $rawPayload = $this->argument('payload') ?? $this->readLineFromStdin();
+        if (empty($rawPayload)) {
+            $this->warn('⚠️  No payload provided via argument or STDIN.');
+            $this->line('Usage:');
+            $this->line('  php artisan election:attest [payload]');
+            $this->line('  echo "base64-payload" | php artisan election:attest');
+            return self::FAILURE;
+        }
 
         try {
             $payload = SignPayloadData::fromQrString($rawPayload);

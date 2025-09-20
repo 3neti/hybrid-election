@@ -4,23 +4,28 @@ namespace TruthElectionDb\Console\Commands;
 
 use Illuminate\Validation\ValidationException;
 use TruthElectionDb\Actions\RecordStatistics;
+use TruthElectionDb\Traits\HandlesStdinInput;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Console\Command;
 
 class RecordStatisticsCommand extends Command
 {
-    //TODO: payload should be an argument and not an option
+    use HandlesStdinInput;
+
     protected $signature = 'election:record-statistics
-                            {--payload= : JSON payload of statistics to update}';
+                            {payload? : JSON payload of statistics to update}';
 
     protected $description = 'Record statistics (watchers, voters, ballots, etc.) for a given precinct';
 
     public function handle(): int
     {
-        $payloadRaw   = $this->option('payload');
+        $payloadRaw = $this->argument('payload') ?? $this->readLineFromStdin();
 
         if (! $payloadRaw) {
-            $this->error('❌ Please provide a JSON payload using the --payload option.');
+            $this->error('❌ Please provide a JSON payload as an argument or via STDIN.');
+            $this->line('Usage:');
+            $this->line('  php artisan election:record-statistics \'{"precinct":"X",...}\'');
+            $this->line('  echo \'{"precinct":"X",...}\' | php artisan election:record-statistics');
             return self::FAILURE;
         }
 
@@ -31,7 +36,6 @@ class RecordStatisticsCommand extends Command
             return self::FAILURE;
         }
 
-        // Validate using the same rules as the action
         $rules = app(RecordStatistics::class)->rules();
 
         try {
