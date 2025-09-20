@@ -2,7 +2,7 @@
 
 namespace TruthElection\Actions;
 
-use TruthElection\Support\ElectionStoreInterface;
+use TruthElection\Support\ElectionReturnContext;
 use Lorisleiva\Actions\Concerns\AsAction;
 use TruthElection\Data\SignPayloadData;
 use Lorisleiva\Actions\ActionRequest;
@@ -13,7 +13,7 @@ class SignElectionReturn
     use AsAction;
 
     public function __construct(
-        protected ElectionStoreInterface $store,
+        protected ElectionReturnContext $electionReturnContext,
     ) {}
 
     /**
@@ -29,19 +29,17 @@ class SignElectionReturn
      *     signed_at: string
      * }
      */
-    public function handle(SignPayloadData $payload, string $electionReturnCode): array
+    public function handle(SignPayloadData $payload, ?string $electionReturnCode = null): array
     {
-        $store = $this->store;
-
-        $original = $store->getElectionReturn($electionReturnCode)
+        $original = $this->electionReturnContext->getElectionReturn()
             ?? abort(404, "Election return [$electionReturnCode] not found.");
 
-        $inspector = $store->findInspector($original, $payload->id)
+        $inspector = $this->electionReturnContext->findInspector($payload->id)
             ?? abort(404, "Inspector with ID [{$payload->id}] not found.");
 
         $updated = $original->withInspectorSignature($payload, $inspector);
 
-        $store->replaceElectionReturn($updated);
+        $this->electionReturnContext->replaceElectionReturn($updated);
 
         return [
             'message'   => 'Signature saved successfully.',
@@ -49,6 +47,7 @@ class SignElectionReturn
             'name'      => $inspector->name,
             'role'      => $inspector->role->value,
             'signed_at' => now()->toIso8601String(),
+            'er'        => $updated,
         ];
     }
 

@@ -2,6 +2,8 @@
 
 namespace TruthElection\Support;
 
+use TruthElection\Data\BallotData;
+use TruthElection\Data\ElectionReturnData;
 use TruthElection\Data\ElectoralInspectorData;
 use Spatie\LaravelData\DataCollection;
 use TruthElection\Data\PrecinctData;
@@ -21,6 +23,31 @@ class PrecinctContext
     public function getPrecinct(): ?PrecinctData
     {
         return $this->precinct;
+    }
+
+    public function updatePrecinct(PrecinctData $precinct): void
+    {
+        $this->store->putPrecinct($precinct);
+    }
+
+    public function getBallots(): DataCollection
+    {
+        return $this->store->getBallots($this->getPrecinct()->code);
+    }
+
+    public function putBallot(BallotData $ballot): void
+    {
+        $this->store->putBallot($ballot, $this->getPrecinct()->code);
+    }
+
+    public function updateElectionReturn(ElectionReturnData $er): void
+    {
+        $this->store->putElectionReturn($er);
+    }
+
+    public function getInspectors(): DataCollection
+    {
+        return $this->store->getInspectorsForPrecinct($this->getPrecinct()->code);
     }
 
     public function code(): ?string

@@ -3,7 +3,7 @@
 namespace TruthElection\Actions;
 
 use TruthElection\Data\{ElectionReturnData, FinalizeErContext, PrecinctData};
-use TruthElection\Support\{ElectionStoreInterface, PrecinctContext};
+use TruthElection\Support\{ElectionReturnContext, PrecinctContext};
 use TruthElection\Pipes\ValidateSignatures;
 use Lorisleiva\Actions\Concerns\AsAction;
 use TruthElection\Pipes\CloseBalloting;
@@ -15,8 +15,8 @@ class FinalizeElectionReturn
     use AsAction;
 
     public function __construct(
-        protected ElectionStoreInterface $store,
-        protected PrecinctContext $precinctContext
+        protected PrecinctContext $precinctContext,
+        protected ElectionReturnContext $electionReturnContext
     ) {}
 
     public function handle(
@@ -26,7 +26,6 @@ class FinalizeElectionReturn
         string $dir = 'final',
         bool $force = false,
     ): ElectionReturnData {
-        $store = $this->store;
         $precinct = $this->precinctContext->getPrecinct();
 
         if (! $precinct instanceof PrecinctData) {
@@ -36,8 +35,8 @@ class FinalizeElectionReturn
         if (! $force && ($precinct->meta['balloting_open'] ?? true) === false) {
             throw new RuntimeException("Balloting already closed. Nothing to do.");
         }
-        $er = $store->getElectionReturnByPrecinct($precinct->code);
 
+        $er = $this->electionReturnContext->getElectionReturn();
         if (! $er instanceof ElectionReturnData) {
             throw new RuntimeException("Election Return for [{$precinct->code}] not found.");
         }

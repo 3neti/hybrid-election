@@ -15,7 +15,6 @@ class AttestReturnCommand extends Command
      *   php artisan election:attest ER-CODE 'json-encoded-or-base64 payload'
      */
     protected $signature = 'election:attest
-        {election_return_code : The code of the election return}
         {payload : The QR string or base64-encoded JSON payload from the inspector}';
 
     /**
@@ -28,13 +27,15 @@ class AttestReturnCommand extends Command
      */
     public function handle(): int
     {
-        $code = $this->argument('election_return_code');
+//        $code = $this->argument('election_return_code');
         $rawPayload = $this->argument('payload');
 
         try {
             $payload = SignPayloadData::fromQrString($rawPayload);
 
-            $result = AttestReturn::make()->run($payload, $code);
+            $result = AttestReturn::make()->run($payload);
+            $code = $result['er']->code;
+//            $result = AttestReturn::make()->run($payload, $code);
 
             $this->info('✅ Signature saved successfully:');
             $this->line("🧑 Inspector: {$result['name']} ({$result['role']})");

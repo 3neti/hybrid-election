@@ -2,7 +2,6 @@
 
 namespace TruthElection\Actions;
 
-use TruthElection\Support\ElectionStoreInterface;
 use TruthElection\Support\PrecinctContext;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Lorisleiva\Actions\ActionRequest;
@@ -14,7 +13,6 @@ class InputPrecinctStatistics
     use AsAction;
 
     public function __construct(
-        protected ElectionStoreInterface $store,
         protected PrecinctContext $precinctContext
     ) {}
 
@@ -26,7 +24,6 @@ class InputPrecinctStatistics
      */
     public function handle(array $payload): PrecinctData
     {
-        $store = $this->store;
         $precinct = $this->precinctContext->getPrecinct();
         $precinctCode = $precinct->code;
 //        $precinct = $store->getPrecinct($precinctCode);
@@ -57,7 +54,7 @@ class InputPrecinctStatistics
 
         $updated = PrecinctData::from($data);
 
-        $store->putPrecinct($updated);
+        $this->precinctContext->updatePrecinct($updated);
 
         return $updated;
     }

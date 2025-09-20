@@ -95,10 +95,8 @@ uses(ResetsElectionStore::class)->beforeEach(function () {
 
     $return = GenerateElectionReturn::run('PRECINCT-01');
 
-    $action = app(SignElectionReturn::class);
-
-    $action->handle(SignPayloadData::fromQrString('BEI:A1:sig1'), $return->code);
-    $action->handle(SignPayloadData::fromQrString('BEI:B2:sig2'), $return->code);
+    SignElectionReturn::run(SignPayloadData::fromQrString('BEI:A1:sig1'), $return->code);
+    SignElectionReturn::run(SignPayloadData::fromQrString('BEI:B2:sig2'), $return->code);
 
     $this->return = $this->store->getElectionReturn($return->code);
 });

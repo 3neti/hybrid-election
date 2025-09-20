@@ -34,12 +34,10 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
     $code = $er->code;
 
     $this->artisan('election:attest', [
-        'election_return_code' => $code,
         'payload' => 'BEI:uuid-juan:signature123',
     ]);
 
     $this->artisan('election:attest', [
-        'election_return_code' => $code,
         'payload' => 'BEI:uuid-maria:signature456',
     ]);
 });

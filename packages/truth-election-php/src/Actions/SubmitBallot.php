@@ -2,7 +2,6 @@
 
 namespace TruthElection\Actions;
 
-use TruthElection\Support\ElectionStoreInterface;
 use TruthElection\Support\PrecinctContext;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Spatie\LaravelData\DataCollection;
@@ -15,7 +14,6 @@ class SubmitBallot
     use AsAction;
 
     public function __construct(
-        protected ElectionStoreInterface $store,
         protected PrecinctContext $precinctContext
     ) {}
 
@@ -32,7 +30,7 @@ class SubmitBallot
             votes: new DataCollection(VoteData::class, $votes->all()),
         );
 
-        $this->store->putBallot($ballot, $precinct->code);
+        $this->precinctContext->putBallot($ballot);
 
         return $ballot;
     }

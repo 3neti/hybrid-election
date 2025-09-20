@@ -111,8 +111,12 @@ class DatabaseElectionStore implements ElectionStoreInterface
         DB::transaction(fn () => ElectionReturn::fromData($er));
     }
 
-    public function getElectionReturn(string $code): ?ElectionReturnData
+    public function getElectionReturn(?string $code = null): ?ElectionReturnData
     {
+        if ($code === null) {
+            return ElectionReturn::first()?->getData();
+        }
+
         return ElectionReturn::whereCode($code)->first()?->getData();
     }
 

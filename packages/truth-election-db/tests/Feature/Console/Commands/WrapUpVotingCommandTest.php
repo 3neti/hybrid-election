@@ -47,12 +47,10 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
 
 test('artisan election:wrapup completes and finalizes return', function () {
     $this->artisan('election:attest', [
-        'election_return_code' => $this->er_code,
         'payload' => 'BEI:uuid-juan:signature123',
     ]);
 
     $this->artisan('election:attest', [
-        'election_return_code' => $this->er_code,
         'payload' => 'BEI:uuid-maria:signature456',
     ]);
 
@@ -91,7 +89,6 @@ test('artisan election:wrapup throws if already finalized without --force', func
 
 test('artisan election:wrapup fails if signatures are incomplete', function () {
     $this->artisan('election:attest', [
-        'election_return_code' => $this->er_code,
         'payload' => 'BEI:uuid-juan:signature123',
     ]);
 
@@ -226,12 +223,10 @@ test('artisan election:wrapup invokes WrapUpVoting::run with expected args', fun
     $mockReturn = ElectionReturnData::from($json);
 
     $this->artisan('election:attest', [
-        'election_return_code' => $this->er_code,
         'payload' => 'BEI:uuid-juan:signature123',
     ]);
 
     $this->artisan('election:attest', [
-        'election_return_code' => $this->er_code,
         'payload' => 'BEI:uuid-maria:signature456',
     ]);
 

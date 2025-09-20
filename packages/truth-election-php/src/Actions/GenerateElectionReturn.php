@@ -2,7 +2,6 @@
 
 namespace TruthElection\Actions;
 
-use TruthElection\Support\ElectionStoreInterface;
 use TruthElection\Support\PrecinctContext;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Spatie\LaravelData\DataCollection;
@@ -21,20 +20,18 @@ class GenerateElectionReturn
     use AsAction;
 
     public function __construct(
-        protected ElectionStoreInterface $store,
         protected PrecinctContext $precinctContext
     ) {}
 
     public function handle(?string $electionReturnCode = null): ElectionReturnData
     {
-        $store = $this->store;
         $precinct = $this->precinctContext->getPrecinct();
 
         if (!$precinct) {
             throw new \RuntimeException("Precinct not found.");
         }
 
-        $ballots = $store->getBallots($precinct->code);
+        $ballots = $this->precinctContext->getBallots();
 
         // 🗳️ Tally votes
         $tallies = [];
@@ -95,12 +92,12 @@ class GenerateElectionReturn
             code: $electionReturnCode,
             precinct: PrecinctData::from($precinct),
             tallies: new DataCollection(VoteCountData::class, $voteCounts->all()),
-            signatures: $store->getInspectorsForPrecinct($precinct->code),
+            signatures: $this->precinctContext->getInspectors(),
             ballots: new DataCollection(BallotData::class, $ballots->all()),
             created_at: $timestamp,
             updated_at: $timestamp,
         );
-        $store->putElectionReturn($electionReturn);
+        $this->precinctContext->updateElectionReturn($electionReturn);
 
         return $electionReturn;
     }

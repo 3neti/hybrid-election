@@ -89,20 +89,12 @@ uses(ResetsElectionStore::class)->beforeEach(function () {
     $this->return = GenerateElectionReturn::run('PRECINCT-01');
 });
 
-
 test('successfully signs as chairperson', function () {
-    // 🧪 Ensure initial state
-    $original = $this->store->getElectionReturn($this->return->code);
-    expect($original)->not->toBeNull();
-
-    // ✅ Initialize action with policy
-    $action = app(SignElectionReturn::class);
-
     // 📝 Prepare payload: Alice = A1, chairperson
     $payload = SignPayloadData::fromQrString('BEI:A1:base64signature');
 
     // 🚀 Perform signature
-    $result = $action->handle($payload, $this->return->code);
+    $result = SignElectionReturn::run($payload);
 
     // 🔍 Assert result structure
     expect($result)
@@ -117,7 +109,6 @@ test('successfully signs as chairperson', function () {
     $updatedReturn = $this->store->getElectionReturn($this->return->code);
 
     expect($updatedReturn)->not->toBeNull();
-
     expect($updatedReturn->signedInspectors())->toHaveCount(1);
 
     // Find signatures by ID for clear assertions
@@ -139,13 +130,11 @@ test('successfully signs as chairperson', function () {
 });
 
 test('appends signature when second inspector signs', function () {
-    $action = app(SignElectionReturn::class);
-
     // First: Alice (A1, chairperson)
-    $action->handle(SignPayloadData::fromQrString('BEI:A1:sig1'), $this->return->code);
+    SignElectionReturn::run(SignPayloadData::fromQrString('BEI:A1:sig1'));
 
     // Second: Bob (B2, member)
-    $action->handle(SignPayloadData::fromQrString('BEI:B2:sig2'), $this->return->code);
+    SignElectionReturn::run(SignPayloadData::fromQrString('BEI:B2:sig2'));
 
     $updated = $this->store->getElectionReturn($this->return->code);
 
@@ -162,9 +151,6 @@ test('appends signature when second inspector signs', function () {
 });
 
 test('fails if inspector ID is not found in roster', function () {
-    $action = app(SignElectionReturn::class);
-
     $payload = SignPayloadData::fromQrString('BEI:Z9:sig');
-
-    $action->handle($payload, $this->return->code);
+    SignElectionReturn::run($payload);
 })->throws(Exception::class, "Could not create `TruthElection\Data\ElectoralInspectorData`: the constructor requires 5 parameters, 2 given. Parameters given: signature, signed_at. Parameters missing: id, name, role.");

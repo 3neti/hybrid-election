@@ -135,8 +135,12 @@ class InMemoryElectionStore implements ElectionStoreInterface
     /**
      * Retrieve election return by its unique code.
      */
-    public function getElectionReturn(string $code): ?ElectionReturnData
+    public function getElectionReturn(?string $code = null): ?ElectionReturnData
     {
+        if ($code === null) {
+            return collect($this->electionReturns)->values()->first();
+        }
+
         foreach ($this->electionReturns as $er) {
             if ($er->code === $code) {
                 return $er;

@@ -26,7 +26,7 @@ interface ElectionStoreInterface
 
     public function putElectionReturn(ElectionReturnData $er): void;
 
-    public function getElectionReturn(string $code): ?ElectionReturnData;
+    public function getElectionReturn(?string $code = null): ?ElectionReturnData;
 
     public function getElectionReturnByPrecinct(string $precinctCode): ?ElectionReturnData;
 

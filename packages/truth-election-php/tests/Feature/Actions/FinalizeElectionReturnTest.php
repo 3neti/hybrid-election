@@ -78,9 +78,8 @@ uses(ResetsElectionStore::class)->beforeEach(function () {
 
     $return = GenerateElectionReturn::run();
 
-    $action = app(SignElectionReturn::class);
-    $action->handle(SignPayloadData::fromQrString('BEI:A1:sig1'), $return->code);
-    $action->handle(SignPayloadData::fromQrString('BEI:B2:sig2'), $return->code);
+    SignElectionReturn::run(SignPayloadData::fromQrString('BEI:A1:sig1'), $return->code);
+    SignElectionReturn::run(SignPayloadData::fromQrString('BEI:B2:sig2'), $return->code);
 
     $this->return = $this->store->getElectionReturn($return->code);
 });
@@ -222,7 +221,7 @@ test('finalize fails when election return is missing', function () {
         dir: 'final',
         force: false
     );
-})->throws(RuntimeException::class, 'Election Return for [PRECINCT-404] not found.')->skip();
+})->throws(RuntimeException::class, 'Election Return for [PRECINCT-404] not found.')->skip();//do not unskip
 
 test('finalize fails when balloting is already closed and not forced', function () {
     $this->return->precinct->meta['balloting_open'] = false;
