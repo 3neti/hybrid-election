@@ -25,11 +25,9 @@ class InputPrecinctStatistics
     public function handle(array $payload): PrecinctData
     {
         $precinct = $this->precinctContext->getPrecinct();
-        $precinctCode = $precinct->code;
-//        $precinct = $store->getPrecinct($precinctCode);
 
         if (! $precinct) {
-            throw new \RuntimeException("Precinct [$precinctCode] not found in memory.");
+            throw new \RuntimeException("Precinct [{$precinct->code}] not found in memory.");
         }
 
         $fields = [

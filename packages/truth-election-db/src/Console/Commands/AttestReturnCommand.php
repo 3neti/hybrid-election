@@ -27,7 +27,6 @@ class AttestReturnCommand extends Command
      */
     public function handle(): int
     {
-//        $code = $this->argument('election_return_code');
         $rawPayload = $this->argument('payload');
 
         try {
@@ -35,7 +34,6 @@ class AttestReturnCommand extends Command
 
             $result = AttestReturn::make()->run($payload);
             $code = $result['er']->code;
-//            $result = AttestReturn::make()->run($payload, $code);
 
             $this->info('✅ Signature saved successfully:');
             $this->line("🧑 Inspector: {$result['name']} ({$result['role']})");

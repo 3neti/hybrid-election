@@ -9,7 +9,6 @@ use Illuminate\Console\Command;
 class WrapUpVotingCommand extends Command
 {
     protected $signature = 'election:wrapup
-                            {precinct_code? : The code of the precinct}
                             {--disk=local : The storage disk to use}
                             {--payload=minimal : The payload format (e.g. minimal, full)}
                             {--max_chars=1200 : Max characters per payload chunk}

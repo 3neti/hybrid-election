@@ -31,7 +31,6 @@ class CastBallot extends SubmitBallot
 
         $result = $this->handle(
             ballotCode: $validated['ballot_code'],
-//            precinctCode: $validated['precinct_code'],
             votes: collect($validated['votes']),
         );
 
