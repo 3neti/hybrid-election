@@ -1,5 +1,6 @@
 <?php
 
+use TruthElection\Pipes\GenerateElectionReturnQRCodes;
 use TruthElection\Pipes\PersistElectionReturnJson;
 use TruthElection\Pipes\EncodeElectionReturnLines;
 
@@ -7,7 +8,8 @@ return [
     'finalize_election_return' => [
         'pipes' => [
             PersistElectionReturnJson::class,
-            EncodeElectionReturnLines::class
+            EncodeElectionReturnLines::class,
+            GenerateElectionReturnQRCodes::class
         ],
     ],
     'storage' => [
