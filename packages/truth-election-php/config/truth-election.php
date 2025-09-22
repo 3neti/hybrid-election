@@ -3,13 +3,15 @@
 use TruthElection\Pipes\GenerateElectionReturnQRCodes;
 use TruthElection\Pipes\PersistElectionReturnJson;
 use TruthElection\Pipes\EncodeElectionReturnLines;
+use TruthElection\Pipes\RenderElectionReturnPdf;
 
 return [
     'finalize_election_return' => [
         'pipes' => [
             PersistElectionReturnJson::class,
             EncodeElectionReturnLines::class,
-            GenerateElectionReturnQRCodes::class
+            GenerateElectionReturnQRCodes::class,
+            RenderElectionReturnPdf::class
         ],
     ],
     'storage' => [

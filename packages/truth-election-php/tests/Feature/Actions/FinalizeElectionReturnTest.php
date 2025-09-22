@@ -8,6 +8,42 @@ use TruthElection\Tests\ResetsElectionStore;
 use Spatie\LaravelData\DataCollection;
 
 uses(ResetsElectionStore::class)->beforeEach(function () {
+    $this->tmpDir = base_path('tests/Fixtures/templates_' . uniqid());
+    $templatePath = $this->tmpDir . '/precinct/er';
+    @mkdir($templatePath, 0777, true);
+
+    // Set the namespaced path correctly for core
+    config()->set('truth-renderer.paths', [
+        'core' => $this->tmpDir,
+    ]);
+
+    // Save the template as template.hbs inside precinct/er/
+    $template = <<<ER
+<h2>Vote Tallies</h2>
+
+{{#groupBy tallies key="position_code"}}
+  <h3>{{key}}</h3>
+  <table style="width: 100%; border-collapse: collapse; margin-bottom: 1em;">
+    <thead>
+      <tr>
+        <th style="text-align: left; border-bottom: 1px solid #ccc;">Candidate</th>
+        <th style="text-align: right; border-bottom: 1px solid #ccc;">Votes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each items}}
+        <tr>
+          <td>{{candidate_name}}</td>
+          <td style="text-align: right;">{{count}}</td>
+        </tr>
+      {{/each}}
+    </tbody>
+  </table>
+{{/groupBy}}
+ER;
+
+    file_put_contents($templatePath . '/template.hbs', $template);
+
     $this->store = app(ElectionStoreInterface::class);
     $this->store->reset();
 
@@ -82,6 +118,26 @@ uses(ResetsElectionStore::class)->beforeEach(function () {
     SignElectionReturn::run(SignPayloadData::fromQrString('BEI:B2:sig2'), $return->code);
 
     $this->return = $this->store->getElectionReturn($return->code);
+});
+
+afterEach(function () {
+    if (!is_dir($this->tmpDir)) {
+        return;
+    }
+
+    $files = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($this->tmpDir, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST
+    );
+
+    foreach ($files as $file) {
+        $file->isDir()
+            ? @rmdir($file->getRealPath())
+            : @unlink($file->getRealPath());
+    }
+
+    @rmdir($this->tmpDir); // Remove the base tmpDir
+    @unlink('election_return.pdf');
 });
 
 test('finalize election return passes with complete signatures and valid content', function () {

@@ -4,6 +4,7 @@ namespace TruthElection\Tests;
 
 use Orchestra\Testbench\TestCase as BaseTestCase;
 use TruthElection\TruthElectionServiceProvider;
+use TruthRenderer\TruthRendererServiceProvider;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -18,6 +19,7 @@ abstract class TestCase extends BaseTestCase
     {
         return [
             TruthElectionServiceProvider::class,
+            TruthRendererServiceProvider::class
         ];
     }
 
