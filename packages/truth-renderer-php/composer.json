@@ -26,7 +26,8 @@
         "dompdf/dompdf": "^3.1",
         "justinrainbow/json-schema": "^6.5",
         "zordius/lightncandy": "^1.2",
-        "spatie/browsershot": "^5.0"
+        "spatie/browsershot": "^5.0",
+        "lorisleiva/laravel-actions": "^2.9"
     },
     "require-dev": {
         "orchestra/testbench": "^10.3",

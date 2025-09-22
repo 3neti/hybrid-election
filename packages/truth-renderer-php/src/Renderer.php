@@ -11,6 +11,20 @@ use Dompdf\{Dompdf, Options};
 
 class Renderer implements RendererInterface
 {
+    protected ?string $path = null;
+
+    public function getPath(): ?string
+    {
+        return $this->path;
+    }
+
+    public function setPath(string $path): static
+    {
+        $this->path = $path;
+
+        return $this;
+    }
+
     public function __construct(
         private ?HandlebarsEngine $engine = null,
         private ?Validator $validator = null,
@@ -61,25 +75,58 @@ class Renderer implements RendererInterface
         // 4) Output format
         return match ($request->format) {
             'pdf'  => $this->toPdf($html, $request),
-            'html' => new RenderResult('html', $html),
-            'md'   => new RenderResult('md', $this->htmlToMarkdown($html)),
+            'html' => new RenderResult('html', $html, $this->getPath()),
+            'md'   => new RenderResult('md', $this->htmlToMarkdown($html), $this->getPath()),
             default => throw new \InvalidArgumentException("Unsupported format: {$request->format}")
         };
     }
 
     public function renderToFile(RenderRequest $request, string $path): RenderResult
     {
-        $result = $this->render($request);
-
+        // Normalize path first, even before setting
         $dir = dirname($path);
+        $basename = basename($path);
+
+        // If no extension, append based on format
+        if (!str_contains($basename, '.')) {
+            $ext = match ($request->format) {
+                'pdf'  => 'pdf',
+                'html' => 'html',
+                'md'   => 'md',
+                default => throw new \InvalidArgumentException("Cannot infer extension for format: {$request->format}"),
+            };
+
+            $basename .= ".{$ext}";
+            $path = rtrim($dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $basename;
+        }
+
+        // Now set full path and render
+        $result = $this->setPath($path)->render($request);
+
         if (!is_dir($dir)) {
             throw new \RuntimeException("Target directory does not exist: $dir");
         }
+
         if (file_put_contents($path, $result->content) === false) {
             throw new \RuntimeException("Failed to write render output to: $path");
         }
+
         return $result;
     }
+
+//    public function renderToFile(RenderRequest $request, string $path): RenderResult
+//    {
+//        $result = $this->setPath($path)->render($request);
+//
+//        $dir = dirname($path);
+//        if (!is_dir($dir)) {
+//            throw new \RuntimeException("Target directory does not exist: $dir");
+//        }
+//        if (file_put_contents($path, $result->content) === false) {
+//            throw new \RuntimeException("Failed to write render output to: $path");
+//        }
+//        return $result;
+//    }
 
     private function toPdf(string $html, RenderRequest $request): RenderResult
     {
@@ -100,7 +147,7 @@ class Renderer implements RendererInterface
         $dompdf->render();
         $pdf = $dompdf->output();
 
-        return new RenderResult('pdf', $pdf);
+        return new RenderResult('pdf', $pdf, $this->getPath());
     }
 
     private function defaultDompdfOptions(): Options
