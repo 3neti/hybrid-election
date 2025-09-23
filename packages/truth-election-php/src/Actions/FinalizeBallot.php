@@ -6,8 +6,8 @@ use TruthElection\Support\ElectionStoreInterface;
 use TruthElection\Support\PrecinctContext;
 use TruthElection\Support\MappingContext;
 use Lorisleiva\Actions\Concerns\AsAction;
+use Illuminate\Support\Facades\Log;
 use TruthElection\Data\BallotData;
-use Illuminate\Support\Collection;
 
 class FinalizeBallot
 {
@@ -18,16 +18,19 @@ class FinalizeBallot
         protected PrecinctContext $precinctContext,
     ) {}
 
+
     public function handle(string $ballotCode): BallotData
     {
-        // 1️⃣ Resolve the ballot marks into structured votes
-        $mappingContext = new MappingContext($this->store);
-        $resolved = $mappingContext->resolveBallot($ballotCode); // Returns BallotData
+        Log::info("[FinalizeBallot] Resolving ballot marks for: {$ballotCode}");
 
-        // 2️⃣ Submit the resolved ballot under the precinct
-        return SubmitBallot::run(
-            ballotCode: $resolved->code,
-            votes: collect($resolved->votes->items()),
-        );
+        $mappingContext = new MappingContext($this->store);
+        $resolved = $mappingContext->resolveBallot($ballotCode);
+
+        Log::info("[FinalizeBallot] Submitting resolved ballot", [
+            'ballot_code' => $resolved->code,
+            'vote_count' => $resolved->votes->count(),
+        ]);
+
+        return SubmitBallot::run($resolved);
     }
 }

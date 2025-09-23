@@ -17,7 +17,24 @@ class SubmitBallot
         protected PrecinctContext $precinctContext
     ) {}
 
-    public function handle(string $ballotCode, Collection $votes): BallotData
+    public function handle(string|BallotData $arg1, ?Collection $votes = null): BallotData
+    {
+        return $arg1 instanceof BallotData
+            ? $this->handleBallotData($arg1)
+            : $this->handleFromParts($arg1, $votes);
+    }
+
+    protected function handleFromParts(string $ballotCode, Collection $votes): BallotData
+    {
+        $ballot = new BallotData(
+            code: $ballotCode,
+            votes: new DataCollection(VoteData::class, $votes->all()),
+        );
+
+        return $this->handleBallotData($ballot);
+    }
+
+    protected function handleBallotData(BallotData $ballot): BallotData
     {
         $precinct = $this->precinctContext->getPrecinct();
 
@@ -25,11 +42,7 @@ class SubmitBallot
             throw new \RuntimeException("Precinct not found.");
         }
 
-        $ballot = (new BallotData(
-            code: $ballotCode,
-            votes: new DataCollection(VoteData::class, $votes->all()),
-        // Set precinct code after construction (not part of core ballot identity)
-        ))->setPrecinctCode($precinct->code);
+        $ballot->setPrecinctCode($precinct->code);
 
         $this->precinctContext->putBallot($ballot);
 
