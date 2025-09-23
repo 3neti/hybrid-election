@@ -17,7 +17,7 @@ class AttestReturnCommand extends Command
      * Run with:
      *   php artisan election:attest ER-CODE 'json-encoded-or-base64 payload'
      */
-    protected $signature = 'election:attest
+    protected $signature = 'election:attest-return
         {payload? : The QR string or base64-encoded JSON payload from the inspector}';
 
     /**

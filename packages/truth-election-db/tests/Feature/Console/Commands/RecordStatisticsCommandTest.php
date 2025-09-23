@@ -32,11 +32,11 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
     $er = app(ElectionStoreInterface::class)->getElectionReturnByPrecinct('CURRIMAO-001');
     $code = $er->code;
 
-    $this->artisan('election:attest', [
+    $this->artisan('election:attest-return', [
         'payload' => 'BEI:uuid-juan:signature123',
     ]);
 
-    $this->artisan('election:attest', [
+    $this->artisan('election:attest-return', [
         'payload' => 'BEI:uuid-maria:signature456',
     ]);
 });

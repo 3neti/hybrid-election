@@ -29,11 +29,11 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
     $this->artisan('election:tally-votes');
 });
 
-test('artisan election:attest successfully signs multiple inspectors and persists in DB', function () {
+test('artisan election:attest-return successfully signs multiple inspectors and persists in DB', function () {
     $er = app(ElectionStoreInterface::class)->getElectionReturnByPrecinct('CURRIMAO-001');
 
     // ➤ Sign chairperson
-    $this->artisan('election:attest', [
+    $this->artisan('election:attest-return', [
         'payload' => 'BEI:uuid-juan:signature123',
     ])
         ->expectsOutputToContain('✅ Signature saved successfully:')
@@ -42,7 +42,7 @@ test('artisan election:attest successfully signs multiple inspectors and persist
         ->assertExitCode(0);
 
     // ➤ Sign member
-    $this->artisan('election:attest', [
+    $this->artisan('election:attest-return', [
         'payload' => 'BEI:uuid-maria:signature456',
     ])
         ->expectsOutputToContain('✅ Signature saved successfully:')
@@ -71,10 +71,10 @@ test('artisan election:attest successfully signs multiple inspectors and persist
     expect($signed->pluck('id'))->toContain('uuid-juan', 'uuid-maria');
 });
 
-test('artisan election:attest fails with unknown inspector', function () {
+test('artisan election:attest-return fails with unknown inspector', function () {
     $er = app(ElectionStoreInterface::class)->getElectionReturnByPrecinct('CURRIMAO-001');
 
-    $this->artisan('election:attest', [
+    $this->artisan('election:attest-return', [
         'payload' => 'BEI:Z9:invalid',
     ])
         ->expectsOutputToContain('❌ Failed to attest election return: Inspector with ID [Z9] not found.')
@@ -82,7 +82,7 @@ test('artisan election:attest fails with unknown inspector', function () {
 });
 
 test('artisan election:attest fails with non-existent election return', function () {
-    $this->artisan('election:attest', [
+    $this->artisan('election:attest-return', [
         'election_return_code' => 'NON-EXISTENT-ER',
         'payload' => 'BEI:uuid-juan:signature123',
     ])
@@ -90,7 +90,7 @@ test('artisan election:attest fails with non-existent election return', function
         ->assertExitCode(1);
 })->skip();
 
-test('artisan election:attest invokes AttestReturn::run and shows output', function () {
+test('artisan election:attest-return invokes AttestReturn::run and shows output', function () {
     // Arrange
     $payloadString = 'BEI:uuid-juan:signature123';
     $payload = SignPayloadData::fromQrString($payloadString);
@@ -117,7 +117,7 @@ test('artisan election:attest invokes AttestReturn::run and shows output', funct
     app()->instance(AttestReturn::class, $mock);
 
     // Act
-    $exitCode = Artisan::call('election:attest', [
+    $exitCode = Artisan::call('election:attest-return', [
         'payload' => $payloadString,
     ]);
 
