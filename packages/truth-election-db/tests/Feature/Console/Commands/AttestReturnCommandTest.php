@@ -26,7 +26,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
         '--json' => '{"ballot_code":"BAL001","precinct_code":"CURRIMAO-001","votes":[{"position":{"code":"PRESIDENT","name":"President","level":"national","count":1},"candidates":[{"code":"LD_001","name":"Leonardo DiCaprio","alias":"LD","position":{"code":"PRESIDENT","name":"President","level":"national","count":1}}]}]}'
     ])->assertExitCode(0);
 
-    $this->artisan('election:tally');
+    $this->artisan('election:tally-votes');
 });
 
 test('artisan election:attest successfully signs multiple inspectors and persists in DB', function () {

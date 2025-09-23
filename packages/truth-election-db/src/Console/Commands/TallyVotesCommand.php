@@ -16,7 +16,7 @@ class TallyVotesCommand extends Command
      * Run with:
      *   php artisan election:tally P-001 [ELECTION_RETURN_CODE]
      */
-    protected $signature = 'election:tally
+    protected $signature = 'election:tally-votes
         {election_return_code? : Optional code to assign to the election return}';
 
     /**

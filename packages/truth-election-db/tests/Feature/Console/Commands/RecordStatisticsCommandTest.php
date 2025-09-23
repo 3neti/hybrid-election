@@ -27,7 +27,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
         '--json' => '{"ballot_code":"BAL001","precinct_code":"CURRIMAO-001","votes":[{"position":{"code":"PRESIDENT","name":"President","level":"national","count":1},"candidates":[{"code":"LD_001","name":"Leonardo DiCaprio","alias":"LD","position":{"code":"PRESIDENT","name":"President","level":"national","count":1}}]}]}'
     ])->assertExitCode(0);
 
-    $this->artisan('election:tally');
+    $this->artisan('election:tally-votes');
 
     $er = app(ElectionStoreInterface::class)->getElectionReturnByPrecinct('CURRIMAO-001');
     $code = $er->code;
