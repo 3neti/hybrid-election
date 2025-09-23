@@ -1,8 +1,8 @@
 <?php
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Artisan;
 use TruthElectionDb\Tests\ResetsElectionStore;
+use Illuminate\Support\Facades\Artisan;
 use TruthElectionDb\Models\Ballot;
 use TruthElection\Data\BallotData;
 
@@ -11,7 +11,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
     $this->markKey = 'A1';
 
     // Preload required config files and mappings
-    $this->artisan('election:setup')->assertExitCode(0);
+    $this->artisan('election:setup-precinct')->assertExitCode(0);
 
     // Manually map mark to candidate in database store
     $store = app(\TruthElectionDb\Support\DatabaseElectionStore::class);

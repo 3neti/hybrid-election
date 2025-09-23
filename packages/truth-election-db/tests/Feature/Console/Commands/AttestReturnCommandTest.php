@@ -20,7 +20,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
     File::copy($electionSource, base_path('config/election.json'));
     File::copy($precinctSource, base_path('config/precinct.yaml'));
 
-    $this->artisan('election:setup')->assertExitCode(0);
+    $this->artisan('election:setup-precinct')->assertExitCode(0);
 
     $this->artisan('election:cast-ballot', [
         '--json' => '{"ballot_code":"BAL001","precinct_code":"CURRIMAO-001","votes":[{"position":{"code":"PRESIDENT","name":"President","level":"national","count":1},"candidates":[{"code":"LD_001","name":"Leonardo DiCaprio","alias":"LD","position":{"code":"PRESIDENT","name":"President","level":"national","count":1}}]}]}'

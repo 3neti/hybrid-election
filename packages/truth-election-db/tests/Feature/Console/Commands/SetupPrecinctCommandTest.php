@@ -21,12 +21,12 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
     File::copy($precinctSource, base_path('config/precinct.yaml'));
 });
 
-test('artisan election:setup works and displays expected output', function () {
+test('artisan election:setup-precinct works and displays expected output', function () {
     expect(Precinct::count())->toBe(0);
     expect(Position::count())->toBe(0);
     expect(Candidate::count())->toBe(0);
 
-    $this->artisan('election:setup')
+    $this->artisan('election:setup-precinct')
         ->expectsOutput('✅ Election setup complete.')
         ->assertSuccessful()
     ;
@@ -37,8 +37,8 @@ test('artisan election:setup works and displays expected output', function () {
 });
 
 
-test('artisan election:setup displays expected table', function () {
-    Artisan::call('election:setup');
+test('artisan election:setup-precinct displays expected table', function () {
+    Artisan::call('election:setup-precinct');
     $output = Artisan::output();
 
     expect($output)->toContain('✅ Election setup complete.');
@@ -53,20 +53,20 @@ test('artisan election:setup displays expected table', function () {
     expect($output)->toMatch('/\|\s+\d+\s+\|\s+\d+\s+\|/'); // loosely match row with two numeric columns
 });
 
-test('artisan election:setup does not duplicate data when run twice', function () {
-    $this->artisan('election:setup')->assertExitCode(0);
+test('artisan election:setup-precinct does not duplicate data when run twice', function () {
+    $this->artisan('election:setup-precinct')->assertExitCode(0);
 
     $position_count = Position::count();
     $candidate_count = Candidate::count();
 
-    $this->artisan('election:setup')->assertExitCode(0);
+    $this->artisan('election:setup-precinct')->assertExitCode(0);
 
     expect(Precinct::count())->toBe(1);
     expect(Position::count())->toBe($position_count);
     expect(Candidate::count())->toBe($candidate_count);
 });
 
-test('election:setup calls InitializeSystem with correct paths and handles output', function () {
+test('election:setup-precinct calls InitializeSystem with correct paths and handles output', function () {
     // Step 1: Mock the handle() static method BEFORE it's autoloaded
     $mock = \Mockery::mock(InitializeSystem::class);
     $mock->shouldReceive('handle')
@@ -86,7 +86,7 @@ test('election:setup calls InitializeSystem with correct paths and handles outpu
     app()->instance(InitializeSystem::class, $mock);
 
     // Step 3: Run the command
-    $exit = Artisan::call('election:setup');
+    $exit = Artisan::call('election:setup-precinct');
     expect($exit)->toBe(0);
 
     $output = Artisan::output();

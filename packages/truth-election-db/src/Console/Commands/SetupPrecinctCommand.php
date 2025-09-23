@@ -3,18 +3,18 @@
 namespace TruthElectionDb\Console\Commands;
 
 use TruthElection\Actions\InitializeSystem;
-use Illuminate\Console\Command;
 use Illuminate\Database\QueryException;
+use Illuminate\Console\Command;
 
-class SetupElectionCommand extends Command
+class SetupPrecinctCommand extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * Usage:
-     *  php artisan election:setup --election=/path/to/election.json --precinct=/path/to/precinct.yaml [--migrate]
+     *  php artisan election:setup-precinct --election=/path/to/election.json --precinct=/path/to/precinct.yaml [--migrate]
      */
-    protected $signature = 'election:setup
+    protected $signature = 'election:setup-precinct
         {--election= : Path to the election.json file}
         {--precinct= : Path to the precinct.yaml file}
         {--fresh     : Wipe database before setting up}

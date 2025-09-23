@@ -19,7 +19,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
     File::copy($electionSource, base_path('config/election.json'));
     File::copy($precinctSource, base_path('config/precinct.yaml'));
 
-    $this->artisan('election:setup')->assertExitCode(0);
+    $this->artisan('election:setup-precinct')->assertExitCode(0);
 
     // Cast a valid ballot
     $this->artisan('election:cast-ballot', [

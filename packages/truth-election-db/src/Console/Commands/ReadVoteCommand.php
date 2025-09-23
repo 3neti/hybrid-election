@@ -2,10 +2,8 @@
 
 namespace TruthElectionDb\Console\Commands;
 
-use Illuminate\Console\Command;
 use TruthElection\Actions\ReadVote;
-use TruthElection\Support\ElectionStoreInterface;
-use TruthElection\Support\MappingContext;
+use Illuminate\Console\Command;
 
 class ReadVoteCommand extends Command
 {

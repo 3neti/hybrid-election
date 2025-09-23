@@ -20,7 +20,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
     File::copy($precinctSource, base_path('config/precinct.yaml'));
     File::copy($mappingSource, base_path('config/mapping.yaml'));
 
-    $this->artisan('election:setup')->assertExitCode(0);
+    $this->artisan('election:setup-precinct')->assertExitCode(0);
 });
 
 test('election:finalize-ballot successfully finalizes vote', function () {
