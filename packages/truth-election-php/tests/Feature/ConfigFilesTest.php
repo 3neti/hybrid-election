@@ -30,3 +30,22 @@ test('precinct.yaml exists and is valid YAML', function () {
     expect($yaml)->toBeArray()
         ->and($yaml)->toHaveKeys(['code', 'location_name']);
 });
+
+test('mapping.yaml exists and is valid YAML', function () {
+    $path = realpath(__DIR__ . '/../../config/mapping.yaml');
+
+    expect($path)->not->toBeFalse(); // confirms realpath worked
+
+    $contents = File::get($path);
+
+    expect(fn () => Yaml::parse($contents))->not->toThrow(Exception::class);
+
+    $yaml = Yaml::parse($contents);
+    expect($yaml)->toBeArray()
+        ->and($yaml)->toHaveKeys(['code', 'district', 'marks']);
+
+    // Optional: check structure of marks
+    foreach ($yaml['marks'] as $mark) {
+        expect($mark)->toHaveKeys(['key', 'value']);
+    }
+});

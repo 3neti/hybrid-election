@@ -365,3 +365,33 @@ it('returns the first precinct if no code is provided', function () {
     expect($defaultPrecinct)->toBeInstanceOf(PrecinctData::class)
         ->and($defaultPrecinct->code)->toBe('P-001'); // First added
 });
+
+use TruthElection\Data\{MarkData, MappingData};
+
+it('can store and retrieve a mapping via setMappings and getMappings', function () {
+    $store = InMemoryElectionStore::instance();
+    $store->reset();
+
+    $mapping = new MappingData(
+        code: '0102800000',
+        location_name: 'Currimao, Ilocos Norte',
+        district: '2',
+        marks: new \Spatie\LaravelData\DataCollection(MarkData::class, [
+            new MarkData(key: 'A1', value: 'LD_001'),
+            new MarkData(key: 'A2', value: 'SJ_002'),
+            new MarkData(key: 'A3', value: 'DW_003'),
+        ])
+    );
+
+    $store->setMappings($mapping);
+
+    $fetched = $store->getMappings();
+
+    expect($fetched)->toBeInstanceOf(MappingData::class)
+        ->and($fetched->code)->toBe('0102800000')
+        ->and($fetched->location_name)->toBe('Currimao, Ilocos Norte')
+        ->and($fetched->district)->toBe('2')
+        ->and($fetched->marks)->toHaveCount(3)
+        ->and($fetched->marks[0]->key)->toBe('A1')
+        ->and($fetched->marks[0]->value)->toBe('LD_001');
+});

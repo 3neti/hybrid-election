@@ -1,7 +1,7 @@
 <?php
 
-use TruthElection\Tests\ResetsElectionStore;
 use TruthElection\Support\InMemoryElectionStore;
+use TruthElection\Tests\ResetsElectionStore;
 use TruthElection\Actions\SubmitBallot;
 use Spatie\LaravelData\DataCollection;
 use TruthElection\Data\CandidateData;

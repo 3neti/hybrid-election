@@ -6,9 +6,9 @@ use TruthElection\Policies\Signatures\ChairPlusMemberPolicy;
 use TruthElection\Policies\Signatures\SignaturePolicy;
 use TruthElection\Support\ElectionStoreInterface;
 use TruthElection\Support\InMemoryElectionStore;
+use TruthElection\Support\PrecinctContext;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Route;
-use TruthElection\Support\PrecinctContext;
 
 final class TruthElectionServiceProvider extends ServiceProvider
 {

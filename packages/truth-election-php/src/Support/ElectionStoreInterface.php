@@ -8,6 +8,7 @@ use Spatie\LaravelData\DataCollection;
 use TruthElection\Data\CandidateData;
 use TruthElection\Data\PositionData;
 use TruthElection\Data\PrecinctData;
+use TruthElection\Data\MappingData;
 use TruthElection\Data\BallotData;
 
 interface ElectionStoreInterface
@@ -55,4 +56,12 @@ interface ElectionStoreInterface
     public function findSignatory(ElectionReturnData $er, string $id): ElectoralInspectorData;
 
     public function reset(): void;
+
+    public function setMappings(array|MappingData $mappings): void;
+
+    public function getMappings(): MappingData;
+
+    public function addBallotMark(string $ballotCode, string $key): void;
+
+    public function getBallotMarkKeys(string $ballotCode): array;
 }

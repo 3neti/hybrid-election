@@ -8,8 +8,10 @@ use Spatie\LaravelData\DataCollection;
 use TruthElection\Data\CandidateData;
 use TruthElection\Data\PositionData;
 use TruthElection\Data\PrecinctData;
+use TruthElection\Data\MappingData;
 use TruthElection\Data\BallotData;
 use TruthElection\Data\VoteData;
+use TruthElection\Data\MarkData;
 
 class InMemoryElectionStore implements ElectionStoreInterface
 {
@@ -27,6 +29,10 @@ class InMemoryElectionStore implements ElectionStoreInterface
 
     /** @var array<string, ElectionReturnData> */
     public array $electionReturns = [];
+
+    protected ?MappingData $mappings = null;
+
+    public array $ballotMarks = [];
 
     private static ?self $instance = null;
 
@@ -47,7 +53,7 @@ class InMemoryElectionStore implements ElectionStoreInterface
     {
         $precinct = $this->getPrecinct($precinctCode);
 
-        if (! $precinct || ! $precinct->ballots) {
+        if (!$precinct || !$precinct->ballots) {
             return new DataCollection(BallotData::class, []);
         }
 
@@ -61,7 +67,7 @@ class InMemoryElectionStore implements ElectionStoreInterface
     {
         $precinct = $this->getPrecinct($precinctCode);
 
-        if (! $precinct) {
+        if (!$precinct) {
             throw new \RuntimeException("Precinct [$precinctCode] not found.");
         }
 
@@ -70,7 +76,7 @@ class InMemoryElectionStore implements ElectionStoreInterface
         // 🛡️ Check if ballot already exists (by code)
         $alreadyExists = $existingBallots
             ->toCollection()
-            ->contains(fn (BallotData $b) => $b->code === $ballot->code);
+            ->contains(fn(BallotData $b) => $b->code === $ballot->code);
 
         if ($alreadyExists) {
             return; // Do nothing — avoid duplication
@@ -115,7 +121,7 @@ class InMemoryElectionStore implements ElectionStoreInterface
     {
         $precinct = $this->getPrecinct($precinctCode);
 
-        if (! $precinct || ! $precinct->ballots) {
+        if (!$precinct || !$precinct->ballots) {
             return [];
         }
 
@@ -150,13 +156,15 @@ class InMemoryElectionStore implements ElectionStoreInterface
         return null;
     }
 
-    function findInspector(ElectionReturnData $er, string $id): ?ElectoralInspectorData {
+    function findInspector(ElectionReturnData $er, string $id): ?ElectoralInspectorData
+    {
         $raw = $er->precinct->electoral_inspectors->toCollection()->firstWhere('id', $id);
 
         return ElectoralInspectorData::from($raw);
     }
 
-    function findPrecinctInspector(ElectionReturnData $er, string $id): ?ElectoralInspectorData {
+    function findPrecinctInspector(ElectionReturnData $er, string $id): ?ElectoralInspectorData
+    {
         $raw = $er->precinct->electoral_inspectors->toCollection()->firstWhere('id', $id);
 
         return ElectoralInspectorData::from($raw);
@@ -172,7 +180,8 @@ class InMemoryElectionStore implements ElectionStoreInterface
         );
     }
 
-    function findSignatory(ElectionReturnData $er, string $id): ElectoralInspectorData {
+    function findSignatory(ElectionReturnData $er, string $id): ElectoralInspectorData
+    {
         $raw = collect($er->signatures)->firstWhere('id', $id);
 
         return ElectoralInspectorData::from($raw);
@@ -229,7 +238,8 @@ class InMemoryElectionStore implements ElectionStoreInterface
 
     public function getCandidate(string $code): ?CandidateData
     {
-        return $this->candidates[$code] ?? null;
+        return collect($this->candidates)->firstWhere('code', $code);
+//        return $this->candidates[$code] ?? null;
     }
 
     public function allPositions(): array
@@ -245,5 +255,46 @@ class InMemoryElectionStore implements ElectionStoreInterface
     public function getElectionReturnByPrecinct(string $precinctCode): ?ElectionReturnData
     {
         return $this->electionReturns[$precinctCode] ?? null;
+    }
+
+    public function setMappings(array|MappingData $mappings): void
+    {
+        if ($mappings instanceof MappingData) {
+            $this->mappings = $mappings;
+            return;
+        }
+
+        if (!isset($mappings['code'], $mappings['location_name'], $mappings['district'], $mappings['marks'])) {
+            throw new \InvalidArgumentException('Missing required keys in mapping array: code, location_name, district, marks');
+        }
+
+        $this->mappings = new MappingData(
+            code: $mappings['code'],
+            location_name: $mappings['location_name'],
+            district: $mappings['district'],
+            marks: new DataCollection(MarkData::class, $mappings['marks']),
+        );
+    }
+
+    public function getMappings(): MappingData
+    {
+        if (! $this->mappings) {
+            throw new \RuntimeException('Mappings have not been initialized.');
+        }
+
+        return $this->mappings;
+    }
+
+    public function addBallotMark(string $ballotCode, string $key): void
+    {
+        $this->ballotMarks[$ballotCode] ??= [];
+        if (!in_array($key, $this->ballotMarks[$ballotCode])) {
+            $this->ballotMarks[$ballotCode][] = $key;
+        }
+    }
+
+    public function getBallotMarkKeys(string $ballotCode): array
+    {
+        return $this->ballotMarks[$ballotCode] ?? [];
     }
 }

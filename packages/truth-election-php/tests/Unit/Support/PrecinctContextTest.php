@@ -219,3 +219,73 @@ it('puts and merges ballots correctly using putBallot()', function () {
         )
     );
 });
+
+it('overwrites vote for the same position on subsequent putBallot()', function () {
+    Log::spy(); // Spy on logger
+
+    $precinctCode = 'CURRIMAO-001';
+
+    // 🧾 Setup positions
+    $president = new PositionData('PRESIDENT', 'President', Level::NATIONAL, 1);
+    $senator   = new PositionData('SENATOR', 'Senator', Level::NATIONAL, 12);
+
+    $senatorCandidate1 = new CandidateData('SEN-001', 'Senator One', 'S1', $senator);
+    $senatorCandidate2 = new CandidateData('SEN-002', 'Senator Two', 'S2', $senator);
+
+    $senatorVote1 = new VoteData(new DataCollection(CandidateData::class, [$senatorCandidate1]));
+    $senatorVote2 = new VoteData(new DataCollection(CandidateData::class, [$senatorCandidate2]));
+
+    $incomingBallot1 = new BallotData('BALLOT-001', new DataCollection(VoteData::class, [
+        $senatorVote1,
+    ]));
+    $incomingBallot2 = new BallotData('BALLOT-001', new DataCollection(VoteData::class, [
+        $senatorVote2,
+    ]));
+
+//    dd($incomingBallot2->toArray());
+    // 🧪 Mock store behavior
+    $storeMock = $this->mock(ElectionStoreInterface::class);
+
+    $storeMock->shouldReceive('getPrecinct')
+        ->with($precinctCode)
+        ->andReturn(new PrecinctData(
+            code: $precinctCode,
+            location_name: 'Currimao National High School',
+            latitude: 0,
+            longitude: 0,
+            electoral_inspectors: new DataCollection(ElectoralInspectorData::class, []),
+            watchers_count: 0,
+            precincts_count: 0,
+            registered_voters_count: 0,
+            actual_voters_count: 0,
+            ballots_in_box_count: 0,
+            unused_ballots_count: 0,
+            spoiled_ballots_count: 0,
+            void_ballots_count: 0,
+        ));
+
+    $storeMock->shouldReceive('getBallots')
+        ->andReturn(new DataCollection(BallotData::class, [$incomingBallot1]));
+
+    $storeMock->shouldReceive('putBallot')
+        ->once()
+        ->withArgs(function (BallotData $merged, string $code) use ($precinctCode) {
+            expect($merged->votes)->toHaveCount(1); // PRESIDENT + SENATOR
+
+            $senatorVote = $merged->votes->toCollection()->first(
+                fn($vote) => $vote->position->code === 'SENATOR'
+            );
+//            dd($senatorVote->toArray());
+            expect($senatorVote)->not()->toBeNull();
+            expect($senatorVote->candidates)->toHaveCount(2);
+
+            expect($code)->toBe($precinctCode);
+
+            return true;
+        });
+
+
+    // 🔧 Call putBallot
+    $context = new PrecinctContext($storeMock, $precinctCode);
+    $context->putBallot($incomingBallot2);
+});

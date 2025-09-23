@@ -12,6 +12,7 @@ beforeEach(function () {
     // Copy the real files from the package into the test base_path
     File::copy(realpath(__DIR__ . '/../../../config/election.json'), base_path('config/election.json'));
     File::copy(realpath(__DIR__ . '/../../../config/precinct.yaml'), base_path('config/precinct.yaml'));
+    File::copy(realpath(__DIR__ . '/../../../config/mapping.yaml'), base_path('config/mapping.yaml'));
 });
 
 test('InitializeSystem loads valid config and returns summary', function () {
