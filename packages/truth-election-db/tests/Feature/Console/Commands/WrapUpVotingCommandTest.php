@@ -45,7 +45,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
     ]);
 });
 
-test('artisan election:wrapup completes and finalizes return', function () {
+test('artisan election:wrapup-voting completes and finalizes return', function () {
     $this->artisan('election:attest-return', [
         'payload' => 'BEI:uuid-juan:signature123',
     ]);
@@ -54,7 +54,7 @@ test('artisan election:wrapup completes and finalizes return', function () {
         'payload' => 'BEI:uuid-maria:signature456',
     ]);
 
-    $this->artisan('election:wrapup', [
+    $this->artisan('election:wrapup-voting', [
         '--disk' => 'local',
         '--payload' => 'minimal',
         '--max_chars' => 1200,
@@ -76,12 +76,12 @@ test('artisan election:wrapup completes and finalizes return', function () {
     expect($er->signedInspectors())->toHaveCount(2);
 });
 
-test('artisan election:wrapup throws if already finalized without --force', function () {
+test('artisan election:wrapup-voting throws if already finalized without --force', function () {
     $precinct = Precinct::query()->where('code', 'CURRIMAO-001')->first();
     $precinct->closed_at = now()->toISOString();
     $precinct->save();
 
-    $this->artisan('election:wrapup')
+    $this->artisan('election:wrapup-voting')
 //        ->expectsOutputToContain('Balloting already closed. Nothing to do.')
         ->assertExitCode(1)
     ;
@@ -92,7 +92,7 @@ test('artisan election:wrapup fails if signatures are incomplete', function () {
         'payload' => 'BEI:uuid-juan:signature123',
     ]);
 
-    $this->artisan('election:wrapup', [
+    $this->artisan('election:wrapup-voting', [
         '--force' => false,
     ])
 //        ->expectsOutputToContain('Signature validation failed')
@@ -100,7 +100,7 @@ test('artisan election:wrapup fails if signatures are incomplete', function () {
     ;
 });
 
-test('artisan election:wrapup invokes WrapUpVoting::run with expected args', function () {
+test('artisan election:wrapup-voting invokes WrapUpVoting::run with expected args', function () {
     $json = [
         'id' => 'uuid-er-001',
         'code' => 'ER-001',
@@ -246,7 +246,7 @@ test('artisan election:wrapup invokes WrapUpVoting::run with expected args', fun
 
     app()->instance(WrapUpVoting::class, $mock);
 
-    $exitCode = Artisan::call('election:wrapup', [
+    $exitCode = Artisan::call('election:wrapup-voting', [
         '--disk' => 'local',
         '--payload' => 'minimal',
         '--max_chars' => 1200,
