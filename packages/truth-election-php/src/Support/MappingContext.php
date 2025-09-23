@@ -121,36 +121,4 @@ class MappingContext
             votes: new DataCollection(VoteData::class, $voteData)
         );
     }
-
-//    public function resolveBallot(string $ballotCode): BallotData
-//    {
-//        $markKeys = $this->store->getBallotMarkKeys($ballotCode);
-//
-//        /** @var array<string, CandidateData[]> $votesMap */
-//        $votesMap = [];
-//
-//        foreach ($markKeys as $key) {
-//            try {
-//                $candidate = $this->resolveCandidate($key);
-//                $positionCode = $candidate->position->code;
-//
-//                $votesMap[$positionCode][] = $candidate;
-//            } catch (\Throwable $e) {
-//                logger()->warning("[resolveBallot] Skipping mark '{$key}': " . $e->getMessage());
-//            }
-//        }
-//
-//        $voteData = [];
-//
-//        foreach ($votesMap as $positionCode => $candidates) {
-//            $voteData[] = new VoteData(
-//                candidates: new DataCollection(CandidateData::class, $candidates)
-//            );
-//        }
-//
-//        return new BallotData(
-//            code: $ballotCode,
-//            votes: new DataCollection(VoteData::class, $voteData)
-//        );
-//    }
 }
