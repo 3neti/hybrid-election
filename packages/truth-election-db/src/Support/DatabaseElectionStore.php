@@ -3,12 +3,21 @@
 namespace TruthElectionDb\Support;
 
 
-use TruthElection\Data\{BallotData, CandidateData, ElectionReturnData, ElectoralInspectorData, PositionData, PrecinctData, VoteData};
+use TruthElection\Data\{BallotData,
+    CandidateData,
+    ElectionReturnData,
+    ElectoralInspectorData,
+    MappingData,
+    MarkData,
+    PositionData,
+    PrecinctData,
+    VoteData};
 use TruthElectionDb\Models\{Ballot, Candidate, ElectionReturn, Position, Precinct};
 use TruthElection\Support\ElectionStoreInterface;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\{Cache, DB};
 use Spatie\LaravelData\DataCollection;
+use TruthElectionDb\Models\{BallotMark, Mapping, Mark};
 
 class DatabaseElectionStore implements ElectionStoreInterface
 {
@@ -77,40 +86,6 @@ class DatabaseElectionStore implements ElectionStoreInterface
         });
     }
 
-//    public function putBallot(BallotData $ballot, string $precinctCode): void
-//    {
-//        DB::transaction(function () use ($ballot, $precinctCode) {
-//            $precinct = Precinct::whereCode($precinctCode)->first();
-//
-//            if (!$precinct) {
-//                throw new \RuntimeException("Precinct [$precinctCode] not found.");
-//            }
-//
-//            // Check for existing ballot with same code
-//            if (Ballot::query()->where('code', $ballot->code)->exists()) {
-//                throw ValidationException::withMessages([
-//                    'ballot_code' => "Duplicate ballot code [{$ballot->code}] for precinct [{$precinctCode}].",
-//                ]);
-//            }
-//
-//            $ballot->setPrecinctCode($precinctCode);
-//
-//            Ballot::fromData($ballot);
-//        });
-//    }
-
-//    public function getPrecinct(?string $code = null): ?PrecinctData
-//    {
-//        $key = $code ? "precinct:{$code}" : 'precinct:first';
-//
-//        return Cache::remember($key, now()->addMinutes(10), function () use ($code) {
-//            $model = $code
-//                ? Precinct::whereCode($code)->first()
-//                : Precinct::first();
-//
-//            return $model?->getData(); // convert to PrecinctData
-//        });
-//    }
     public function getPrecinct(?string $code = null): ?PrecinctData
     {
         if ($code === null) {
@@ -119,22 +94,6 @@ class DatabaseElectionStore implements ElectionStoreInterface
 
         return Precinct::whereCode($code)->first()?->getData();
     }
-
-//    public function putPrecinct(PrecinctData $precinct): void
-//    {
-//        DB::transaction(function () use ($precinct) {
-//            Precinct::fromData($precinct);
-//
-//            // Refresh the cache
-//            $code = $precinct->code;
-//
-//            $key = $code ? "precinct:{$code}" : 'precinct:first';
-//
-//            // Optional: use tags if supported
-//            Cache::forget($key);
-//            Cache::put($key, $precinct, now()->addMinutes(10));
-//        });
-//    }
 
     public function putPrecinct(PrecinctData $precinct): void
     {
@@ -269,5 +228,90 @@ class DatabaseElectionStore implements ElectionStoreInterface
             Position::truncate();
             Candidate::truncate();
         });
+    }
+
+    public function setMappings(array|MappingData $mappings): void
+    {
+        DB::transaction(function () use ($mappings) {
+            if ($mappings instanceof MappingData) {
+                $mappingModel = Mapping::updateOrCreate(
+                    ['code' => $mappings->code],
+                    [
+                        'location_name' => $mappings->location_name,
+                        'district' => $mappings->district,
+                    ]
+                );
+
+                foreach ($mappings->marks as $mark) {
+                    Mark::updateOrCreate(
+                        [
+                            'mapping_id' => $mappingModel->id,
+                            'key' => $mark->key,
+                        ],
+                        [
+                            'value' => $mark->value,
+                        ]
+                    );
+                }
+
+                return;
+            }
+
+            if (!isset($mappings['code'], $mappings['location_name'], $mappings['district'], $mappings['marks'])) {
+                throw new \InvalidArgumentException('Missing required keys in mapping array: code, location_name, district, marks');
+            }
+
+            $mappingModel = Mapping::updateOrCreate(
+                ['code' => $mappings['code']],
+                [
+                    'location_name' => $mappings['location_name'],
+                    'district' => $mappings['district'],
+                ]
+            );
+
+            foreach ($mappings['marks'] as $mark) {
+                Mark::updateOrCreate(
+                    [
+                        'mapping_id' => $mappingModel->id,
+                        'key' => $mark['key'],
+                    ],
+                    [
+                        'value' => $mark['value'],
+                    ]
+                );
+            }
+        });
+    }
+
+    public function getMappings(): MappingData
+    {
+        $mapping = Mapping::with('marks')->first();
+
+        if (!$mapping instanceof Mapping) {
+            throw new \RuntimeException('No mapping found.');
+        }
+
+        return new MappingData(
+            code: $mapping->code,
+            location_name: $mapping->location_name,
+            district: $mapping->district,
+            marks: new DataCollection(MarkData::class, $mapping->marks?->toArray() ?? []),
+        );
+    }
+
+    public function addBallotMark(string $ballotCode, string $key): void
+    {
+        BallotMark::firstOrCreate([
+            'ballot_code' => $ballotCode,
+            'mark_key' => $key,
+        ]);
+    }
+
+    public function getBallotMarkKeys(string $ballotCode): array
+    {
+        return BallotMark::query()
+            ->where('ballot_code', $ballotCode)
+            ->pluck('mark_key')
+            ->toArray();
     }
 }

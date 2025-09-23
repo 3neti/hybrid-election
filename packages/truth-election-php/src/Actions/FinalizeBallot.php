@@ -18,7 +18,6 @@ class FinalizeBallot
         protected PrecinctContext $precinctContext,
     ) {}
 
-
     public function handle(string $ballotCode): BallotData
     {
         Log::info("[FinalizeBallot] Resolving ballot marks for: {$ballotCode}");

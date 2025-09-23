@@ -17,11 +17,11 @@ class SubmitBallot
         protected PrecinctContext $precinctContext
     ) {}
 
-    public function handle(string|BallotData $arg1, ?Collection $votes = null): BallotData
+    public function handle(string|BallotData $ballotCode, ?Collection $votes = null): BallotData
     {
-        return $arg1 instanceof BallotData
-            ? $this->handleBallotData($arg1)
-            : $this->handleFromParts($arg1, $votes);
+        return $ballotCode instanceof BallotData
+            ? $this->handleBallotData($ballotCode)
+            : $this->handleFromParts($ballotCode, $votes);
     }
 
     protected function handleFromParts(string $ballotCode, Collection $votes): BallotData

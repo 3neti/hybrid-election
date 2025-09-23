@@ -19,8 +19,16 @@ class ReadVote
 
     public function handle(string $ballotCode, string $key): BallotData
     {
+        // Validate the mark key exists using MappingContext
+        $context = new MappingContext($this->store);
+
+        // Will throw if the mark is invalid 🚨
+        $context->getMark($key);
+
+        // Add the mark after validation
         $this->store->addBallotMark($ballotCode, $key);
 
-        return (new MappingContext($this->store))->resolveBallot($ballotCode);
+        // Resolve and return the ballot data
+        return $context->resolveBallot($ballotCode);
     }
 }

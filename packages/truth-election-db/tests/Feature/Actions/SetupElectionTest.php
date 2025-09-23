@@ -11,6 +11,7 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
     File::ensureDirectoryExists(base_path('config'));
     File::copy(realpath(__DIR__ . '/../../../config/election.json'), base_path('config/election.json'));
     File::copy(realpath(__DIR__ . '/../../../config/precinct.yaml'), base_path('config/precinct.yaml'));
+    File::copy(realpath(__DIR__ . '/../../../config/mapping.yaml'), base_path('config/mapping.yaml'));
 });
 
 test('SetupElectionFromFiles::handle() loads config and persists to database', function () {
@@ -58,7 +59,7 @@ test('SetupElectionFromFiles::handle() gracefully fails with missing config file
 
     expect($result['ok'])->toBeFalse()
         ->and($result['error'])->toBeString();
-})->skip();
+})->skip(); //do not unskip
 
 test('SetupElectionFromFiles::handle() respects custom file paths', function () {
     $electionPath = base_path('config/election.json');
@@ -80,7 +81,7 @@ test('SetupElectionFromFiles::asController returns error on missing files', func
         $json->where('ok', false)
             ->has('error')
         );
-})->skip();
+})->skip(); //do not unskip
 
 test('Returned result includes resolved file paths', function () {
     $result = SetupElection::run();

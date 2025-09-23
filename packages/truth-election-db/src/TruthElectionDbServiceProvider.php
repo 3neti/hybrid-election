@@ -3,11 +3,13 @@
 namespace TruthElectionDb;
 
 use TruthElectionDb\Console\Commands\RecordStatisticsCommand;
+use TruthElectionDb\Console\Commands\FinalizeBallotCommand;
 use TruthElectionDb\Console\Commands\SetupElectionCommand;
 use TruthElectionDb\Console\Commands\AttestReturnCommand;
 use TruthElectionDb\Console\Commands\WrapUpVotingCommand;
 use TruthElectionDb\Console\Commands\CastBallotCommand;
 use TruthElectionDb\Console\Commands\TallyVotesCommand;
+use TruthElectionDb\Console\Commands\ReadVoteCommand;
 use TruthElectionDb\Support\DatabaseElectionStore;
 use TruthElection\Support\ElectionStoreInterface;
 use Illuminate\Support\ServiceProvider;
@@ -38,11 +40,13 @@ class TruthElectionDbServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 SetupElectionCommand::class,
+                ReadVoteCommand::class,
                 CastBallotCommand::class,
                 TallyVotesCommand::class,
                 AttestReturnCommand::class,
                 RecordStatisticsCommand::class,
-                WrapUpVotingCommand::class
+                WrapUpVotingCommand::class,
+                FinalizeBallotCommand::class,
             ]);
         }
     }

@@ -12,6 +12,7 @@ class SetupElection extends InitializeSystem
         $result = $this->handle(
             electionPath: $request->input('election_path'),
             precinctPath: $request->input('precinct_path'),
+            mappingPath: $request->input('mapping_path'),
         );
 
         return response()->json($result);
