@@ -19,14 +19,18 @@ class InitializeSystem
         protected ConfigFileReader $reader
     ) {}
 
-    public function handle(?string $electionPath = null, ?string $precinctPath = null): array
-    {
-        $config = (new ConfigFileReader($electionPath, $precinctPath))->read();
+    public function handle(
+        ?string $electionPath = null,
+        ?string $precinctPath = null,
+        ?string $mappingPath = null, // ✅ added
+    ): array {
+        $config = (new ConfigFileReader($electionPath, $precinctPath, $mappingPath))->read();
 
         $summary = [
             'positions'  => ['created' => 0, 'updated' => 0],
             'candidates' => ['created' => 0, 'updated' => 0],
             'precinct'   => ['created' => 0, 'updated' => 0],
+            'mapping'    => ['loaded' => 0], // ✅ added
         ];
 
         $precinctCode = $this->importPrecinct($config['precinct'], $summary);
@@ -35,6 +39,15 @@ class InitializeSystem
 
         $this->store->setPositions($positionMap);
         $this->store->setCandidates($candidateMap);
+
+        // ✅ New: set mappings
+        try {
+            $this->store->setMappings($config['mapping']);
+            $summary['mapping']['loaded'] = 1;
+        } catch (\Throwable $e) {
+            Log::error('Failed to load mapping.yaml: ' . $e->getMessage());
+            throw $e;
+        }
 
         return [
             'ok' => true,
@@ -78,7 +91,7 @@ class InitializeSystem
                 count: $pos['count'],
             );
 
-            $summary['positions']['created']++; // No update logic in memory
+            $summary['positions']['created']++;
         }
 
         return $positionMap;
@@ -91,7 +104,7 @@ class InitializeSystem
         foreach (Arr::get($election, 'candidates', []) as $positionCode => $list) {
             $position = $positionMap[$positionCode] ?? null;
 
-            if (!$position) continue; // or optionally log a warning
+            if (!$position) continue;
 
             foreach ((array) $list as $c) {
                 $candidateMap[$c['code']] = new CandidateData(

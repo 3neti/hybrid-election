@@ -148,3 +148,32 @@ YAML;
         ->and($precinct->electoral_inspectors[0]->name)->toBe('Juan dela Cruz')
         ->and($precinct->electoral_inspectors[0]->role->value)->toBe('chairperson');
 });
+
+test('InitializeSystem loads mapping.yaml and stores MappingData correctly', function () {
+    // Act
+    $result = InitializeSystem::run();
+
+    // Assert: structure
+    expect($result['ok'])->toBeTrue();
+    expect($result['summary'])->toHaveKey('mapping')
+        ->and($result['summary']['mapping']['loaded'])->toBe(1);
+    expect($result['files'])->toHaveKey('mapping');
+
+    // Retrieve the store and mappings
+    $store = InMemoryElectionStore::instance();
+    $mappingData = $store->getMappings();
+
+    // Check top-level fields
+    expect($mappingData->code)->toBe('0102800000');
+    expect($mappingData->location_name)->toBe('Currimao, Ilocos Norte');
+    expect($mappingData->district)->toBe('2');
+
+    // Should contain 60+ marks (actual count is 60+ based on mapping.yaml)
+    expect($mappingData->marks)->toBeInstanceOf(\Spatie\LaravelData\DataCollection::class);
+    expect($mappingData->marks->count())->toBeGreaterThan(50);
+
+    // Check a specific mark
+    $mark = $mappingData->marks->toCollection()->firstWhere('key', 'K3');
+    expect($mark)->not->toBeNull()
+        ->and($mark->value)->toBe('THE_DARK_KNIGHT_003');
+});
