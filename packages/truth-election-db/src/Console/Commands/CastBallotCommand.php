@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 
 class CastBallotCommand extends Command
 {
-    protected $signature = 'election:cast
+    protected $signature = 'election:cast-ballot
         {lines?* : One or more ballot lines in CODE|POS1:CANDA,CANDB;POS2:... format. If omitted, read from STDIN.}
         {--input= : Path to the ballot JSON file}
         {--json= : Raw ballot JSON string}';

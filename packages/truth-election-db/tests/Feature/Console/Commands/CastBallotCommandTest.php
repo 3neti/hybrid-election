@@ -38,8 +38,8 @@ uses(ResetsElectionStore::class, RefreshDatabase::class)->beforeEach(function ()
     ]);
 });
 
-test('artisan election:cast works via json option', function () {
-    $this->artisan('election:cast', [
+test('artisan election:cast-ballot works via json option', function () {
+    $this->artisan('election:cast-ballot', [
         '--json' => '{"ballot_code":"BAL001","votes":[{"position":{"code":"PRESIDENT","name":"President","level":"national","count":1},"candidates":[{"code":"LD_001","name":"Leonardo DiCaprio","alias":"LD","position":{"code":"PRESIDENT","name":"President","level":"national","count":1}}]},{"position":{"code":"VICE-PRESIDENT","name":"Vice President","level":"national","count":1},"candidates":[{"code":"TH_001","name":"Tom Hanks","alias":"TH","position":{"code":"VICE-PRESIDENT","name":"Vice President","level":"national","count":1}}]}]}',
 //        '--json' => '{"ballot_code":"BAL001","precinct_code":"CURRIMAO-001","votes":[{"position":{"code":"PRESIDENT","name":"President","level":"national","count":1},"candidates":[{"code":"LD_001","name":"Leonardo DiCaprio","alias":"LD","position":{"code":"PRESIDENT","name":"President","level":"national","count":1}}]},{"position":{"code":"VICE-PRESIDENT","name":"Vice President","level":"national","count":1},"candidates":[{"code":"TH_001","name":"Tom Hanks","alias":"TH","position":{"code":"VICE-PRESIDENT","name":"Vice President","level":"national","count":1}}]}]}',
     ])
@@ -47,12 +47,12 @@ test('artisan election:cast works via json option', function () {
         ->assertExitCode(0);
 });
 
-test('artisan election:cast works via json file', function () {
+test('artisan election:cast-ballot works via json file', function () {
     // Ensure ballot fixture exists
     $ballotFixture = realpath(__DIR__ . '/../../stubs/ballot.json');
     expect($ballotFixture)->not->toBeFalse("Missing ballot.json fixture");
 
-    $this->artisan('election:cast', [
+    $this->artisan('election:cast-ballot', [
         '--input' => $ballotFixture,
     ])
         ->expectsOutputToContain('✅ Ballot successfully cast')
@@ -60,27 +60,27 @@ test('artisan election:cast works via json file', function () {
     ;
 });
 
-test('artisan election:cast fails with malformed JSON string', function () {
-    $this->artisan('election:cast', [
+test('artisan election:cast-ballot fails with malformed JSON string', function () {
+    $this->artisan('election:cast-ballot', [
         '--json' => '{"ballot_code": "BAL001", "votes": [}', // malformed JSON
     ])
         ->expectsOutputToContain('❌ Failed to parse JSON: State mismatch (invalid or malformed JSON')
         ->assertExitCode(1);
 });
 
-test('artisan election:cast fails with malformed JSON file', function () {
+test('artisan election:cast-ballot fails with malformed JSON file', function () {
     $malformed = realpath(__DIR__ . '/../../stubs/malformed-ballot.json');
 
     expect($malformed)->not->toBeFalse("Missing malformed-ballot.json fixture");
 
-    $this->artisan('election:cast', [
+    $this->artisan('election:cast-ballot', [
         '--input' => $malformed,
     ])
         ->expectsOutputToContain('❌ Failed to parse JSON: State mismatch (invalid or malformed JSON)')
         ->assertExitCode(1);
 });
 
-test('election:cast uses CastBallot instance and returns expected output', function () {
+test('election:cast-ballot uses CastBallot instance and returns expected output', function () {
     // 🗳️ Input payload (also used for mock return)
     $precinctCode = 'CURRIMAO-001';
     $castInput = [
@@ -139,7 +139,7 @@ test('election:cast uses CastBallot instance and returns expected output', funct
     app()->instance(CastBallot::class, $mock);
 
     // 🚀 Call the command via Artisan
-    $exitCode = Artisan::call('election:cast', [
+    $exitCode = Artisan::call('election:cast-ballot', [
         '--json' => $expectedBallot->toJson(),
     ]);
 
@@ -154,10 +154,10 @@ test('election:cast uses CastBallot instance and returns expected output', funct
     expect($output)->toContain('Votes: 2');
 });
 
-test('election:cast parses full compact line and stores all votes', function () {
+test('election:cast-ballot parses full compact line and stores all votes', function () {
     $line = "BAL-001|PRESIDENT:AJ_006;VICE-PRESIDENT:TH_001;SENATOR:ES_002,LN_048,AA_018,GG_016,BC_015,MD_009,WS_007,MA_035,SB_006,FP_038,OS_028,MF_003;REPRESENTATIVE-PARTY-LIST:THE_MATRIX_008;GOVERNOR-ILN:EN_001;VICE-GOVERNOR-ILN:MF_002;BOARD-MEMBER-ILN:DP_004,BDT_005;REPRESENTATIVE-ILN-1:JF_001;MAYOR-ILN-CURRIMAO:EW_003;VICE-MAYOR-ILN-CURRIMAO:JKS_001;COUNCILOR-ILN-CURRIMAO:ER_001,SG_002,SR_003,MC_004,MS_005,CE_006,GMR_007,DO_008";
 
-    $exit = Artisan::call('election:cast', [
+    $exit = Artisan::call('election:cast-ballot', [
         'lines' => [$line]
     ]);
 
