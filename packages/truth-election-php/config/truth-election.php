@@ -1,6 +1,7 @@
 <?php
 
 use TruthElection\Pipes\GenerateElectionReturnQRCodes;
+use TruthElection\Pipes\GenerateElectionReturnPayload;
 use TruthElection\Pipes\PersistElectionReturnJson;
 use TruthElection\Pipes\EncodeElectionReturnLines;
 use TruthElection\Pipes\RenderElectionReturnPdf;
@@ -11,6 +12,7 @@ return [
             PersistElectionReturnJson::class,
             EncodeElectionReturnLines::class,
             GenerateElectionReturnQRCodes::class,
+            GenerateElectionReturnPayload::class,
             RenderElectionReturnPdf::class
         ],
     ],

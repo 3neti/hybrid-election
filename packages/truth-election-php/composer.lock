@@ -2912,12 +2912,13 @@
             "dist": {
                 "type": "path",
                 "url": "./../truth-renderer-php",
-                "reference": "65f068f5e0b244183ba99d976a50da9513077b7b"
+                "reference": "e409a55bbb5a05b99a5b4dc6784e8e8cd72e99d7"
             },
             "require": {
                 "dompdf/dompdf": "^3.1",
                 "ext-json": "*",
                 "justinrainbow/json-schema": "^6.5",
+                "lorisleiva/laravel-actions": "^2.9",
                 "php": "^8.2",
                 "spatie/browsershot": "^5.0",
                 "symfony/yaml": "^7.3",

@@ -27,7 +27,8 @@
         "justinrainbow/json-schema": "^6.5",
         "zordius/lightncandy": "^1.2",
         "spatie/browsershot": "^5.0",
-        "lorisleiva/laravel-actions": "^2.9"
+        "lorisleiva/laravel-actions": "^2.9",
+        "colinodell/json5": "^3.0"
     },
     "require-dev": {
         "orchestra/testbench": "^10.3",
