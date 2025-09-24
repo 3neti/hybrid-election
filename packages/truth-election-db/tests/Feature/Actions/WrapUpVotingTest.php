@@ -194,3 +194,30 @@ test('does not overwrite closed_at if already set', function () {
         $originalClosedAt->copy()->micro(0)->toISOString()
     );
 });
+
+
+test('wrapup-voting endpoint returns valid election return JSON', function () {
+    // Attest signatures to pass validation
+    $store = app(ElectionStoreInterface::class);
+    $er = $store->getElectionReturnByPrecinct('CURRIMAO-001');
+    AttestReturn::run(SignPayloadData::fromQrString('BEI:uuid-juan:signature123'), $er->code);
+    AttestReturn::run(SignPayloadData::fromQrString('BEI:uuid-maria:signature456'), $er->code);
+
+    // Send HTTP POST request to the endpoint
+    $response = $this->postJson(route('wrapup.voting'), [
+        'disk' => 'local',
+        'payload' => 'minimal',
+        'maxChars' => 1000,
+        'dir' => 'final',
+        'force' => false,
+    ]);
+
+    $response->assertSuccessful();
+
+    $data = $response->json();
+
+    expect($data)->toBeArray();
+    expect($data)->toHaveKey('code');
+    expect($data)->toHaveKey('ballots');
+    expect($data)->toHaveKey('tallies');
+});

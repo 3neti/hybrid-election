@@ -152,3 +152,39 @@ test('returns 404 for missing election return', function () {
 
     AttestReturn::run($payload, 'NON-EXISTENT-ER');
 })->throws(\Symfony\Component\HttpKernel\Exception\HttpException::class, 'Election return [NON-EXISTENT-ER] not found.')->skip();
+
+test('can attest election return via API', function () {
+    $payload = ['payload' => 'BEI:uuid-juan:signature123'];
+
+    $response = $this->postJson(route('attest.return'), $payload);
+
+    $response->assertStatus(200)
+        ->assertJsonStructure([
+            'message', 'id', 'name', 'role', 'signed_at', 'er'
+        ])
+        ->assertJson([
+            'message' => 'Signature saved successfully.',
+            'id' => 'uuid-juan',
+        ]);
+});
+
+test('returns 404 for unknown inspector via API', function () {
+    $payload = ['payload' => 'BEI:invalid-id:bad-sign'];
+
+    $response = $this->postJson(route('attest.return'), $payload);
+
+    $response->assertStatus(404);
+    $response->assertSeeText('Inspector with ID [invalid-id] not found.');
+});
+
+test('returns 404 for missing election return via API', function () {
+    // Wipe out ERs to simulate missing data
+    \TruthElectionDb\Models\ElectionReturn::query()->delete();
+
+    $payload = ['payload' => 'BEI:uuid-juan:signature123'];
+
+    $response = $this->postJson(route('attest.return'), $payload);
+
+    $response->assertStatus(404);
+    $response->assertSeeText('Election return');
+});

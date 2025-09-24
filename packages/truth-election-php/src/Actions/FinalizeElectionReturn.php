@@ -7,7 +7,9 @@ use TruthElection\Support\{ElectionReturnContext, PrecinctContext};
 use TruthElection\Pipes\ValidateSignatures;
 use Lorisleiva\Actions\Concerns\AsAction;
 use TruthElection\Pipes\CloseBalloting;
+use Lorisleiva\Actions\ActionRequest;
 use Illuminate\Pipeline\Pipeline;
+use Illuminate\Support\Arr;
 use RuntimeException;
 
 class FinalizeElectionReturn
@@ -63,5 +65,28 @@ class FinalizeElectionReturn
             ->thenReturn();
 
         return $ctx->er;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'disk' => ['nullable', 'string'],
+            'payload' => ['nullable', 'string'],
+            'maxChars' => ['nullable', 'integer'],
+            'dir' => ['nullable', 'string'],
+            'force' => ['nullable', 'boolean'],
+        ];
+    }
+    public function asController(ActionRequest $request): ElectionReturnData
+    {
+        $validated = $request->validated();
+
+        return $this->handle(
+            disk: Arr::get($validated, 'disk', 'local'),
+            payload: Arr::get($validated, 'payload', 'minimal'),
+            maxChars: (int) Arr::get($validated, 'maxChars', 1200),
+            dir: Arr::get($validated, 'dir', 'final'),
+            force: (bool) Arr::get($validated, 'force', false),
+        );
     }
 }

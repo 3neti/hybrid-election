@@ -68,11 +68,11 @@ class SignElectionReturn
      * @param  string  $electionReturnCode
      * @return JsonResponse
      */
-    public function asController(ActionRequest $request, string $electionReturnCode): JsonResponse
+    public function asController(ActionRequest $request, ?string $code = null): JsonResponse
     {
         $data = SignPayloadData::fromQrString($request->input('payload'));
 
-        $result = $this->handle($data, $electionReturnCode);
+        $result = $this->handle($data, $code);
 
         return response()->json($result);
     }

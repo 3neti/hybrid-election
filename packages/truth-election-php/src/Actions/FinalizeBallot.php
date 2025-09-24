@@ -6,6 +6,7 @@ use TruthElection\Support\ElectionStoreInterface;
 use TruthElection\Support\PrecinctContext;
 use TruthElection\Support\MappingContext;
 use Lorisleiva\Actions\Concerns\AsAction;
+use Lorisleiva\Actions\ActionRequest;
 use Illuminate\Support\Facades\Log;
 use TruthElection\Data\BallotData;
 
@@ -31,5 +32,21 @@ class FinalizeBallot
         ]);
 
         return SubmitBallot::run($resolved);
+    }
+
+    public function rules(): array
+    {
+        return [
+            'code' => ['required', 'string'],
+        ];
+    }
+
+
+    //TODO: move this to truth-election-db (maybe change the name of the action and test it there)
+    public function asController(ActionRequest $request): BallotData
+    {
+        $validated = $request->validated();
+
+        return $this->handle($validated['code']);
     }
 }
