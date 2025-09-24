@@ -13,6 +13,7 @@ use TruthElectionDb\Console\Commands\ReadVoteCommand;
 use TruthElectionDb\Support\DatabaseElectionStore;
 use TruthElection\Support\ElectionStoreInterface;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Route;
 
 class TruthElectionDbServiceProvider extends ServiceProvider
 {
@@ -33,9 +34,10 @@ class TruthElectionDbServiceProvider extends ServiceProvider
 
         $this->publishes([
             __DIR__ . '/../routes/web.php' => base_path('routes/web.php'),
+            __DIR__ . '/../routes/api.php' => base_path('routes/api.php'),
         ], 'truth-election-db-routes');
 
-        $this->loadRoutesFrom(__DIR__ . '/../routes/web.php');
+        $this->loadRoutes();
 
         if ($this->app->runningInConsole()) {
             $this->commands([
@@ -49,5 +51,16 @@ class TruthElectionDbServiceProvider extends ServiceProvider
                 WrapUpVotingCommand::class,
             ]);
         }
+    }
+
+    protected function loadRoutes(): void
+    {
+        if ($this->app->routesAreCached()) {
+            return;
+        }
+
+        Route::prefix('api/election')
+            ->middleware('api')
+            ->group(__DIR__.'/../routes/api.php');
     }
 }

@@ -37,8 +37,6 @@ final class TruthElectionServiceProvider extends ServiceProvider
             __DIR__ . '/../config/precinct.yaml' => config_path('precinct.yaml'),
         ], 'truth-election-config');
 
-        $this->registerRoutes();
-
         $this->app->bind(PrecinctContext::class, function ($app) {
             $store = $app->make(ElectionStoreInterface::class);
             $precinctCode = request()->input('precinct_code') ?? null;

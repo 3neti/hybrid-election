@@ -32,7 +32,7 @@ test('SetupElectionFromFiles::handle() loads config and persists to database', f
 });
 
 test('SetupElectionFromFiles::asController works via HTTP POST', function () {
-    $response = $this->postJson('/election/setup', [
+    $response = $this->postJson(route('election.setup'), [
         'election_path' => null,
         'precinct_path' => null,
     ]);
@@ -99,7 +99,7 @@ test('Running setup twice does not create duplicates', function () {
 });
 
 test('SetupElectionFromFiles::asController returns correct summary', function () {
-    $response = $this->postJson('/election/setup');
+    $response = $this->postJson(route('election.setup'));
 
     $response->assertJson([
         'ok' => true,

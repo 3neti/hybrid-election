@@ -128,7 +128,7 @@ it('persists election return via handle()', function (TallyVotes $action, Precin
 })->with('action', 'precinct');
 
 it('returns a valid election return via controller', function () {
-    $response = $this->postJson(route('votes.tally', []));
+    $response = $this->postJson(route('tally.votes', []));
 
     $response->assertOk();
 
@@ -163,7 +163,7 @@ it('returns a valid election return via controller', function () {
 //});
 
 it('accepts optional election_return_code via controller', function () {
-    $response = $this->postJson(route('votes.tally', [
+    $response = $this->postJson(route('tally.votes', [
         'election_return_code' => 'ER-CURRIMAO-TEST-001',
     ]));
 

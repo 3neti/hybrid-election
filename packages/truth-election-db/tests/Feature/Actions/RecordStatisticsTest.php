@@ -164,7 +164,7 @@ test('ignores unknown fields in payload', function () {
     expect(isset($updated->foobar))->toBeFalse();
 });
 
-test('PATCH /precincts/statistics updates statistics via controller', function () {
+test('PATCH /record-statistics updates statistics via controller', function () {
     $payload = [
         'watchers_count' => 8,
         'registered_voters_count' => 1234,
@@ -172,7 +172,7 @@ test('PATCH /precincts/statistics updates statistics via controller', function (
     ];
 
     $response = $this->patchJson(
-        route('precinct.statistics'),
+        route('record.statistics'),
         $payload
     );
 
@@ -193,7 +193,7 @@ test('PATCH /precincts/statistics updates statistics via controller', function (
 
 test('validates input data via controller', function () {
     $response = $this->patchJson(
-        route('precinct.statistics'),
+        route('record.statistics'),
         ['watchers_count' => -5] // invalid
     );
 
