@@ -1,5 +1,6 @@
 <?php
 
+use TruthElection\Pipes\RenderElectionReturnPayloadPdf;
 use TruthElection\Pipes\GenerateElectionReturnQRCodes;
 use TruthElection\Pipes\GenerateElectionReturnPayload;
 use TruthElection\Pipes\PersistElectionReturnJson;
@@ -13,7 +14,8 @@ return [
             EncodeElectionReturnLines::class,
             GenerateElectionReturnQRCodes::class,
             GenerateElectionReturnPayload::class,
-            RenderElectionReturnPdf::class
+            RenderElectionReturnPdf::class,
+            RenderElectionReturnPayloadPdf::class,
         ],
     ],
     'storage' => [

@@ -13,7 +13,31 @@ use Closure;
 
 class GenerateElectionReturnPayload
 {
+    public string $filename = 'election_return_payload.json';
+
+    public array $payload;
+
+    public function getPayload(): array
+    {
+        return $this->payload;
+    }
+
+    public function setPayload(array $payload): static
+    {
+        $this->payload = $payload;
+
+        return $this;
+    }
+
     public function handle(FinalizeErContext $ctx, Closure $next): FinalizeErContext
+    {
+        $this->generatePayload($ctx);
+        $this->renderPayload($ctx);
+
+        return $next($ctx);
+    }
+
+    private function generatePayload(FinalizeErContext $ctx): void
     {
         $erArray = $ctx->er->toArray();
         $code = $ctx->er->code;
@@ -54,13 +78,19 @@ class GenerateElectionReturnPayload
             ],
         ];
 
-        context('payload', $payload);
+        $this->setPayload($payload);
+    }
 
+    private function getPath(FinalizeErContext $ctx): string
+    {
+        return "{$ctx->folder}/{$this->filename}";
+    }
+
+    protected function renderPayload(FinalizeErContext $ctx)
+    {
         Storage::disk($ctx->disk)->put(
-            "{$ctx->folder}/ER-{$code}-payload.json",
-            json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+            $this->getPath($ctx),
+            json_encode($this->getPayload(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
         );
-
-        return $next($ctx);
     }
 }

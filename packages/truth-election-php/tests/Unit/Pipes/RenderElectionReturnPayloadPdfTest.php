@@ -3,16 +3,53 @@
 use TruthElection\Data\{CandidateData, PositionData, PrecinctData, SignPayloadData, VoteData, FinalizeErContext};
 use TruthElection\Actions\{SubmitBallot, GenerateElectionReturn, SignElectionReturn};
 use TruthElection\Enums\{ElectoralInspectorRole, Level};
-use TruthElection\Pipes\GenerateElectionReturnPayload;
+use TruthElection\Pipes\RenderElectionReturnPayloadPdf;
 use TruthElection\Support\ElectionStoreInterface;
-use TruthElection\Tests\ResetsElectionStore;
+use TruthRenderer\TruthRendererServiceProvider;
 use Illuminate\Support\Facades\Storage;
 use Spatie\LaravelData\DataCollection;
 
-uses(ResetsElectionStore::class)->beforeEach(function () {
+uses()->beforeEach(function () {
+    $this->app->register(TruthRendererServiceProvider::class);
+
+    // Setup fake disk and temporary template directory
+    Storage::fake('local');
+    $this->tmpDir = base_path('tests/Fixtures/templates_' . uniqid());
+    $templatePath = $this->tmpDir . '/precinct/er_qr';
+    @mkdir($templatePath, 0777, true);
+
+    config()->set('truth-renderer.paths', [
+        'core' => $this->tmpDir,
+    ]);
+
+    // Create the .hbs template
+    file_put_contents($templatePath . '/template.hbs', <<<HBS
+<h2>Vote Tallies</h2>
+
+{{#groupBy tallyMeta.tallies key="position_code"}}
+    <h3>{{key}}</h3>
+    <table>
+        {{#each items}}
+            <tr>
+                <td>{{candidate_name}}</td>
+                <td>{{count}}</td>
+            </tr>
+        {{/each}}
+    </table>
+{{/groupBy}}
+
+<h2>QR Codes</h2>
+{{#each qrMeta.qr}}
+    <div>{{{this}}}</div>
+{{/each}}
+HBS
+    );
+
+    // Reset the store using the configured ElectionStoreInterface
     $this->store = app(ElectionStoreInterface::class);
     $this->store->reset();
 
+    // Seed the precinct
     $this->precinct = PrecinctData::from([
         'id' => 'PR001',
         'code' => 'PRECINCT-01',
@@ -27,6 +64,7 @@ uses(ResetsElectionStore::class)->beforeEach(function () {
 
     $this->store->putPrecinct($this->precinct);
 
+    // Submit ballots
     $votes1 = collect([
         new VoteData(
             candidates: new DataCollection(CandidateData::class, [
@@ -40,13 +78,13 @@ uses(ResetsElectionStore::class)->beforeEach(function () {
         ),
         new VoteData(
             candidates: new DataCollection(CandidateData::class, [
-                new CandidateData(code: 'CANDIDATE-002', name: 'Maria Santos', alias: 'MARIA', position: $position = new PositionData(
+                new CandidateData(code: 'CANDIDATE-002', name: 'Maria Santos', alias: 'MARIA', position: $senator = new PositionData(
                     code: 'SENATOR',
                     name: 'Senator',
                     level: Level::NATIONAL,
                     count: 12
                 )),
-                new CandidateData(code: 'CANDIDATE-003', name: 'Pedro Reyes', alias: 'PEDRO', position: $position),
+                new CandidateData(code: 'CANDIDATE-003', name: 'Pedro Reyes', alias: 'PEDRO', position: $senator),
             ])
         ),
     ]);
@@ -64,13 +102,8 @@ uses(ResetsElectionStore::class)->beforeEach(function () {
         ),
         new VoteData(
             candidates: new DataCollection(CandidateData::class, [
-                new CandidateData(code: 'CANDIDATE-002', name: 'Maria Santos', alias: 'MARIA', position: $position = new PositionData(
-                    code: 'SENATOR',
-                    name: 'Senator',
-                    level: Level::NATIONAL,
-                    count: 12
-                )),
-                new CandidateData(code: 'CANDIDATE-005', name: 'Andres Bonifacio', alias: 'ANDRES', position: $position),
+                new CandidateData(code: 'CANDIDATE-002', name: 'Maria Santos', alias: 'MARIA', position: $senator),
+                new CandidateData(code: 'CANDIDATE-005', name: 'Andres Bonifacio', alias: 'ANDRES', position: $senator),
             ])
         ),
     ]);
@@ -79,39 +112,34 @@ uses(ResetsElectionStore::class)->beforeEach(function () {
     SubmitBallot::run('BAL-002', $votes2);
 
     $return = GenerateElectionReturn::run();
-
     SignElectionReturn::run(SignPayloadData::fromQrString('BEI:A1:sig1'), $return->code);
     SignElectionReturn::run(SignPayloadData::fromQrString('BEI:B2:sig2'), $return->code);
 
     $this->return = $this->store->getElectionReturn($return->code);
 });
 
-test('generates merged payload with qr and tally and stores it as json', function () {
-    Storage::fake('local');
+test('renders ER QR+Tally PDF payload to disk', function () {
+    $payload = file_get_contents('tests/Fixtures/ER-317537-payload.json');
 
-    $ctx = new FinalizeErContext(
-        precinct: test()->precinct,
-        er: test()->return,
+    $context = new FinalizeErContext(
+        precinct: $this->precinct,
+        er: $this->return,
         disk: 'local',
-        folder: 'ER-' . test()->return->code . '/final',
-        payload: '{}',
-        maxChars: 1200,
+        folder: 'ER-317537/final',
+        payload: $payload,
+        maxChars: 8000,
         force: false,
     );
 
-    $pipe = new GenerateElectionReturnPayload();
+    $pipe = new RenderElectionReturnPayloadPdf();
 
-    $result = $pipe->handle($ctx, fn ($ctx) => $ctx);
+    $result = $pipe->handle($context, fn ($ctx) => $ctx);
 
     expect($result)->toBeInstanceOf(FinalizeErContext::class);
 
-    $path = "ER-{$ctx->er->code}/final/election_return_payload.json";
-    Storage::disk('local')->assertExists($path);
+    $expectedPath = "ER-317537/final/election_return_payload.pdf";
+    Storage::disk('local')->assertExists($expectedPath);
 
-    $json = json_decode(Storage::disk('local')->get($path), true);
-
-    expect($json)->toHaveKeys(['templateName', 'format', 'data']);
-    expect($json['data'])->toHaveKeys(['tallyMeta', 'qrMeta']);
-    expect($json['templateName'])->toBe('core:precinct/er_qr/template');
-    expect($json['format'])->toBe('pdf');
+    $pdf = Storage::disk('local')->get($expectedPath);
+    expect($pdf)->toStartWith('%PDF');
 });
