@@ -113,4 +113,15 @@ class ElectionReturnData extends Data
     {
         return $this->signedInspectors()->contains(fn($i) => $i->id === $id);
     }
+
+    public function transformFor(string $payload = 'minimal'): array
+    {
+        $array = $this->toArray();
+
+        if ($payload !== 'full') {
+            unset($array['precinct']['ballots'], $array['ballots'], $array['signatures']);
+        }
+
+        return $array;
+    }
 }

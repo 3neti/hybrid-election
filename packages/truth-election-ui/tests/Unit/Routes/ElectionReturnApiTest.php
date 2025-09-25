@@ -91,7 +91,7 @@ uses(ResetsElectionStore::class)->beforeEach(function () {
 });
 
 it('returns the election return payload as JSON', function () {
-    $response = $this->getJson(route('election-return'))
+    $response = $this->getJson(route('election-return', ['payload' => 'full']))
         ->assertOk()
         ->assertJson(fn (AssertableJson $json) =>
         $json
@@ -110,4 +110,27 @@ it('returns the election return payload as JSON', function () {
 
     $data = ElectionReturnData::from($response->json());
     expect($data)->toBeInstanceOf(ElectionReturnData::class);
+});
+
+it('transforms election return based on payload level', function () {
+    $fullResponse = $this->getJson(route('election-return', ['payload' => 'full']))
+        ->assertOk();
+
+    $fullData = $fullResponse->json();
+
+    expect($fullData)->toHaveKeys(['signatures', 'ballots']);
+    expect($fullData['precinct'])->toHaveKey('ballots');
+
+    $minimalResponse = $this->getJson(route('election-return')) // defaults to minimal
+    ->assertOk();
+
+    $minimalData = $minimalResponse->json();
+
+    expect($minimalData)->not()->toHaveKey('signatures');
+    expect($minimalData)->not()->toHaveKey('ballots');
+    expect($minimalData['precinct'])->not()->toHaveKey('ballots');
+
+    expect($minimalData)->toHaveKeys([
+        'id', 'code', 'precinct', 'tallies', 'created_at', 'updated_at', 'last_ballot'
+    ]);
 });
