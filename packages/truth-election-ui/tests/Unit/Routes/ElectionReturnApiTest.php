@@ -1,11 +1,12 @@
 <?php
 
-use TruthElection\Data\{CandidateData, PositionData, PrecinctData, SignPayloadData, VoteData};
-use TruthElection\Actions\{GenerateElectionReturn, SignElectionReturn, SubmitBallot};
-use Spatie\LaravelData\{DataCollection, Optional};
+use TruthElection\Data\{CandidateData, ElectionReturnData, PositionData, PrecinctData, VoteData};
+use TruthElection\Actions\{GenerateElectionReturn, SubmitBallot};
 use TruthElection\Support\InMemoryElectionStore;
 use TruthElection\Enums\ElectoralInspectorRole;
-use TruthElection\Tests\ResetsElectionStore;
+use TruthElectionUi\Tests\ResetsElectionStore;
+use Illuminate\Testing\Fluent\AssertableJson;
+use Spatie\LaravelData\DataCollection;
 use TruthElection\Enums\Level;
 
 uses(ResetsElectionStore::class)->beforeEach(function () {
@@ -86,71 +87,27 @@ uses(ResetsElectionStore::class)->beforeEach(function () {
     SubmitBallot::run('BAL-001', $votes1);
     SubmitBallot::run('BAL-001', $votes2);
 
-    $this->return = GenerateElectionReturn::run('PRECINCT-01');
+    GenerateElectionReturn::run('PRECINCT-01');
 });
 
-test('successfully signs as chairperson', function () {
-    // 📝 Prepare payload: Alice = A1, chairperson
-    $payload = SignPayloadData::fromQrString('BEI:A1:base64signature');
+it('returns the election return payload as JSON', function () {
+    $response = $this->getJson(route('election-return'))
+        ->assertOk()
+        ->assertJson(fn (AssertableJson $json) =>
+        $json
+            ->has('id')
+            ->has('code')
+            ->has('precinct')
+            ->has('tallies')
+            ->has('signatures', 2)
+            ->has('ballots', 1)
+            ->has('created_at')
+            ->has('updated_at')
+            ->has('last_ballot')
+            ->has('last_ballot.votes', 2)
+            ->etc()
+        );
 
-    // 🚀 Perform signature
-    $result = SignElectionReturn::run($payload);
-
-    // 🔍 Assert result structure
-    expect($result)
-        ->message->toBe('Signature saved successfully.')
-        ->id->toBe('A1')
-        ->name->toBe('Alice')
-        ->role->toBe('chairperson')
-        ->signed_at->toBeString()
-    ;
-
-    // 🗃 Confirm election return has been updated in memory
-    $updatedReturn = $this->store->getElectionReturn($this->return->code);
-
-    expect($updatedReturn)->not->toBeNull();
-    expect($updatedReturn->signedInspectors())->toHaveCount(1);
-
-    // Find signatures by ID for clear assertions
-    $bob = $this->store->findSignatory($updatedReturn, 'B2');
-    $alice = $this->store->findSignatory($updatedReturn, 'A1');
-
-    expect($bob)
-        ->not->toBeNull()
-        ->name->toBe('Bob')
-        ->role->value->toBe('member')
-        ->signature->toBeInstanceOf(Optional::class)
-        ->and($alice)
-        ->not->toBeNull()
-        ->name->toBe('Alice')
-        ->role->value->toBe('chairperson')
-        ->signature->toBe('base64signature'); // signed in previous setup
-
-    // just signed in this test
+    $data = ElectionReturnData::from($response->json());
+    expect($data)->toBeInstanceOf(ElectionReturnData::class);
 });
-
-test('appends signature when second inspector signs', function () {
-    // First: Alice (A1, chairperson)
-    SignElectionReturn::run(SignPayloadData::fromQrString('BEI:A1:sig1'));
-
-    // Second: Bob (B2, member)
-    SignElectionReturn::run(SignPayloadData::fromQrString('BEI:B2:sig2'));
-
-    $updated = $this->store->getElectionReturn($this->return->code);
-
-    // Use signedInspectors() to confirm both signed
-    $signed = $updated->signedInspectors();
-    expect($signed)->toHaveCount(2);
-
-    // Optional: assert individual signatures
-    $ids = $signed->pluck('id');
-    expect($ids)->toContain('A1')->toContain('B2');
-
-    $bob = $this->store->findSignatory($updated, 'B2');
-    expect($bob->signature)->toBe('sig2');
-});
-
-test('fails if inspector ID is not found in roster', function () {
-    $payload = SignPayloadData::fromQrString('BEI:Z9:sig');
-    SignElectionReturn::run($payload);
-})->throws(Exception::class, "Could not create `TruthElection\Data\ElectoralInspectorData`: the constructor requires 5 parameters, 2 given. Parameters given: signature, signed_at. Parameters missing: id, name, role.");

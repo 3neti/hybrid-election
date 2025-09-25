@@ -20,9 +20,9 @@ class TruthElectionUiServiceProvider extends ServiceProvider
 
     protected function registerRoutes(): void
     {
-        Route::middleware(['web'])
+        Route::middleware(['api'])
             ->prefix('truth-election')
-            ->group(__DIR__ . '/../routes/web.php');
+            ->group(__DIR__ . '/../routes/api.php');
     }
 
     protected function publishesConfig(): void
