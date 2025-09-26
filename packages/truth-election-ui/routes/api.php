@@ -9,6 +9,6 @@ Route::get('election-return', function (Request $request) {
     $payload = $request->query('payload', 'minimal');
 
     return response()->json(
-        $store->getElectionReturn()->transformFor($payload)
+        $store->getElectionReturn()?->transformFor($payload)
     );
 })->name('election-return');

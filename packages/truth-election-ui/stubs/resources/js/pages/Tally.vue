@@ -3,6 +3,7 @@ import { useElectionReturn } from '@/composables/useElectionReturn'
 import ErTallyView from '@/components/ErTallyView.vue'
 import type { PrecinctData } from '@/types/election'
 import { usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 // Election Return state (loads immediately from backend)
 const { er, loading: erLoading, error: erError, loadFromBackend } = useElectionReturn({
@@ -11,6 +12,7 @@ const { er, loading: erLoading, error: erError, loadFromBackend } = useElectionR
 })
 
 const precinct = usePage().props.precinct as PrecinctData
+const noDataYet = computed(() => erError?.includes('Election Return'))
 
 </script>
 
@@ -23,7 +25,12 @@ const precinct = usePage().props.precinct as PrecinctData
             </button>
         </header>
 
-        <p v-if="erError" class="text-sm text-red-600">Error: {{ erError }}</p>
+        <p v-if="erError && erError.includes('Election Return')" class="text-sm text-gray-600">
+            No election return data yet.
+        </p>
+        <p v-else-if="erError" class="text-sm text-red-600">
+            Error: {{ erError }}
+        </p>
 
         <section v-if="er" class="border rounded p-4">
             <ErTallyView
@@ -32,6 +39,6 @@ const precinct = usePage().props.precinct as PrecinctData
                 @refresh-request="loadFromBackend"
             />
         </section>
-        <p v-else class="text-sm text-gray-600">Loading election return…</p>
+        <p v-else class="text-sm text-gray-600">Click “Refresh” to try loading the election return.</p>
     </div>
 </template>

@@ -2,8 +2,10 @@
 
 use TruthElection\Support\InMemoryElectionStore;
 use TruthElection\Tests\ResetsElectionStore;
+use TruthElection\Events\BallotSubmitted;
 use TruthElection\Actions\SubmitBallot;
 use Spatie\LaravelData\DataCollection;
+use Illuminate\Support\Facades\Event;
 use TruthElection\Data\CandidateData;
 use TruthElection\Data\PrecinctData;
 use TruthElection\Data\PositionData;
@@ -93,4 +95,16 @@ it('stores vote data correctly', function () {
         ->and($vote1->candidates)->toHaveCount(1)
         ->and($vote2->position->code)->toBe('SENATOR')
         ->and($vote2->candidates[1]->alias)->toBe('PEDRO');
+});
+
+it('dispatches BallotSubmitted event when a ballot is submitted', function () {
+    Event::fake();
+
+    $ballot = SubmitBallot::run('BAL-004', $this->votes);
+
+    Event::assertDispatched(BallotSubmitted::class, function (BallotSubmitted $event) use ($ballot) {
+        return $event->ballot->code === $ballot->code
+            && $event->ballot->getPrecinctCode() === $ballot->getPrecinctCode()
+            && $event->broadcastOn()[0]->name === "precinct.{$ballot->getPrecinctCode()}";
+    });
 });

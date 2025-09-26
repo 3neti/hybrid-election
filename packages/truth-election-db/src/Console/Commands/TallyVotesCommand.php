@@ -35,25 +35,30 @@ class TallyVotesCommand extends Command
             $result = TallyVotes::make()->run($electionReturnCode);
 
             $this->info('✅ Tally complete:');
+
             $precinctCode = $result->precinct->code;
             $this->line("Precinct: $precinctCode");
 
             $lastBallot = $result->toArray()['last_ballot'] ?? [];
 
-            $this->line("🗳 Last Ballot Cast: {$lastBallot['code']}");
-            $this->newLine();
-
-            foreach ($lastBallot['votes'] ?? [] as $vote) {
-                $position = $vote['position']['name'] ?? 'Unknown Position';
-                $this->line("Position: $position");
-
-                foreach ($vote['candidates'] ?? [] as $candidate) {
-                    $name = $candidate['name'] ?? 'Unknown';
-                    $votes = $candidate['votes'] ?? 1; // fallback to 1 if not explicitly tallied
-                    $this->line("  - $name ({$votes} vote" . ($votes === 1 ? '' : 's') . ")");
-                }
-
+            if (!empty($lastBallot['code'])) {
+                $this->line("🗳 Last Ballot Cast: {$lastBallot['code']}");
                 $this->newLine();
+
+                foreach ($lastBallot['votes'] ?? [] as $vote) {
+                    $position = $vote['position']['name'] ?? 'Unknown Position';
+                    $this->line("Position: $position");
+
+                    foreach ($vote['candidates'] ?? [] as $candidate) {
+                        $name = $candidate['name'] ?? 'Unknown';
+                        $votes = $candidate['votes'] ?? 1;
+                        $this->line("  - $name ({$votes} vote" . ($votes === 1 ? '' : 's') . ")");
+                    }
+
+                    $this->newLine();
+                }
+            } else {
+                $this->warn("⚠️  No last ballot data available.");
             }
 
             return self::SUCCESS;

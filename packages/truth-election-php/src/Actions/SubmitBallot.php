@@ -4,6 +4,7 @@ namespace TruthElection\Actions;
 
 use TruthElection\Support\PrecinctContext;
 use Lorisleiva\Actions\Concerns\AsAction;
+use TruthElection\Events\BallotSubmitted;
 use Spatie\LaravelData\DataCollection;
 use Illuminate\Support\Collection;
 use TruthElection\Data\BallotData;
@@ -19,9 +20,13 @@ class SubmitBallot
 
     public function handle(string|BallotData $ballotCode, ?Collection $votes = null): BallotData
     {
-        return $ballotCode instanceof BallotData
+        $data = $ballotCode instanceof BallotData
             ? $this->handleBallotData($ballotCode)
             : $this->handleFromParts($ballotCode, $votes);
+
+        BallotSubmitted::dispatch($data);
+
+        return $data;
     }
 
     protected function handleFromParts(string $ballotCode, Collection $votes): BallotData
